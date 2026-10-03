@@ -34,7 +34,7 @@ export default function SchedulePage() {
 
   return (
     <>
-      <h1 className="font-display text-3xl font-bold text-ink">Schedule</h1>
+      <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink">Schedule</h1>
       <p className="mt-2 max-w-2xl text-body">
         Your consults, and when members can reach you. A consult opens with the patient’s record
         only after they share an OTP.

@@ -17,7 +17,7 @@ export default async function LoginPage(props: PageProps<"/login">) {
         </p>
       ) : null}
 
-      <h1 className="font-display text-3xl font-bold text-ink">Sign in to the doctor console</h1>
+      <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink">Sign in to the doctor console</h1>
       <p className="mt-2 text-body">
         Enter the mobile number registered with HealthMatrix. We’ll send a one-time password.
       </p>

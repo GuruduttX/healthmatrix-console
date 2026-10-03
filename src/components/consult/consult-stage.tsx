@@ -106,7 +106,7 @@ export function ConsultStage({
 
       {live ? (
         <>
-          <span className="absolute bottom-20 right-4 flex h-24 w-20 items-center justify-center rounded-xl border border-white/40 bg-ink-mid">
+          <span className="absolute right-4 top-16 flex h-20 w-16 items-center sm:bottom-20 sm:top-auto sm:h-24 sm:w-20 justify-center rounded-xl border border-white/40 bg-ink-mid">
             {cameraOn ? (
               <span className="inline-flex size-10 items-center justify-center rounded-full bg-success text-xs font-bold">
                 {doctorInitials}

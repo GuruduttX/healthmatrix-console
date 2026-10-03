@@ -37,7 +37,7 @@ export function RegisterForm({ specialties }: { specialties: string[] }) {
         <span className="inline-flex size-14 items-center justify-center rounded-2xl bg-success-soft text-success">
           <BadgeCheck aria-hidden className="size-7" />
         </span>
-        <h1 className="mt-5 font-display text-3xl font-bold text-ink">Thank you, {name.trim()}</h1>
+        <h1 className="mt-5 font-display text-2xl sm:text-3xl font-bold text-ink">Thank you, {name.trim()}</h1>
         <p className="mt-2 text-body">Your details are with us. Here is what happens next.</p>
         <ol className="mt-6 flex flex-col gap-4">
           {steps.map((step, i) => (
@@ -61,7 +61,7 @@ export function RegisterForm({ specialties }: { specialties: string[] }) {
 
   return (
     <>
-      <h1 className="font-display text-3xl font-bold text-ink">Register as a doctor</h1>
+      <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink">Register as a doctor</h1>
       <p className="mt-2 text-body">
         HealthMatrix consults are given by registered medical practitioners. We verify every
         registration before the console opens.

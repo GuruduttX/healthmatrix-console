@@ -8,6 +8,7 @@ import {
   History,
   ShieldCheck,
   Users,
+  type LucideIcon,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -15,12 +16,12 @@ import { usePathname } from "next/navigation";
 
 import { doctor } from "@/lib/data";
 
-const navItems = [
-  { href: "/", label: "Today", icon: CalendarClock, also: ["/consults"] },
-  { href: "/schedule", label: "Schedule", icon: CalendarDays },
-  { href: "/patients", label: "Patients", icon: Users },
-  { href: "/prescriptions", label: "Prescriptions", icon: FileSignature },
-  { href: "/results", label: "Results", icon: FlaskConical },
+const navItems: { href: string; label: string; icon: LucideIcon; also?: string[]; short?: string }[] = [
+  { href: "/", label: "Today", short: "Today", icon: CalendarClock, also: ["/consults"] },
+  { href: "/schedule", label: "Schedule", short: "Schedule", icon: CalendarDays },
+  { href: "/patients", label: "Patients", short: "Patients", icon: Users },
+  { href: "/prescriptions", label: "Prescriptions", short: "Rx", icon: FileSignature },
+  { href: "/results", label: "Results", short: "Results", icon: FlaskConical },
   { href: "/access-log", label: "Access log", icon: History },
 ];
 
@@ -84,28 +85,43 @@ export function Sidebar() {
   );
 }
 
-/** Tab row shown under the top bar when the sidebar is hidden. */
+/** Bottom tab bar shown when the sidebar is hidden. Access log stays in the account menu. */
 export function MobileNav() {
   const pathname = usePathname();
 
   return (
-    <nav aria-label="Main" className="flex gap-1 overflow-x-auto border-b border-line bg-card px-3 py-2 lg:hidden">
-      {navItems.map((item) => {
-        const active = isActive(pathname, item);
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            aria-current={active ? "page" : undefined}
-            className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold ${
-              active ? "bg-ink text-white" : "text-body hover:bg-selected"
-            }`}
-          >
-            <item.icon aria-hidden className="size-4" />
-            {item.label}
-          </Link>
-        );
-      })}
+    <nav
+      aria-label="Main"
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden print:hidden"
+    >
+      <ul className="mx-auto grid max-w-xl grid-cols-5">
+        {navItems
+          .filter((item) => item.short)
+          .map((item) => {
+            const active = isActive(pathname, item);
+            return (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  aria-label={item.label}
+                  aria-current={active ? "page" : undefined}
+                  className={`flex flex-col items-center gap-0.5 pb-1.5 pt-2 text-[11px] font-semibold ${
+                    active ? "text-brand" : "text-body"
+                  }`}
+                >
+                  <span
+                    className={`inline-flex h-7 w-14 items-center justify-center rounded-full transition-colors ${
+                      active ? "bg-brand-soft" : ""
+                    }`}
+                  >
+                    <item.icon aria-hidden className="size-5" />
+                  </span>
+                  {item.short}
+                </Link>
+              </li>
+            );
+          })}
+      </ul>
     </nav>
   );
 }

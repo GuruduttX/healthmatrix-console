@@ -40,7 +40,7 @@ export default function TodayPage() {
   return (
     <>
       <p className="text-sm font-semibold text-brand">Today</p>
-      <h1 className="mt-1 font-display text-3xl font-bold text-ink">Good morning, {doctor.name}</h1>
+      <h1 className="mt-1 font-display text-2xl sm:text-3xl font-bold text-ink">Good morning, {doctor.name}</h1>
       <p className="mt-2 max-w-2xl text-body">
         {remaining} consults to go. Ekaay has a summary ready for every patient who has shared their record.
       </p>

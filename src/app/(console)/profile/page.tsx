@@ -26,7 +26,7 @@ export default function ProfilePage() {
 
   return (
     <>
-      <h1 className="font-display text-3xl font-bold text-ink">Profile and settings</h1>
+      <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink">Profile and settings</h1>
 
       <div className="mt-6 grid items-start gap-6 xl:grid-cols-2">
         <Card>

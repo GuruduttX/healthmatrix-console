@@ -18,7 +18,7 @@ export default async function VerifyPage(props: PageProps<"/login/verify">) {
         Change number
       </Link>
 
-      <h1 className="mt-4 font-display text-3xl font-bold text-ink">Enter the OTP</h1>
+      <h1 className="mt-4 font-display text-2xl sm:text-3xl font-bold text-ink">Enter the OTP</h1>
       <p className="mt-2 text-body">
         We sent a 6-digit code to +91 {phone.slice(0, 5)} {phone.slice(5)}.
       </p>

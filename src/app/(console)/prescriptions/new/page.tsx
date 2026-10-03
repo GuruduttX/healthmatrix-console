@@ -29,7 +29,7 @@ export default async function NewPrescriptionPage(props: PageProps<"/prescriptio
         <ChevronLeft aria-hidden className="size-4" />
         Prescriptions
       </Link>
-      <h1 className="mt-2 font-display text-3xl font-bold text-ink">New prescription</h1>
+      <h1 className="mt-2 font-display text-2xl sm:text-3xl font-bold text-ink">New prescription</h1>
       <p className="mt-2 max-w-2xl text-body">
         Dictate, photograph a handwritten note, or type. Ekaay drafts it and checks it against the
         patient’s allergies before you sign.

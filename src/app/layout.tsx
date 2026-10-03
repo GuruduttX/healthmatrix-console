@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Figtree } from "next/font/google";
 
 import "./globals.css";
@@ -20,6 +20,15 @@ export const metadata: Metadata = {
   },
   description:
     "The HealthMatrix doctor console: patient timelines, Ekaay summaries and prescriptions, opened only with the patient’s OTP.",
+  appleWebApp: { capable: true, title: "HealthMatrix", statusBarStyle: "default" },
+  formatDetection: { telephone: false },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#ffffff",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

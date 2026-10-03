@@ -24,7 +24,7 @@ export default async function ConsultPage(props: PageProps<"/consults/[id]">) {
         <ChevronLeft aria-hidden className="size-4" />
         Today
       </Link>
-      <h1 className="mt-2 font-display text-3xl font-bold text-ink">Consult with {patient.name}</h1>
+      <h1 className="mt-2 font-display text-2xl sm:text-3xl font-bold text-ink">Consult with {patient.name}</h1>
       <p className="mt-1 text-body">
         {consult.day ?? "Today"}, {consult.time}. {consult.mode}.
       </p>

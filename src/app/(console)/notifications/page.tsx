@@ -19,7 +19,7 @@ export default function NotificationsPage() {
 
   return (
     <>
-      <h1 className="font-display text-3xl font-bold text-ink">Notifications</h1>
+      <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink">Notifications</h1>
       <p className="mt-2 text-body">
         {unread > 0 ? `${unread} new since you signed in.` : "Nothing new since you signed in."}
       </p>

@@ -12,7 +12,7 @@ export function TopBar() {
   const unread = notifications.filter((n) => n.unread).length;
 
   return (
-    <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-line bg-card/95 px-4 py-3 backdrop-blur sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-line bg-card/95 px-4 pb-2.5 pt-[calc(0.625rem+env(safe-area-inset-top))] backdrop-blur lg:py-3 print:hidden sm:px-6 lg:px-8">
       <Link href="/" className="flex items-center gap-2 lg:hidden" aria-label="HealthMatrix doctor console, home">
         <Image src="/logo-mark.png" alt="" width={28} height={25} />
       </Link>
@@ -26,7 +26,7 @@ export function TopBar() {
           type="search"
           name="q"
           aria-label="Search patients"
-          placeholder="Search patients by name or member ID"
+          placeholder="Search patients"
           className="w-full rounded-full border border-line bg-surface py-2.5 pl-10 pr-4 text-sm text-ink placeholder:text-body focus:border-brand focus:outline-none"
         />
       </Form>

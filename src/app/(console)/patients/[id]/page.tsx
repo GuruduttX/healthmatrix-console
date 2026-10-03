@@ -122,7 +122,7 @@ export default async function PatientPage(props: PageProps<"/patients/[id]">) {
                         <th scope="row" className="py-2.5 pr-2 text-left font-medium text-ink">
                           {result.name}
                         </th>
-                        <td className="whitespace-nowrap px-2 py-2.5 text-right font-bold text-ink">
+                        <td className="px-2 py-2.5 text-right font-bold text-ink sm:whitespace-nowrap">
                           {result.value}
                         </td>
                         <td className="w-px whitespace-nowrap py-2.5 pl-2 text-right">
