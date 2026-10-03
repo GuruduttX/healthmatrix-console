@@ -29,18 +29,18 @@ export default async function ResultsPage(props: PageProps<"/results">) {
 
   return (
     <>
-      <h1 className="font-display text-3xl font-bold text-ink">Results</h1>
+      <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink">Results</h1>
       <p className="mt-2 max-w-2xl text-body">
         Tests you ordered are booked at a pod near the patient, and the results come back to you here.
       </p>
 
-      <nav aria-label="Filter by status" className="mt-5 flex flex-wrap gap-2">
+      <nav aria-label="Filter by status" className="no-scrollbar -mx-4 mt-5 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0">
         {filters.map((filter) => (
           <Link
             key={filter.value}
             href={filter.value === "all" ? "/results" : `/results?status=${filter.value}`}
             aria-current={active === filter.value ? "true" : undefined}
-            className={`rounded-full px-4 py-2 text-sm font-semibold ${
+            className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold ${
               active === filter.value ? "bg-ink text-white" : "border border-line bg-card text-ink hover:bg-selected"
             }`}
           >
@@ -49,7 +49,43 @@ export default async function ResultsPage(props: PageProps<"/results">) {
         ))}
       </nav>
 
-      <div className="mt-5 overflow-x-auto rounded-2xl border border-line bg-card shadow-card">
+      <ul className="mt-5 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-card shadow-card md:hidden">
+        {list.map((order) => {
+          const patient = getPatient(order.patientId)!;
+          const meta = statusMeta[order.status];
+          return (
+            <li key={order.id}>
+              <Link href={`/patients/${patient.id}`} className="block px-4 py-3.5">
+                <span className="flex items-center gap-2.5">
+                  <Avatar initials={patient.initials} tone={patient.avatarTone} size="sm" />
+                  <span className="min-w-0 flex-1 truncate font-semibold text-ink">{patient.name}</span>
+                  <Chip tone={meta.tone}>{meta.label}</Chip>
+                </span>
+                <span className="mt-2.5 block text-sm font-medium text-ink">{order.test}</span>
+                {order.result ? (
+                  <span className="mt-1 flex flex-wrap items-center gap-2 text-sm">
+                    <span className="font-bold text-ink">{order.result.value}</span>
+                    <Chip tone={flagTone[order.result.flag]}>{order.result.label}</Chip>
+                    <span className="text-xs text-body">{order.result.date}</span>
+                  </span>
+                ) : (
+                  <span className="mt-1 block text-sm text-body">Waiting for the result</span>
+                )}
+                <span className="mt-1.5 block text-xs text-body">
+                  Ordered {order.orderedOn}. {order.where}
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+      {list.length === 0 ? (
+        <p className="mt-5 rounded-2xl border border-line bg-card px-5 py-10 text-center text-body shadow-card md:hidden">
+          No tests with this status.
+        </p>
+      ) : null}
+
+      <div className="mt-5 hidden overflow-x-auto rounded-2xl border border-line bg-card shadow-card md:block">
         <table className="w-full min-w-[860px] text-left text-sm">
           <thead className="border-b border-line text-xs font-semibold text-body">
             <tr>

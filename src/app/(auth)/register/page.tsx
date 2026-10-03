@@ -1,10 +1,6 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import { RegisterForm } from "@/components/register-form";
-import { networkSpecialties } from "@/lib/data";
-
-export const metadata: Metadata = { title: "Register" };
-
+/** Sign-up starts at sign-in now: a new number goes on to onboarding after the OTP. */
 export default function RegisterPage() {
-  return <RegisterForm specialties={networkSpecialties} />;
+  redirect("/login");
 }

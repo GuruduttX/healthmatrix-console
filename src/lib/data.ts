@@ -29,18 +29,8 @@ export const doctor: Doctor = {
   council: "Delhi Medical Council",
   specialties: ["General medicine", "Diabetes and endocrinology"],
   languages: ["English", "Hindi", "Gujarati"],
+  location: "New Delhi, Delhi",
 };
-
-export const networkSpecialties = [
-  "General medicine",
-  "Diabetes and endocrinology",
-  "Cardiology",
-  "Paediatrics",
-  "Gynaecology",
-  "Dermatology",
-  "Psychiatry",
-  "Nutrition",
-];
 
 export const planNames: Record<PlanId, string> = {
   essential: "Essential",

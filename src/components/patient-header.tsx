@@ -16,11 +16,12 @@ export function PatientHeader({ patient, back }: { patient: Patient; back: { hre
         {back.label}
       </Link>
 
-      <header className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-3">
+      {/* Phones: avatar beside the name, then details, alerts and the action each on a full-width row. */}
+      <header className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-3 sm:flex sm:flex-wrap sm:gap-x-5">
         <Avatar initials={patient.initials} tone={patient.avatarTone} size="lg" />
-        <div className="min-w-0 flex-1">
-          <h1 className="font-display text-3xl font-bold text-ink">{patient.name}</h1>
-          <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm text-body">
+        <div className="contents sm:block sm:min-w-0 sm:flex-1">
+          <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink">{patient.name}</h1>
+          <p className="col-span-2 flex flex-wrap items-center gap-x-2 text-sm text-body sm:mt-1">
             {patient.age} years, {patient.sex}. Blood group {patient.bloodGroup}. {planNames[patient.plan]} plan.
             <span className="font-medium text-ink">{patient.memberId}</span>
             {patient.abhaLinked ? (
@@ -30,7 +31,7 @@ export function PatientHeader({ patient, back }: { patient: Patient; back: { hre
               </span>
             ) : null}
           </p>
-          <div className="mt-2.5 flex flex-wrap gap-2">
+          <div className="col-span-2 flex flex-wrap gap-2 sm:mt-2.5">
             {patient.allergies.map((allergy) => (
               <Chip key={allergy} tone="danger" icon={TriangleAlert}>
                 Allergy: {allergy}
@@ -51,7 +52,7 @@ export function PatientHeader({ patient, back }: { patient: Patient; back: { hre
         {consult && consult.status !== "completed" ? (
           <Link
             href={`/consults/${consult.id}`}
-            className="inline-flex items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-white hover:bg-danger"
+            className="col-span-2 inline-flex items-center justify-center gap-2 rounded-full bg-brand px-5 py-3 text-sm font-bold text-white hover:bg-danger sm:py-2.5"
           >
             <Video aria-hidden className="size-4" />
             {consult.status === "in_progress" ? "Join consult" : "Open consult"}

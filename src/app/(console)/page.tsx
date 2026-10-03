@@ -3,8 +3,9 @@ import Link from "next/link";
 
 import { ConsultRow } from "@/components/consult-row";
 import { Avatar, Card, CardTitle, Chip, flagTone } from "@/components/ui";
-import { consults, doctor, ekaayFlags, getPatient, patients, prescriptions, testOrders } from "@/lib/data";
+import { consults, ekaayFlags, getPatient, patients, prescriptions, testOrders } from "@/lib/data";
 import type { Tone } from "@/lib/types";
+import { getCurrentDoctor } from "@/lib/doctor-view";
 
 const dotTone: Record<Tone, string> = {
   danger: "bg-danger",
@@ -14,7 +15,8 @@ const dotTone: Record<Tone, string> = {
   neutral: "bg-muted",
 };
 
-export default function TodayPage() {
+export default async function TodayPage() {
+  const doctor = await getCurrentDoctor();
   const today = consults.filter((c) => !c.day);
   const remaining = today.filter((c) => c.status !== "completed").length;
   const drafts = prescriptions.filter((p) => p.status === "draft");
@@ -40,7 +42,7 @@ export default function TodayPage() {
   return (
     <>
       <p className="text-sm font-semibold text-brand">Today</p>
-      <h1 className="mt-1 font-display text-3xl font-bold text-ink">Good morning, {doctor.name}</h1>
+      <h1 className="mt-1 font-display text-2xl sm:text-3xl font-bold text-ink">Good morning, {doctor.name}</h1>
       <p className="mt-2 max-w-2xl text-body">
         {remaining} consults to go. Ekaay has a summary ready for every patient who has shared their record.
       </p>

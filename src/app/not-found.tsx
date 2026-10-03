@@ -4,7 +4,7 @@ export default function NotFound() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center px-6 text-center">
       <p className="text-sm font-semibold text-brand">Page not found</p>
-      <h1 className="mt-2 font-display text-3xl font-bold text-ink">There is nothing at this address</h1>
+      <h1 className="mt-2 font-display text-2xl sm:text-3xl font-bold text-ink">There is nothing at this address</h1>
       <p className="mt-2 max-w-md text-body">
         The link may be old, or the patient or consult may have been removed.
       </p>

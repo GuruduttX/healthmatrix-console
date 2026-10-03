@@ -24,6 +24,8 @@ export type Doctor = {
   council: string;
   specialties: string[];
   languages: string[];
+  /** "New Delhi, Delhi" */
+  location: string;
 };
 
 export type Patient = {

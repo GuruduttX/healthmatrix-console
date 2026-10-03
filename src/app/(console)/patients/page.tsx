@@ -1,4 +1,4 @@
-import { TriangleAlert } from "lucide-react";
+import { ChevronRight, TriangleAlert } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -41,13 +41,13 @@ export default async function PatientsPage(props: PageProps<"/patients">) {
 
   return (
     <>
-      <h1 className="font-display text-3xl font-bold text-ink">Patients</h1>
+      <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink">Patients</h1>
       <p className="mt-2 max-w-2xl text-body">
         {q ? `Results for “${q}”. ` : ""}
         You see a patient’s name and alerts here. Their full history opens only with an OTP.
       </p>
 
-      <nav aria-label="Filter by access" className="mt-5 flex flex-wrap gap-2">
+      <nav aria-label="Filter by access" className="no-scrollbar -mx-4 mt-5 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0">
         {filters.map((filter) => {
           const active = access === filter.value;
           return (
@@ -55,7 +55,7 @@ export default async function PatientsPage(props: PageProps<"/patients">) {
               key={filter.value}
               href={hrefFor(filter.value)}
               aria-current={active ? "true" : undefined}
-              className={`rounded-full px-4 py-2 text-sm font-semibold ${
+              className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold ${
                 active ? "bg-ink text-white" : "border border-line bg-card text-ink hover:bg-selected"
               }`}
             >
@@ -65,7 +65,52 @@ export default async function PatientsPage(props: PageProps<"/patients">) {
         })}
       </nav>
 
-      <div className="mt-5 overflow-x-auto rounded-2xl border border-line bg-card shadow-card">
+      {/* Phones get a tappable list; the table needs more width than they have. */}
+      <ul className="mt-5 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-card shadow-card md:hidden">
+        {list.map((patient) => {
+          const consult = getConsultFor(patient.id);
+          return (
+            <li key={patient.id}>
+              <Link href={`/patients/${patient.id}`} className="flex items-center gap-3 px-4 py-3.5">
+                <Avatar initials={patient.initials} tone={patient.avatarTone} />
+                <span className="min-w-0 flex-1">
+                  <span className="block font-semibold text-ink">{patient.name}</span>
+                  <span className="block text-xs text-body">
+                    {patient.age} years, {patient.sex}. {patient.bloodGroup}. {planNames[patient.plan]} plan.
+                  </span>
+                  <span className="block text-xs text-body">{patient.memberId}</span>
+                  <span className="mt-2 flex flex-wrap gap-1.5">
+                    <AccessChip status={patient.access.status} />
+                    {consult ? <Chip tone="neutral">Today, {consult.time}</Chip> : null}
+                    {patient.allergies.map((allergy) => (
+                      <Chip key={allergy} tone="danger" icon={TriangleAlert}>
+                        Allergy: {allergy}
+                      </Chip>
+                    ))}
+                    {patient.conditions.map((condition) => (
+                      <Chip key={condition} tone="danger" icon={TriangleAlert}>
+                        {condition}
+                      </Chip>
+                    ))}
+                  </span>
+                </span>
+                <ChevronRight aria-hidden className="size-4 shrink-0 text-body" />
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+      {list.length === 0 ? (
+        <p className="mt-5 rounded-2xl border border-line bg-card px-5 py-10 text-center text-body shadow-card md:hidden">
+          No patients match. Check the spelling or the member ID, or{" "}
+          <Link href="/patients" className="font-semibold text-brand underline">
+            clear the search
+          </Link>
+          .
+        </p>
+      ) : null}
+
+      <div className="mt-5 hidden overflow-x-auto rounded-2xl border border-line bg-card shadow-card md:block">
         <table className="w-full min-w-[820px] text-left text-sm">
           <thead className="border-b border-line text-xs font-semibold text-body">
             <tr>

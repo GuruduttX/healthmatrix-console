@@ -32,7 +32,7 @@ export function ConsultPanel({
             role="tab"
             aria-selected={tab === name}
             onClick={() => setTab(name)}
-            className={`flex-1 rounded-full px-3 py-2 text-sm font-bold ${
+            className={`flex-1 rounded-full px-2 py-2 text-xs font-bold sm:px-3 sm:text-sm ${
               tab === name ? "bg-ink text-white" : "text-body hover:text-ink"
             }`}
           >

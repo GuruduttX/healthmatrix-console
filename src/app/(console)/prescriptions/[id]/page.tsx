@@ -7,11 +7,13 @@ import { notFound } from "next/navigation";
 import { PrintButton } from "@/components/print-button";
 import { PrescriptionDraft } from "@/components/record/prescription-draft";
 import { Chip } from "@/components/ui";
-import { doctor, getAllergyTerms, getPatient, getPrescription } from "@/lib/data";
+import { getAllergyTerms, getPatient, getPrescription } from "@/lib/data";
+import { getCurrentDoctor } from "@/lib/doctor-view";
 
 export const metadata: Metadata = { title: "Prescription" };
 
 export default async function PrescriptionPage(props: PageProps<"/prescriptions/[id]">) {
+  const doctor = await getCurrentDoctor();
   const { id } = await props.params;
   const rx = getPrescription(id);
   const patient = rx ? getPatient(rx.patientId) : undefined;
@@ -34,10 +36,10 @@ export default async function PrescriptionPage(props: PageProps<"/prescriptions/
           <div>
             <p className="font-display text-xl font-bold text-ink">{doctor.name}</p>
             <p className="text-sm text-body">
-              {doctor.qualifications}. {doctor.specialty}.
+              {[doctor.qualifications, doctor.specialty].filter(Boolean).join(". ")}.
             </p>
             <p className="text-sm text-body">
-              Reg. no. {doctor.registrationNumber}, {doctor.council}
+              Reg. no. {[doctor.registrationNumber, doctor.council].filter(Boolean).join(", ")}
             </p>
           </div>
           <div className="flex items-center gap-2">

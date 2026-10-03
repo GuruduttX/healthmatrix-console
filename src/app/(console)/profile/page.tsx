@@ -1,10 +1,10 @@
-import { BadgeCheck, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import type { Metadata } from "next";
 
 import { SwitchList } from "@/components/switch-list";
-import { Card, Chip } from "@/components/ui";
+import { Card } from "@/components/ui";
 import { signOut } from "@/lib/auth-actions";
-import { doctor } from "@/lib/data";
+import { getCurrentDoctor } from "@/lib/doctor-view";
 
 export const metadata: Metadata = { title: "Profile and settings" };
 
@@ -15,18 +15,20 @@ const alerts = [
   { id: "ekaay", label: "Ekaay notices a trend", hint: "For patients whose record is open to you.", on: false },
 ];
 
-export default function ProfilePage() {
+export default async function ProfilePage() {
+  const doctor = await getCurrentDoctor();
   const details = [
     { term: "Mobile number", value: doctor.phone },
-    { term: "Registration", value: `${doctor.registrationNumber}, ${doctor.council}` },
-    { term: "Qualifications", value: doctor.qualifications },
+    { term: "Registration", value: [doctor.registrationNumber, doctor.council].filter(Boolean).join(", ") },
+    { term: "Qualifications", value: doctor.qualifications || "Not added yet" },
     { term: "Specialties", value: doctor.specialties.join(", ") },
     { term: "Languages", value: doctor.languages.join(", ") },
+    { term: "Location", value: doctor.location },
   ];
 
   return (
     <>
-      <h1 className="font-display text-3xl font-bold text-ink">Profile and settings</h1>
+      <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink">Profile and settings</h1>
 
       <div className="mt-6 grid items-start gap-6 xl:grid-cols-2">
         <Card>
@@ -41,9 +43,6 @@ export default function ProfilePage() {
               <h2 className="font-display text-xl font-bold text-ink">{doctor.name}</h2>
               <p className="text-sm text-body">{doctor.specialty}</p>
             </div>
-            <Chip tone="success" icon={BadgeCheck}>
-              Registration verified
-            </Chip>
           </div>
           <dl className="mt-5 divide-y divide-line border-t border-line">
             {details.map((row) => (
@@ -55,7 +54,7 @@ export default function ProfilePage() {
           </dl>
           <p className="mt-3 text-xs leading-relaxed text-body">
             Patients see your name, qualifications and specialties before they share a record. To
-            change verified details, write to the HealthMatrix team.
+            change your registration details, write to the HealthMatrix team.
           </p>
         </Card>
 

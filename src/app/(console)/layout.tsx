@@ -1,14 +1,20 @@
 import { MobileNav, Sidebar } from "@/components/sidebar";
 import { TopBar } from "@/components/top-bar";
+import { getCurrentDoctor } from "@/lib/doctor-view";
 
-export default function ConsoleLayout({ children }: LayoutProps<"/">) {
+/** Every console screen needs a signed-in doctor with a finished profile. */
+export default async function ConsoleLayout({ children }: LayoutProps<"/">) {
+  const doctor = await getCurrentDoctor();
+
   return (
-    <div className="flex min-h-screen">
-      <Sidebar />
+    <div className="flex min-h-dvh">
+      <Sidebar doctor={doctor} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <TopBar />
+        <TopBar doctor={doctor} />
+        <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-5 sm:px-6 lg:px-8 lg:py-6 print:pb-0">
+          {children}
+        </main>
         <MobileNav />
-        <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
       </div>
     </div>
   );
