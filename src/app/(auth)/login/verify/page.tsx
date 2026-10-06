@@ -8,6 +8,7 @@ import { VerifyForm } from "@/components/auth/verify-form";
 import { OTP_RESEND_MS, PHONE_PATTERN } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { formatPhone } from "@/lib/doctor-view";
+import { showOtpOnScreen } from "@/lib/otp-sender";
 import { DEV_OTP_COOKIE, OTP_PHONE_COOKIE } from "@/lib/session";
 import { DoctorOtpChallengeModel } from "@/models";
 
@@ -23,8 +24,7 @@ export default async function VerifyPage() {
     .sort({ createdAt: -1 })
     .lean();
   const resendAt = latest ? latest.createdAt.getTime() + OTP_RESEND_MS : 0;
-  const devCode =
-    process.env.NODE_ENV === "production" ? undefined : cookieStore.get(DEV_OTP_COOKIE)?.value;
+  const devCode = showOtpOnScreen() ? cookieStore.get(DEV_OTP_COOKIE)?.value : undefined;
 
   return (
     <>

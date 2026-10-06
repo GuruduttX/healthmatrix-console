@@ -26,7 +26,7 @@ export function VerifyForm({ resendAt, devCode }: { resendAt: number; devCode?: 
     <>
       {devCode ? (
         <p className="mt-5 rounded-xl border border-dashed border-line bg-surface px-4 py-3 text-sm text-body">
-          No SMS provider is connected yet. Development code:{" "}
+          No SMS provider is connected yet. Your code:{" "}
           <span className="font-bold tracking-widest text-ink">{devCode}</span>
         </p>
       ) : null}

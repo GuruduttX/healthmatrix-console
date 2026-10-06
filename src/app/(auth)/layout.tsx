@@ -1,6 +1,8 @@
 import { FileSearch, KeyRound, Mic } from "lucide-react";
 import Image from "next/image";
 
+import { showOtpOnScreen } from "@/lib/otp-sender";
+
 const points = [
   {
     icon: KeyRound,
@@ -60,7 +62,15 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
           <Image src="/logo-mark.png" alt="" width={32} height={29} priority />
           <span className="font-display text-xl font-bold text-ink">HealthMatrix</span>
         </div>
-        <div className="w-full max-w-md">{children}</div>
+        <div className="w-full max-w-md">
+          {/* Production with OTP_SHOW_CODE=true: say so plainly, so it is never mistaken for the real thing. */}
+          {process.env.NODE_ENV === "production" && showOtpOnScreen() ? (
+            <p role="note" className="mb-6 rounded-xl bg-warning-soft px-4 py-3 text-sm font-semibold text-warning">
+              Test mode. Sign-in codes are shown on screen, not sent by SMS. Use test data only.
+            </p>
+          ) : null}
+          {children}
+        </div>
       </main>
     </div>
   );

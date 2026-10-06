@@ -1,12 +1,20 @@
 /**
- * Delivers a sign-in code. This is the one place an SMS provider (MSG91, Twilio, 2Factor…)
- * plugs in. Until one is connected, the code is logged and handed back outside production
- * so sign-in can be tested; in production sign-in is refused rather than leak the code.
+ * Delivers a one-time code. This is the one place an SMS provider (MSG91, Twilio, 2Factor…)
+ * plugs in. Until one is connected, the code is logged and handed back so it can be shown on
+ * screen: always in development, and in production only when `OTP_SHOW_CODE=true` (test mode).
+ * Otherwise production refuses rather than leak the code.
  */
 export class OtpDeliveryError extends Error {}
 
 /**
- * Returns the code itself when it should be shown on screen (development only).
+ * Whether codes are shown on screen instead of sent. In production this is test mode: anyone
+ * with the URL can sign in as any number, so only switch it on for a deployment with test data.
+ */
+export const showOtpOnScreen = () =>
+  process.env.NODE_ENV !== "production" || process.env.OTP_SHOW_CODE === "true";
+
+/**
+ * Returns the code itself when it should be shown on screen.
  * `purpose` names what the code is for, in logs and later in the SMS template.
  */
 export async function sendOtp(
@@ -14,7 +22,7 @@ export async function sendOtp(
   code: string,
   purpose: "doctor_sign_in" | "record_access" = "doctor_sign_in",
 ): Promise<{ devCode?: string }> {
-  if (process.env.NODE_ENV === "production") {
+  if (!showOtpOnScreen()) {
     throw new OtpDeliveryError(
       purpose === "doctor_sign_in"
         ? "Sign-in by SMS isn’t set up yet. Please try again later."

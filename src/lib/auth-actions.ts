@@ -84,6 +84,18 @@ export async function requestOtp(_prev: AuthFormState, formData: FormData): Prom
   const phone = String(formData.get("phone") ?? "").replace(/\D/g, "").slice(-10);
   if (!PHONE_PATTERN.test(phone)) return { error: "Enter a valid 10-digit mobile number." };
 
+  // A second tap, or a resubmitted form, from the browser that just got a code for this number:
+  // take it to the code screen rather than refusing.
+  if ((await cookies()).get(OTP_PHONE_COOKIE)?.value === phone) {
+    await connectDB();
+    const recent = await DoctorOtpChallengeModel.exists({
+      phone,
+      createdAt: { $gt: new Date(Date.now() - OTP_RESEND_MS) },
+      expiresAt: { $gt: new Date() },
+    });
+    if (recent) redirect("/login/verify");
+  }
+
   const failure = await issueOtp(phone);
   if (failure) return failure;
   redirect("/login/verify");

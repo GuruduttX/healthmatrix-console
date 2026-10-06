@@ -59,7 +59,7 @@ export function AccessGate({
 
       {requested.devCode && waiting ? (
         <p className="mt-4 rounded-xl bg-warning-soft px-4 py-2.5 text-sm font-semibold text-warning">
-          Development only: the OTP is {requested.devCode}
+          Test mode, no SMS sent: the OTP is {requested.devCode}
         </p>
       ) : null}
       {error ? (
