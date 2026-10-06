@@ -2,13 +2,20 @@ import { BadgeCheck, ChevronLeft, TriangleAlert, Video } from "lucide-react";
 import Link from "next/link";
 
 import { Avatar, Chip } from "@/components/ui";
-import { getConsultFor, planNames } from "@/lib/data";
-import type { Patient } from "@/lib/types";
+import { demographics } from "@/lib/patient-text";
+import type { Consult, Patient } from "@/lib/types";
 
 /** Identity and alerts. Shown before the record is unlocked, so it carries no history. */
-export function PatientHeader({ patient, back }: { patient: Patient; back: { href: string; label: string } }) {
-  const consult = getConsultFor(patient.id);
-
+export function PatientHeader({
+  patient,
+  consult,
+  back,
+}: {
+  patient: Patient;
+  /** Today's consult with this patient, if there is one. */
+  consult?: Pick<Consult, "id" | "time" | "status">;
+  back: { href: string; label: string };
+}) {
   return (
     <>
       <Link href={back.href} className="inline-flex items-center gap-1 text-sm font-semibold text-body hover:text-ink">
@@ -22,7 +29,7 @@ export function PatientHeader({ patient, back }: { patient: Patient; back: { hre
         <div className="contents sm:block sm:min-w-0 sm:flex-1">
           <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink">{patient.name}</h1>
           <p className="col-span-2 flex flex-wrap items-center gap-x-2 text-sm text-body sm:mt-1">
-            {patient.age} years, {patient.sex}. Blood group {patient.bloodGroup}. {planNames[patient.plan]} plan.
+            {demographics(patient, { bloodGroupLabel: "Blood group " })}
             <span className="font-medium text-ink">{patient.memberId}</span>
             {patient.abhaLinked ? (
               <span className="inline-flex items-center gap-1 font-semibold text-success">

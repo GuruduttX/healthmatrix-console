@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { AccessChip, Avatar, Chip } from "@/components/ui";
-import { getConsultFor, patients, planNames } from "@/lib/data";
+import { getPatients } from "@/lib/console-data";
+import { ageAndSex, demographics, planNames } from "@/lib/patient-text";
 import type { AccessStatus } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Patients" };
@@ -13,6 +14,7 @@ const filters: { value: AccessStatus | "all"; label: string }[] = [
   { value: "active", label: "Record open" },
   { value: "pending", label: "Awaiting OTP" },
   { value: "expired", label: "Access expired" },
+  { value: "revoked", label: "Revoked" },
   { value: "none", label: "No access" },
 ];
 
@@ -25,11 +27,20 @@ export default async function PatientsPage(props: PageProps<"/patients">) {
   const q = (first(searchParams.q) ?? "").trim();
   const access = first(searchParams.access) ?? "all";
 
-  const needle = q.toLowerCase().replace(/\s+/g, "");
-  const list = patients.filter((p) => {
-    const haystack = `${p.name}${p.memberId}`.toLowerCase().replace(/\s+/g, "");
-    return (access === "all" || p.access.status === access) && haystack.includes(needle);
-  });
+  const list = await getPatients({ q, access });
+
+  const filtered = Boolean(q) || access !== "all";
+  const empty = filtered ? (
+    <>
+      No patients match. Check the spelling or the 12-digit member ID, or{" "}
+      <Link href="/patients" className="font-semibold text-brand underline">
+        clear the search
+      </Link>
+      .
+    </>
+  ) : (
+    "No patients yet. Members appear here once they book a consult with you or you ask for their record. Search their member ID to find them."
+  );
 
   const hrefFor = (value: string) => {
     const params = new URLSearchParams();
@@ -44,7 +55,8 @@ export default async function PatientsPage(props: PageProps<"/patients">) {
       <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink">Patients</h1>
       <p className="mt-2 max-w-2xl text-body">
         {q ? `Results for “${q}”. ` : ""}
-        You see a patient’s name and alerts here. Their full history opens only with an OTP.
+        You see a patient’s name and alerts here. Their full history opens only with an OTP. To find
+        someone new, search for their 12-digit member ID.
       </p>
 
       <nav aria-label="Filter by access" className="no-scrollbar -mx-4 mt-5 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0">
@@ -67,8 +79,7 @@ export default async function PatientsPage(props: PageProps<"/patients">) {
 
       {/* Phones get a tappable list; the table needs more width than they have. */}
       <ul className="mt-5 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-card shadow-card md:hidden">
-        {list.map((patient) => {
-          const consult = getConsultFor(patient.id);
+        {list.map(({ patient, todayConsult: consult }) => {
           return (
             <li key={patient.id}>
               <Link href={`/patients/${patient.id}`} className="flex items-center gap-3 px-4 py-3.5">
@@ -76,7 +87,7 @@ export default async function PatientsPage(props: PageProps<"/patients">) {
                 <span className="min-w-0 flex-1">
                   <span className="block font-semibold text-ink">{patient.name}</span>
                   <span className="block text-xs text-body">
-                    {patient.age} years, {patient.sex}. {patient.bloodGroup}. {planNames[patient.plan]} plan.
+                    {demographics(patient)}
                   </span>
                   <span className="block text-xs text-body">{patient.memberId}</span>
                   <span className="mt-2 flex flex-wrap gap-1.5">
@@ -102,11 +113,7 @@ export default async function PatientsPage(props: PageProps<"/patients">) {
       </ul>
       {list.length === 0 ? (
         <p className="mt-5 rounded-2xl border border-line bg-card px-5 py-10 text-center text-body shadow-card md:hidden">
-          No patients match. Check the spelling or the member ID, or{" "}
-          <Link href="/patients" className="font-semibold text-brand underline">
-            clear the search
-          </Link>
-          .
+          {empty}
         </p>
       ) : null}
 
@@ -126,8 +133,8 @@ export default async function PatientsPage(props: PageProps<"/patients">) {
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
-            {list.map((patient) => {
-              const consult = getConsultFor(patient.id);
+            {list.map(({ patient, todayConsult: consult }) => {
+              const about = ageAndSex(patient);
               const alerts = [...patient.allergies.map((a) => `Allergy: ${a}`), ...patient.conditions];
               return (
                 <tr key={patient.id} className="hover:bg-surface">
@@ -142,12 +149,13 @@ export default async function PatientsPage(props: PageProps<"/patients">) {
                           {patient.name}
                         </Link>
                         <p className="text-xs text-body">
-                          {patient.age} years, {patient.sex}. {patient.memberId}
+                          {about ? `${about}. ` : ""}
+                          {patient.memberId}
                         </p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-3 py-3.5 font-bold text-ink">{patient.bloodGroup}</td>
+                  <td className="px-3 py-3.5 font-bold text-ink">{patient.bloodGroup ?? "–"}</td>
                   <td className="px-3 py-3.5 text-body">{planNames[patient.plan]}</td>
                   <td className="px-3 py-3.5">
                     {alerts.length > 0 ? (
@@ -181,11 +189,7 @@ export default async function PatientsPage(props: PageProps<"/patients">) {
         </table>
         {list.length === 0 ? (
           <p className="px-5 py-10 text-center text-body">
-            No patients match. Check the spelling or the member ID, or{" "}
-            <Link href="/patients" className="font-semibold text-brand underline">
-              clear the search
-            </Link>
-            .
+            {empty}
           </p>
         ) : null}
       </div>

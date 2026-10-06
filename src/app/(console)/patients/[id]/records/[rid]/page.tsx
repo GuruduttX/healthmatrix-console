@@ -5,8 +5,9 @@ import { notFound } from "next/navigation";
 import { PatientHeader } from "@/components/patient-header";
 import { AccessGate } from "@/components/record/access-gate";
 import { timelineIcons, timelineTypeNames } from "@/components/record/timeline-icons";
+import { VaccineSchedule } from "@/components/record/vaccine-schedule";
 import { Card, CardTitle, Chip, flagTone } from "@/components/ui";
-import { getNominee, getPatient, getTimelineEntry } from "@/lib/data";
+import { getRecordDetail } from "@/lib/console-data";
 import type { Tone } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Record" };
@@ -21,44 +22,49 @@ const markerTone: Record<Tone, string> = {
 
 export default async function RecordDetailPage(props: PageProps<"/patients/[id]/records/[rid]">) {
   const { id, rid } = await props.params;
-  const patient = getPatient(id);
-  const found = getTimelineEntry(id, rid);
-  if (!patient || !found) notFound();
+  const result = await getRecordDetail(id, rid);
+  if (!result) notFound();
 
-  const { entry, detail } = found;
-  const Icon = timelineIcons[entry.type];
+  const { found, entry, detail } = result;
+  const { patient } = found;
+  const Icon = entry ? timelineIcons[entry.type] : FileText;
   const attention = detail?.values?.filter((v) => v.flag !== "normal" && v.flag !== "pending").length ?? 0;
 
   return (
     <>
-      <PatientHeader patient={patient} back={{ href: `/patients/${patient.id}`, label: `${patient.firstName}’s record` }} />
+      <PatientHeader
+        patient={patient}
+        consult={found.todayConsult}
+        back={{ href: `/patients/${patient.id}`, label: `${patient.firstName}’s record` }}
+      />
 
       <div className="mt-6">
-        <AccessGate patient={patient} nominee={getNominee(patient.id)}>
-          <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-            <Card>
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="inline-flex size-10 items-center justify-center rounded-xl bg-surface text-ink-mid">
-                  <Icon aria-hidden className="size-5" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <h2 className="font-display text-xl font-bold text-ink">{entry.title}</h2>
-                  <p className="text-sm text-body">
-                    {timelineTypeNames[entry.type]}, {entry.date}
-                  </p>
-                </div>
-                {detail?.values ? (
-                  attention > 0 ? (
-                    <Chip tone="warning">
-                      {attention} of {detail.values.length} need attention
-                    </Chip>
-                  ) : (
-                    <Chip tone="success">All in range</Chip>
-                  )
+        <AccessGate patient={patient} nominee={found.nominee}>
+          {entry && detail ? (
+            <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+              <Card>
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="inline-flex size-10 items-center justify-center rounded-xl bg-surface text-ink-mid">
+                    <Icon aria-hidden className="size-5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="font-display text-xl font-bold text-ink">{entry.title}</h2>
+                    <p className="text-sm text-body">
+                      {timelineTypeNames[entry.type]}, {entry.date}
+                    </p>
+                  </div>
+                  {detail.values ? (
+                    attention > 0 ? (
+                      <Chip tone="warning">
+                        {attention} of {detail.values.length} need attention
+                      </Chip>
+                    ) : (
+                      <Chip tone="success">All in range</Chip>
+                    )
                 ) : null}
               </div>
 
-              {detail?.values ? (
+              {detail.values ? (
                 <table className="mt-5 w-full text-sm">
                   <thead className="border-b border-line text-left text-xs font-semibold text-body">
                     <tr>
@@ -95,7 +101,7 @@ export default async function RecordDetailPage(props: PageProps<"/patients/[id]/
                 </table>
               ) : null}
 
-              {detail?.items ? (
+              {detail.items ? (
                 <ol className="mt-5 divide-y divide-line">
                   {detail.items.map((item, i) => (
                     <li key={item} className="flex gap-3 py-2.5 text-sm text-ink">
@@ -106,19 +112,31 @@ export default async function RecordDetailPage(props: PageProps<"/patients/[id]/
                 </ol>
               ) : null}
 
-              {!detail ? (
+              {detail.vaccines ? (
+                <div className="mt-5 border-t border-line pt-4">
+                  <h3 className="mb-3 text-sm font-bold text-ink">Vaccines</h3>
+                  <VaccineSchedule vaccines={detail.vaccines} />
+                </div>
+              ) : null}
+
+              {detail.files > 0 ? (
                 <div className="mt-5 flex flex-col items-center rounded-2xl border border-dashed border-line bg-surface px-6 py-12 text-center">
                   <FileText aria-hidden className="size-8 text-body" />
-                  <p className="mt-3 font-semibold text-ink">Original document on file</p>
+                  <p className="mt-3 font-semibold text-ink">
+                    {detail.files === 1 ? "Original document on file" : `${detail.files} original documents on file`}
+                  </p>
                   <p className="mt-1 max-w-sm text-sm text-body">
                     The scanned pages will show here once document storage is connected.
                   </p>
                 </div>
               ) : null}
+              {!detail.values && !detail.items && !detail.vaccines && detail.files === 0 ? (
+                <p className="mt-5 text-sm text-body">No values or items were recorded with this entry.</p>
+              ) : null}
             </Card>
 
             <div className="flex min-w-0 flex-col gap-5">
-              {detail?.explains ? (
+              {detail.explains ? (
                 <Card highlight>
                   <CardTitle icon={Sparkles}>Ekaay explains</CardTitle>
                   <p className="mt-3 text-sm leading-relaxed text-ink">{detail.explains}</p>
@@ -128,11 +146,12 @@ export default async function RecordDetailPage(props: PageProps<"/patients/[id]/
               <Card>
                 <h2 className="text-sm font-bold text-ink">Where this came from</h2>
                 <p className="mt-2 text-sm leading-relaxed text-body">
-                  {detail?.source ?? "Added to the timeline by the member."}
+                  {detail.source}
                 </p>
               </Card>
             </div>
           </div>
+          ) : null}
         </AccessGate>
       </div>
     </>

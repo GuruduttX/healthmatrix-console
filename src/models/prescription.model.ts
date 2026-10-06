@@ -1,4 +1,4 @@
-import { Schema, model, models, type InferSchemaType } from "mongoose";
+import { Schema, deleteModel, model, models, type InferSchemaType } from "mongoose";
 
 import { PRESCRIPTION_SOURCES, PRESCRIPTION_STATUSES } from "./constants";
 
@@ -18,14 +18,11 @@ const prescriptionSchema = new Schema(
     /** The voice note or photo the draft was made from. */
     sourceFile: { url: String, mimeType: String },
 
-    /** One line each: a medicine, a test or advice. */
-    items: {
-      type: [{ type: String, trim: true }],
-      validate: {
-        validator: (items: string[]) => items.length > 0,
-        message: "A prescription needs at least one item.",
-      },
-    },
+    /**
+     * One line each: a medicine, a test or advice. Empty when the prescription is only vaccines,
+     * which live in `vaccinations`; the console checks there is at least one of the two.
+     */
+    items: [{ type: String, trim: true }],
 
     signedAt: Date,
     /** The timeline entry created in the member's locker on signing. */
@@ -39,5 +36,6 @@ prescriptionSchema.index({ member: 1, createdAt: -1 });
 
 export type Prescription = InferSchemaType<typeof prescriptionSchema>;
 
-const build = () => model("Prescription", prescriptionSchema);
-export const PrescriptionModel = (models.Prescription as ReturnType<typeof build>) ?? build();
+// Rebuilt on every load so a hot reload never keeps an older schema; see doctor.model.ts.
+if (models.Prescription) deleteModel("Prescription");
+export const PrescriptionModel = model("Prescription", prescriptionSchema);

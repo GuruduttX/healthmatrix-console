@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { PrescriptionComposer } from "@/components/prescription-composer";
-import { getAllergyTerms, getRecord, patients } from "@/lib/data";
+import { getPrescriptionPatients } from "@/lib/console-data";
 import { getCurrentDoctor } from "@/lib/doctor-view";
 
 export const metadata: Metadata = { title: "New prescription" };
@@ -13,17 +13,7 @@ export default async function NewPrescriptionPage(props: PageProps<"/prescriptio
   const { patient } = await props.searchParams;
 
   // Only patients whose record is open: the safety checks need their allergies and medicines.
-  const options = patients
-    .filter((p) => p.access.status === "active")
-    .map((p) => ({
-      id: p.id,
-      name: p.name,
-      firstName: p.firstName,
-      allergies: p.allergies,
-      allergyTerms: getAllergyTerms(p),
-      medicines: getRecord(p.id).medicines,
-      sampleDraft: getRecord(p.id).prescriptionDraft,
-    }));
+  const options = await getPrescriptionPatients();
 
   return (
     <>
@@ -33,8 +23,8 @@ export default async function NewPrescriptionPage(props: PageProps<"/prescriptio
       </Link>
       <h1 className="mt-2 font-display text-2xl sm:text-3xl font-bold text-ink">New prescription</h1>
       <p className="mt-2 max-w-2xl text-body">
-        Dictate, photograph a handwritten note, or type. Ekaay drafts it and checks it against the
-        patient’s allergies before you sign.
+        Type the medicines, tests and advice. Each line is checked against the patient’s allergies
+        before you can sign.
       </p>
 
       <PrescriptionComposer

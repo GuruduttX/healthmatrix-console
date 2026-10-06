@@ -1,12 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useOptimistic, useTransition } from "react";
+
+import { updateSetting } from "@/lib/console-actions";
+import type { SettingGroup } from "@/lib/console-data";
 
 export type SwitchItem = { id: string; label: string; hint: string; on: boolean };
 
-/** A list of on/off settings. Holds its own state until settings are saved to the database. */
-export function SwitchList({ items }: { items: SwitchItem[] }) {
-  const [state, setState] = useState(() => Object.fromEntries(items.map((item) => [item.id, item.on])));
+/** A list of on/off settings, each saved to the doctor's profile as it is flipped. */
+export function SwitchList({ group, items }: { group: SettingGroup; items: SwitchItem[] }) {
+  const [state, setOptimistic] = useOptimistic(
+    Object.fromEntries(items.map((item) => [item.id, item.on])),
+    (current, change: { id: string; on: boolean }) => ({ ...current, [change.id]: change.on }),
+  );
+  const [, startTransition] = useTransition();
+
+  function toggle(id: string, on: boolean) {
+    startTransition(async () => {
+      setOptimistic({ id, on });
+      await updateSetting(group, id, on);
+    });
+  }
 
   return (
     <ul className="divide-y divide-line">
@@ -25,7 +39,7 @@ export function SwitchList({ items }: { items: SwitchItem[] }) {
               role="switch"
               aria-checked={on}
               aria-labelledby={`${item.id}-label`}
-              onClick={() => setState((s) => ({ ...s, [item.id]: !on }))}
+              onClick={() => toggle(item.id, !on)}
               className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${on ? "bg-success" : "bg-muted"}`}
             >
               <span

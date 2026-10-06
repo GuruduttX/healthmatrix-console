@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { AccessChip, Avatar } from "@/components/ui";
-import { accessLog, getPatient } from "@/lib/data";
+import { getAccessLog } from "@/lib/console-data";
 
 export const metadata: Metadata = { title: "Access log" };
 
-export default function AccessLogPage() {
+export default async function AccessLogPage() {
+  const accessLog = await getAccessLog();
+
   return (
     <>
       <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink">Access log</h1>
@@ -17,9 +19,9 @@ export default function AccessLogPage() {
 
       <ul className="mt-5 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-card shadow-card md:hidden">
         {accessLog.map((entry) => {
-          const patient = getPatient(entry.patientId)!;
+          const { patient } = entry;
           return (
-            <li key={entry.at + entry.patientId}>
+            <li key={entry.id}>
               <Link href={`/patients/${patient.id}`} className="block px-4 py-3.5">
                 <span className="flex items-center gap-2.5">
                   <Avatar initials={patient.initials} tone={patient.avatarTone} size="sm" />
@@ -36,7 +38,13 @@ export default function AccessLogPage() {
         })}
       </ul>
 
-      <div className="mt-5 hidden overflow-x-auto rounded-2xl border border-line bg-card shadow-card md:block">
+      {accessLog.length === 0 ? (
+        <p className="mt-5 rounded-2xl border border-line bg-card px-5 py-10 text-center text-body shadow-card">
+          Nothing yet. When you ask a patient for their record, the request is listed here.
+        </p>
+      ) : null}
+
+      <div className={`mt-5 hidden overflow-x-auto${accessLog.length === 0 ? "" : " md:block"} rounded-2xl border border-line bg-card shadow-card`}>
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead className="border-b border-line text-xs font-semibold text-body">
             <tr>
@@ -49,9 +57,9 @@ export default function AccessLogPage() {
           </thead>
           <tbody className="divide-y divide-line">
             {accessLog.map((entry) => {
-              const patient = getPatient(entry.patientId)!;
+              const { patient } = entry;
               return (
-                <tr key={entry.at + entry.patientId}>
+                <tr key={entry.id}>
                   <td className="whitespace-nowrap px-5 py-3.5 font-medium text-ink">{entry.at}</td>
                   <td className="px-3 py-3.5">
                     <Link

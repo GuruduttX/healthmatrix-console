@@ -2,8 +2,9 @@
 
 import { CircleCheck, LockOpen, Mic, MicOff, PhoneOff, Video, VideoOff } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 
+import { endConsult, startConsult } from "@/lib/console-actions";
 import type { ConsultStatus } from "@/lib/types";
 
 type Phase = "lobby" | "live" | "ended";
@@ -20,8 +21,15 @@ function clock(seconds: number) {
   return `${m}:${s}`;
 }
 
-/** The video area of a consult. The picture is a placeholder until a video provider is chosen. */
+const secondsSince = (iso?: string) => (iso ? Math.max(0, Math.floor((Date.now() - Date.parse(iso)) / 1000)) : 0);
+
+/**
+ * The video area of a consult. Starting and ending are saved to the consult; the picture is a
+ * placeholder until a video provider is chosen.
+ */
 export function ConsultStage({
+  consultId,
+  startedAt,
   patientName,
   patientInitials,
   doctorInitials,
@@ -29,6 +37,9 @@ export function ConsultStage({
   recordShared,
   time,
 }: {
+  consultId: string;
+  /** ISO time the call started, while it is in progress. */
+  startedAt?: string;
   patientName: string;
   patientInitials: string;
   doctorInitials: string;
@@ -37,7 +48,23 @@ export function ConsultStage({
   time: string;
 }) {
   const [phase, setPhase] = useState<Phase>(initialPhase[status]);
-  const [seconds, setSeconds] = useState(status === "in_progress" ? 522 : 0);
+  const [seconds, setSeconds] = useState(() => secondsSince(startedAt));
+  const [pending, startTransition] = useTransition();
+
+  function start() {
+    startTransition(async () => {
+      await startConsult(consultId);
+      setSeconds(0);
+      setPhase("live");
+    });
+  }
+
+  function end() {
+    startTransition(async () => {
+      await endConsult(consultId);
+      setPhase("ended");
+    });
+  }
   const [micOn, setMicOn] = useState(true);
   const [cameraOn, setCameraOn] = useState(true);
 
@@ -101,7 +128,7 @@ export function ConsultStage({
       </span>
       <p className="mt-4 font-display text-2xl font-bold">{patientName}</p>
       <p className="mt-1 text-sm text-white/70">
-        {live ? "Connected" : `Scheduled for ${time}. ${firstName} has not joined yet.`}
+        {live ? "In consult. Video calling isn’t connected yet." : `Scheduled for ${time}. ${firstName} has not joined yet.`}
       </p>
 
       {live ? (
@@ -136,8 +163,9 @@ export function ConsultStage({
             </button>
             <button
               type="button"
-              onClick={() => setPhase("ended")}
-              className="inline-flex h-12 items-center gap-2 rounded-full bg-brand px-5 text-sm font-bold hover:bg-danger"
+              onClick={end}
+              disabled={pending}
+              className="inline-flex h-12 items-center gap-2 rounded-full bg-brand px-5 text-sm font-bold hover:bg-danger disabled:opacity-60"
             >
               <PhoneOff aria-hidden className="size-5" />
               End consult
@@ -147,8 +175,9 @@ export function ConsultStage({
       ) : (
         <button
           type="button"
-          onClick={() => setPhase("live")}
-          className="mt-6 inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 text-sm font-bold hover:bg-danger"
+          onClick={start}
+          disabled={pending}
+          className="mt-6 inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 text-sm font-bold hover:bg-danger disabled:opacity-60"
         >
           <Video aria-hidden className="size-5" />
           Start consult

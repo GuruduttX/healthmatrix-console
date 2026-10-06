@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Avatar, Chip, flagTone } from "@/components/ui";
-import { getPatient, testOrders } from "@/lib/data";
+import { markResultReviewed } from "@/lib/console-actions";
+import { getTestOrders } from "@/lib/console-data";
 import type { TestOrderStatus, Tone } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Results" };
@@ -25,7 +26,11 @@ const filters: { value: TestOrderStatus | "all"; label: string }[] = [
 export default async function ResultsPage(props: PageProps<"/results">) {
   const { status } = await props.searchParams;
   const active = typeof status === "string" ? status : "all";
-  const list = testOrders.filter((t) => active === "all" || t.status === active);
+  const list = await getTestOrders(active);
+  const empty =
+    active === "all"
+      ? "No tests ordered yet. Tests you order for a patient are tracked here until the result comes back."
+      : "No tests with this status.";
 
   return (
     <>
@@ -51,7 +56,7 @@ export default async function ResultsPage(props: PageProps<"/results">) {
 
       <ul className="mt-5 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-card shadow-card md:hidden">
         {list.map((order) => {
-          const patient = getPatient(order.patientId)!;
+          const { patient } = order;
           const meta = statusMeta[order.status];
           return (
             <li key={order.id}>
@@ -75,13 +80,20 @@ export default async function ResultsPage(props: PageProps<"/results">) {
                   Ordered {order.orderedOn}. {order.where}
                 </span>
               </Link>
+              {order.status === "result_back" ? (
+                <form action={markResultReviewed.bind(null, order.id)} className="px-4 pb-3.5">
+                  <button type="submit" className="rounded-full border border-line px-4 py-2 text-sm font-bold text-ink hover:bg-selected">
+                    Mark reviewed
+                  </button>
+                </form>
+              ) : null}
             </li>
           );
         })}
       </ul>
       {list.length === 0 ? (
         <p className="mt-5 rounded-2xl border border-line bg-card px-5 py-10 text-center text-body shadow-card md:hidden">
-          No tests with this status.
+          {empty}
         </p>
       ) : null}
 
@@ -102,7 +114,7 @@ export default async function ResultsPage(props: PageProps<"/results">) {
           </thead>
           <tbody className="divide-y divide-line">
             {list.map((order) => {
-              const patient = getPatient(order.patientId)!;
+              const { patient } = order;
               const meta = statusMeta[order.status];
               return (
                 <tr key={order.id} className="hover:bg-surface">
@@ -130,9 +142,18 @@ export default async function ResultsPage(props: PageProps<"/results">) {
                     <Chip tone={meta.tone}>{meta.label}</Chip>
                   </td>
                   <td className="px-5 py-3.5 text-right">
-                    <Link href={`/patients/${patient.id}`} className="whitespace-nowrap font-bold text-brand hover:underline">
-                      Open record
-                    </Link>
+                    <div className="flex items-center justify-end gap-3">
+                      {order.status === "result_back" ? (
+                        <form action={markResultReviewed.bind(null, order.id)}>
+                          <button type="submit" className="whitespace-nowrap rounded-full border border-line px-3 py-1.5 text-sm font-bold text-ink hover:bg-selected">
+                            Mark reviewed
+                          </button>
+                        </form>
+                      ) : null}
+                      <Link href={`/patients/${patient.id}`} className="whitespace-nowrap font-bold text-brand hover:underline">
+                        Open record
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               );
@@ -140,7 +161,7 @@ export default async function ResultsPage(props: PageProps<"/results">) {
           </tbody>
         </table>
         {list.length === 0 ? (
-          <p className="px-5 py-10 text-center text-body">No tests with this status.</p>
+          <p className="px-5 py-10 text-center text-body">{empty}</p>
         ) : null}
       </div>
     </>

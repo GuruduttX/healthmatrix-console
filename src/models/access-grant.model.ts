@@ -1,4 +1,4 @@
-import { Schema, model, models, type InferSchemaType } from "mongoose";
+import { Schema, deleteModel, model, models, type InferSchemaType } from "mongoose";
 
 import { ACCESS_STATUSES } from "./constants";
 
@@ -13,7 +13,10 @@ const accessGrantSchema = new Schema(
 
     status: { type: String, enum: ACCESS_STATUSES, default: "pending" },
     otpHash: String,
+    /** The phone the OTP went to: the member's or their nominee's. */
     otpSentTo: String,
+    /** Wrong OTPs entered. Added by the console; the app's schema doesn't have it. */
+    attempts: { type: Number, default: 0 },
     approvedAt: Date,
     expiresAt: Date,
     revokedAt: Date,
@@ -29,5 +32,6 @@ accessGrantSchema.index({ doctor: 1, status: 1 });
 
 export type AccessGrant = InferSchemaType<typeof accessGrantSchema>;
 
-const build = () => model("AccessGrant", accessGrantSchema);
-export const AccessGrantModel = (models.AccessGrant as ReturnType<typeof build>) ?? build();
+// Rebuilt on every load so a hot reload never keeps an older schema; see doctor.model.ts.
+if (models.AccessGrant) deleteModel("AccessGrant");
+export const AccessGrantModel = model("AccessGrant", accessGrantSchema);

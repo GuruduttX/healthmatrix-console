@@ -6,18 +6,22 @@ import { notFound } from "next/navigation";
 
 import { PrintButton } from "@/components/print-button";
 import { PrescriptionDraft } from "@/components/record/prescription-draft";
+import { VaccineSchedule } from "@/components/record/vaccine-schedule";
 import { Chip } from "@/components/ui";
-import { getAllergyTerms, getPatient, getPrescription } from "@/lib/data";
+import { getPrescription } from "@/lib/console-data";
 import { getCurrentDoctor } from "@/lib/doctor-view";
+import { ageAndSex } from "@/lib/patient-text";
 
 export const metadata: Metadata = { title: "Prescription" };
 
 export default async function PrescriptionPage(props: PageProps<"/prescriptions/[id]">) {
   const doctor = await getCurrentDoctor();
   const { id } = await props.params;
-  const rx = getPrescription(id);
-  const patient = rx ? getPatient(rx.patientId) : undefined;
-  if (!rx || !patient) notFound();
+  const found = await getPrescription(id);
+  if (!found) notFound();
+  const { rx, signedAt } = found;
+  const { patient } = rx;
+  const about = ageAndSex(patient);
 
   const signed = rx.status === "signed";
 
@@ -56,14 +60,15 @@ export default async function PrescriptionPage(props: PageProps<"/prescriptions/
               </Link>
             </h1>
             <p className="text-sm text-body">
-              {patient.age} years, {patient.sex}. {patient.memberId}
+              {about ? `${about}. ` : ""}
+              {patient.memberId}
             </p>
           </div>
           <div className="flex flex-col items-end gap-1.5">
             <Chip tone={signed ? "success" : "warning"} icon={signed ? CircleCheck : undefined}>
               {signed ? "Signed" : "Draft, not yet sent"}
             </Chip>
-            <span className="text-sm text-body">{rx.date}</span>
+            <span className="text-sm text-body">{signedAt ?? rx.date}</span>
           </div>
         </div>
 
@@ -84,6 +89,12 @@ export default async function PrescriptionPage(props: PageProps<"/prescriptions/
                 </li>
               ))}
             </ol>
+            {found.vaccines.length > 0 ? (
+              <section className="mt-6">
+                <h2 className="mb-3 text-sm font-bold text-ink">Vaccines</h2>
+                <VaccineSchedule vaccines={found.vaccines} />
+              </section>
+            ) : null}
             <p className="mt-6 text-sm text-body">
               Signed digitally by {doctor.shortName}. Given under India’s Telemedicine Practice
               Guidelines, 2020.
@@ -91,10 +102,14 @@ export default async function PrescriptionPage(props: PageProps<"/prescriptions/
           </>
         ) : (
           <PrescriptionDraft
+            prescriptionId={rx.id}
+            memberId={patient.id}
+            consultId={found.consultId}
             items={rx.items}
+            vaccines={found.draft?.vaccines}
             patientName={patient.firstName}
             doctorName={doctor.shortName}
-            allergyTerms={getAllergyTerms(patient)}
+            allergyTerms={found.allergyTerms}
           />
         )}
       </article>

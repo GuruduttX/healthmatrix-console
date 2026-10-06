@@ -11,11 +11,15 @@ const tabs = ["Summary", "Ask the record", "Prescription"] as const;
 /** The record beside the video: Ekaay's summary, questions and the prescription draft. */
 export function ConsultPanel({
   record,
+  memberId,
+  consultId,
   patientName,
   doctorName,
   allergyTerms,
 }: {
   record: PatientRecord;
+  memberId: string;
+  consultId: string;
   patientName: string;
   doctorName: string;
   allergyTerms: string[];
@@ -41,16 +45,23 @@ export function ConsultPanel({
         ))}
       </div>
 
-      {/* All three stay mounted so a half-written draft or question survives a tab change. */}
+      {/* All three stay mounted so a half-written draft survives a tab change. */}
       <div role="tabpanel" hidden={tab !== "Summary"}>
-        <ul className="mt-5 flex flex-col gap-2.5">
-          {record.summary.map((line) => (
-            <li key={line} className="flex gap-2.5 text-sm leading-relaxed text-ink">
-              <span aria-hidden className="mt-2 size-1.5 shrink-0 rounded-full bg-brand" />
-              {line}
-            </li>
-          ))}
-        </ul>
+        {record.summary.length > 0 ? (
+          <ul className="mt-5 flex flex-col gap-2.5">
+            {record.summary.map((line) => (
+              <li key={line} className="flex gap-2.5 text-sm leading-relaxed text-ink">
+                <span aria-hidden className="mt-2 size-1.5 shrink-0 rounded-full bg-brand" />
+                {line}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-5 text-sm text-body">
+            Ekaay hasn’t written a summary for this patient yet. The timeline and results are on their
+            record page.
+          </p>
+        )}
         <h3 className="mt-5 text-xs font-bold text-body">Current medicines</h3>
         <p className="mt-1 text-sm text-ink">
           {record.medicines.length > 0 ? record.medicines.join("; ") : "No regular medicines on file."}
@@ -58,11 +69,15 @@ export function ConsultPanel({
         <p className="mt-4 text-xs text-body">Ekaay informs. You diagnose and prescribe.</p>
       </div>
       <div role="tabpanel" hidden={tab !== "Ask the record"}>
-        <AskRecord qa={record.qa} />
+        <AskRecord />
       </div>
       <div role="tabpanel" hidden={tab !== "Prescription"}>
         <PrescriptionDraft
-          items={record.prescriptionDraft}
+          prescriptionId={record.draft?.id}
+          memberId={memberId}
+          consultId={consultId}
+          items={record.draft?.items ?? []}
+          vaccines={record.draft?.vaccines}
           patientName={patientName}
           doctorName={doctorName}
           allergyTerms={allergyTerms}

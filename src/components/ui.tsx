@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Clock, Lock, LockOpen, TimerOff } from "lucide-react";
+import { Ban, Clock, Lock, LockOpen, TimerOff } from "lucide-react";
 import type { ReactNode } from "react";
 
 import type { AccessStatus, AvatarTone, ResultFlag, Tone } from "@/lib/types";
@@ -106,6 +106,7 @@ const accessMeta: Record<AccessStatus, { label: string; tone: Tone; icon: Lucide
   active: { label: "Record open", tone: "success", icon: LockOpen },
   pending: { label: "Awaiting OTP", tone: "warning", icon: Clock },
   expired: { label: "Access expired", tone: "neutral", icon: TimerOff },
+  revoked: { label: "Access revoked", tone: "neutral", icon: Ban },
   none: { label: "No access", tone: "neutral", icon: Lock },
 };
 

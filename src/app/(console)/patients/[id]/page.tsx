@@ -2,10 +2,11 @@ import {
   ChevronRight,
   ClipboardList,
   FlaskConical,
+  FileSignature,
   MessageSquareText,
-  Mic,
   Pill,
   Sparkles,
+  Syringe,
 } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -17,65 +18,89 @@ import { AccessGate } from "@/components/record/access-gate";
 import { AskRecord } from "@/components/record/ask-record";
 import { PrescriptionDraft } from "@/components/record/prescription-draft";
 import { timelineIcons } from "@/components/record/timeline-icons";
+import { VaccineSchedule } from "@/components/record/vaccine-schedule";
 import { Card, CardTitle, Chip, flagTone } from "@/components/ui";
-import { getAllergyTerms, getNominee, getPatient, getRecord } from "@/lib/data";
+import { getPatient, getPatientRecord, getVaccineSchedule } from "@/lib/console-data";
 import { getCurrentDoctor } from "@/lib/doctor-view";
 
 export async function generateMetadata(props: PageProps<"/patients/[id]">): Promise<Metadata> {
   const { id } = await props.params;
-  return { title: getPatient(id)?.name ?? "Patient" };
+  return { title: (await getPatient(id))?.patient.name ?? "Patient" };
 }
 
 export default async function PatientPage(props: PageProps<"/patients/[id]">) {
   const doctor = await getCurrentDoctor();
   const { id } = await props.params;
-  const patient = getPatient(id);
-  const record = getRecord(id);
-  if (!patient || !record) notFound();
+  const found = await getPatient(id);
+  if (!found) notFound();
+  const { patient } = found;
+  // Only loaded, and logged, while the patient's OTP keeps the record open.
+  const record = await getPatientRecord(id);
+  const vaccines = record ? await getVaccineSchedule(id) : [];
 
   return (
     <>
-      <PatientHeader patient={patient} back={{ href: "/patients", label: "Patients" }} />
+      <PatientHeader patient={patient} consult={found.todayConsult} back={{ href: "/patients", label: "Patients" }} />
 
       <div className="mt-6">
-        <AccessGate patient={patient} nominee={getNominee(patient.id)}>
-          <div className="grid items-start gap-5 lg:grid-cols-2 xl:grid-cols-3">
-            <div className="flex min-w-0 flex-col gap-5">
-              <Card highlight>
-                <CardTitle icon={Sparkles}>Ekaay summary, ready before the consult</CardTitle>
-                <ul className="mt-4 flex flex-col gap-2.5">
-                  {record.summary.map((line) => (
-                    <li key={line} className="flex gap-2.5 text-sm leading-relaxed text-ink">
-                      <span aria-hidden className="mt-2 size-1.5 shrink-0 rounded-full bg-brand" />
-                      {line}
-                    </li>
-                  ))}
-                </ul>
-                <p className="mt-4 text-xs text-body">Ekaay informs. You diagnose and prescribe.</p>
-              </Card>
+        <AccessGate patient={patient} nominee={found.nominee}>
+          {record ? (
+            <div className="grid items-start gap-5 lg:grid-cols-2 xl:grid-cols-3">
+              <div className="flex min-w-0 flex-col gap-5">
+                <Card highlight>
+                  <CardTitle icon={Sparkles}>Ekaay summary</CardTitle>
+                  {record.summary.length > 0 ? (
+                    <ul className="mt-4 flex flex-col gap-2.5">
+                      {record.summary.map((line) => (
+                        <li key={line} className="flex gap-2.5 text-sm leading-relaxed text-ink">
+                          <span aria-hidden className="mt-2 size-1.5 shrink-0 rounded-full bg-brand" />
+                          {line}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-3 text-sm text-body">
+                      Ekaay isn’t connected yet, so there’s no summary. The timeline and results below come
+                      straight from {patient.firstName}’s locker.
+                    </p>
+                  )}
+                  <p className="mt-4 text-xs text-body">Ekaay informs. You diagnose and prescribe.</p>
+                </Card>
 
-              <Card>
-                <CardTitle icon={Pill}>Current medicines</CardTitle>
-                {record.medicines.length > 0 ? (
-                  <ul className="mt-3 flex flex-col gap-2 text-sm text-ink">
-                    {record.medicines.map((medicine) => (
-                      <li key={medicine}>{medicine}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="mt-3 text-sm text-body">No regular medicines on file.</p>
-                )}
-              </Card>
+                <Card>
+                  <CardTitle icon={Pill}>Current medicines</CardTitle>
+                  {record.medicines.length > 0 ? (
+                    <ul className="mt-3 flex flex-col gap-2 text-sm text-ink">
+                      {record.medicines.map((medicine) => (
+                        <li key={medicine}>{medicine}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-3 text-sm text-body">No regular medicines on file.</p>
+                  )}
+                </Card>
 
-              <Card>
-                <CardTitle icon={ClipboardList}>Timeline</CardTitle>
+                {vaccines.length > 0 ? (
+                  <Card>
+                    <CardTitle icon={Syringe}>Vaccines you prescribed</CardTitle>
+                    <div className="mt-3">
+                      <VaccineSchedule vaccines={vaccines} />
+                    </div>
+                  </Card>
+                ) : null}
+
+                <Card>
+                  <CardTitle icon={ClipboardList}>Timeline</CardTitle>
+                  {record.timeline.length === 0 ? (
+                    <p className="mt-3 text-sm text-body">Nothing in {patient.firstName}’s locker yet.</p>
+                ) : null}
                 <ol className="mt-3 divide-y divide-line">
-                  {record.timeline.map((entry, i) => {
+                  {record.timeline.map((entry) => {
                     const Icon = timelineIcons[entry.type];
                     return (
-                      <li key={entry.date + entry.title}>
+                      <li key={entry.id}>
                         <Link
-                          href={`/patients/${patient.id}/records/r${i + 1}`}
+                          href={`/patients/${patient.id}/records/${entry.id}`}
                           className="group flex items-center gap-3 py-3"
                         >
                           <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-surface text-ink-mid">
@@ -110,6 +135,9 @@ export default async function PatientPage(props: PageProps<"/patients/[id]">) {
 
               <Card>
                 <CardTitle icon={FlaskConical}>Latest results</CardTitle>
+                {record.results.length === 0 ? (
+                  <p className="mt-3 text-sm text-body">No test values on file yet.</p>
+                ) : null}
                 <table className="mt-2 w-full text-sm">
                   <thead className="sr-only">
                     <tr>
@@ -140,24 +168,24 @@ export default async function PatientPage(props: PageProps<"/patients/[id]">) {
             <div className="flex min-w-0 flex-col gap-5 lg:col-span-2 lg:grid lg:grid-cols-2 lg:items-start xl:col-span-1 xl:flex xl:items-stretch">
               <Card>
                 <CardTitle icon={MessageSquareText}>Ask the record</CardTitle>
-                <p className="mt-1 text-xs text-body">Answers come from this record, with the source shown.</p>
-                <AskRecord qa={record.qa} />
+                <AskRecord />
               </Card>
 
               <Card>
-                <CardTitle icon={Mic}>Prescription draft, {record.draftSource}</CardTitle>
-                <p className="mt-1 text-xs text-body">
-                  Nothing reaches {patient.firstName} until you sign it.
-                </p>
+                <CardTitle icon={FileSignature}>Prescription</CardTitle>
                 <PrescriptionDraft
-                  items={record.prescriptionDraft}
+                  prescriptionId={record.draft?.id}
+                  memberId={patient.id}
+                  items={record.draft?.items ?? []}
+                  vaccines={record.draft?.vaccines}
                   patientName={patient.firstName}
                   doctorName={doctor.shortName}
-                  allergyTerms={getAllergyTerms(patient)}
+                  allergyTerms={found.allergyTerms}
                 />
               </Card>
             </div>
           </div>
+          ) : null}
         </AccessGate>
       </div>
     </>

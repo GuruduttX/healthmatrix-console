@@ -3,18 +3,17 @@ import Form from "next/form";
 import Image from "next/image";
 import Link from "next/link";
 
+import { CheckNewButton } from "@/components/check-new-button";
 import { signOut } from "@/lib/auth-actions";
-import { notifications } from "@/lib/data";
 import type { Doctor } from "@/lib/types";
 
 const menuItem = "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold text-ink hover:bg-selected";
 
-export function TopBar({ doctor }: { doctor: Doctor }) {
-  const unread = notifications.filter((n) => n.unread).length;
-
+export function TopBar({ doctor, unread }: { doctor: Doctor; unread: number }) {
   return (
     <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-line bg-card/95 px-4 pb-2.5 pt-[calc(0.625rem+env(safe-area-inset-top))] backdrop-blur lg:py-3 print:hidden sm:px-6 lg:px-8">
-      <Link href="/" className="flex items-center gap-2 lg:hidden" aria-label="HealthMatrix doctor console, home">
+      {/* Hidden on the narrowest phones to leave room for search; Today is in the bottom tabs. */}
+      <Link href="/" className="hidden items-center gap-2 min-[360px]:flex lg:hidden" aria-label="HealthMatrix doctor console, home">
         <Image src="/logo-mark.png" alt="" width={28} height={25} />
       </Link>
 
@@ -32,7 +31,11 @@ export function TopBar({ doctor }: { doctor: Doctor }) {
         />
       </Form>
 
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex items-center gap-1 sm:gap-2">
+        {/* On wide screens this lives in the sidebar. */}
+        <span className="contents lg:hidden">
+          <CheckNewButton variant="icon" />
+        </span>
         <Link
           href="/notifications"
           aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}

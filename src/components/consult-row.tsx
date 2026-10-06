@@ -2,7 +2,7 @@ import { ArrowRight, MonitorSmartphone, Video } from "lucide-react";
 import Link from "next/link";
 
 import { AccessChip, Avatar, Chip } from "@/components/ui";
-import { getPatient } from "@/lib/data";
+import { ageAndSex } from "@/lib/patient-text";
 import type { Consult, ConsultStatus, Tone } from "@/lib/types";
 
 const consultStatus: Record<ConsultStatus, { label: string; tone: Tone; action: string }> = {
@@ -12,7 +12,8 @@ const consultStatus: Record<ConsultStatus, { label: string; tone: Tone; action: 
 };
 
 export function ConsultRow({ consult }: { consult: Consult }) {
-  const patient = getPatient(consult.patientId)!;
+  const { patient } = consult;
+  const about = ageAndSex(patient);
   const status = consultStatus[consult.status];
   const live = consult.status === "in_progress";
 
@@ -33,7 +34,7 @@ export function ConsultRow({ consult }: { consult: Consult }) {
           <Link href={`/patients/${patient.id}`} className="font-semibold text-ink hover:underline">
             {patient.name}
           </Link>
-          , {patient.age}, {patient.sex}
+          {about ? `, ${about}` : null}
         </p>
         <p className="text-sm text-body">{consult.reason}</p>
         <div className="mt-2 flex flex-wrap items-center gap-2">

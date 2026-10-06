@@ -1,11 +1,16 @@
 /** Domain types for the doctor console. Mirrors the models in `healthmatrix-app/server`. */
 
+import type { VaccineInput } from "./vaccines";
+
 export type PlanId = "essential" | "plus" | "family" | "senior_care" | "community";
 
 export type BloodGroup = "A+" | "A-" | "B+" | "B-" | "AB+" | "AB-" | "O+" | "O-";
 
-/** Layer-2 access: `none` means the doctor has never asked for this patient's record. */
-export type AccessStatus = "active" | "pending" | "expired" | "none";
+/**
+ * Layer-2 access: `none` means there is no live request for this patient's record,
+ * `revoked` that the patient closed it early.
+ */
+export type AccessStatus = "active" | "pending" | "expired" | "revoked" | "none";
 
 export type ResultFlag = "normal" | "borderline" | "high" | "low" | "pending";
 
@@ -28,15 +33,21 @@ export type Doctor = {
   location: string;
 };
 
-export type Patient = {
+/** Just enough to show who a row is about. */
+export type PatientRef = {
   id: string;
   name: string;
   firstName: string;
   initials: string;
   avatarTone: AvatarTone;
-  age: number;
-  sex: "female" | "male";
-  bloodGroup: BloodGroup;
+};
+
+export type Patient = PatientRef & {
+  /** Left out when the member hasn't given a date of birth, and so on. */
+  age?: number;
+  sex?: "female" | "male" | "other";
+  bloodGroup?: BloodGroup;
+  /** "HM 4829 1057 3316" */
   memberId: string;
   plan: PlanId;
   abhaLinked: boolean;
@@ -52,16 +63,19 @@ export type ConsultStatus = "scheduled" | "in_progress" | "completed";
 
 export type Consult = {
   id: string;
-  patientId: string;
-  /** Left out for today's consults. */
-  day?: string;
+  patient: Patient;
+  /** "Today", "Tomorrow" or "Mon 12 Oct". */
+  day: string;
   time: string;
   mode: "Video" | "Video from pod";
   reason: string;
   status: ConsultStatus;
+  /** ISO time the call started, while it is in progress. */
+  startedAt?: string;
 };
 
 export type TimelineEntry = {
+  id: string;
   date: string;
   title: string;
   type: "pod_screening" | "lab_report" | "prescription" | "vaccination" | "note";
@@ -81,7 +95,10 @@ export type RecordDetail = {
   source: string;
   values?: DetailValue[];
   items?: string[];
+  vaccines?: VaccineView[];
   explains?: string;
+  /** How many attached pages or files there are. */
+  files: number;
 };
 
 export type ChartBand = { from: number; to: number; tone: "success" | "warning"; label: string };
@@ -99,24 +116,41 @@ export type ChartSpec = {
 
 export type LabResult = { name: string; value: string; flag: ResultFlag; label: string };
 
-export type RecordAnswer = { question: string; answer: string; source?: string };
+export type DoseStatus = "given" | "due" | "overdue" | "cancelled";
+
+/** A prescribed vaccine as the console shows it. */
+export type VaccineView = {
+  id: string;
+  name: string;
+  brand?: string;
+  /** "0.5 mL, intramuscular, left upper arm" */
+  doseText: string;
+  /** "3 doses, every 1 month" */
+  scheduleText: string;
+  instructions?: string;
+  doses: { number: number; total: number; dueOn: string; status: DoseStatus; givenOn?: string }[];
+};
+
+/** The draft this doctor is working on for a patient, if any, with its vaccines as the dialog edits them. */
+export type DraftRef = { id: string; items: string[]; vaccines: VaccineInput[] };
 
 export type PatientRecord = {
+  /** Ekaay's summary lines, empty until Ekaay has written one. */
   summary: string[];
   medicines: string[];
   timeline: TimelineEntry[];
   charts: ChartSpec[];
   results: LabResult[];
-  qa: RecordAnswer[];
-  prescriptionDraft: string[];
-  draftSource: string;
+  draft: DraftRef | null;
 };
 
-export type EkaayFlag = { patientId: string; text: string; tone: Tone };
+/** A reading outside its range, from a record the doctor can open. */
+export type AttentionFlag = { patient: PatientRef; text: string; tone: Tone };
 
 export type AccessLogEntry = {
+  id: string;
   at: string;
-  patientId: string;
+  patient: PatientRef;
   what: string;
   approvedBy: string;
   status: AccessStatus;
@@ -124,7 +158,9 @@ export type AccessLogEntry = {
 
 export type Prescription = {
   id: string;
-  patientId: string;
+  patient: Patient;
+  /** Vaccines on it, shown as "+1 vaccine" in lists. */
+  vaccineCount: number;
   date: string;
   status: "draft" | "signed";
   source: string;
@@ -135,7 +171,7 @@ export type TestOrderStatus = "awaiting_booking" | "booked" | "result_back" | "r
 
 export type TestOrder = {
   id: string;
-  patientId: string;
+  patient: PatientRef;
   test: string;
   orderedOn: string;
   where: string;

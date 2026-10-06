@@ -1,13 +1,17 @@
 "use client";
 
 import { KeyRound, Lock, LockOpen } from "lucide-react";
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useActionState, useState, type ReactNode } from "react";
 
+import { requestRecordAccess, verifyRecordAccess, type AccessFormState } from "@/lib/console-actions";
 import type { Nominee, Patient } from "@/lib/types";
 
+const initial: AccessFormState = {};
+
 /**
- * Layer-2 access: the full record stays locked until the patient, or the nominee
- * they chose, shares a one-time password. Any six digits unlock it on sample data.
+ * Layer-2 access: the full record stays locked until the patient, or the nominee they chose,
+ * reads out a one-time password. The page only loads the record once access is active, so
+ * nothing private reaches the browser while it is locked.
  */
 export function AccessGate({
   patient,
@@ -16,12 +20,12 @@ export function AccessGate({
 }: {
   patient: Patient;
   nominee?: Nominee;
-  children: ReactNode;
+  children?: ReactNode;
 }) {
-  const [status, setStatus] = useState(patient.access.status);
-  const [note, setNote] = useState(patient.access.note);
   const [sendTo, setSendTo] = useState<"patient" | "nominee">("patient");
-  const [otp, setOtp] = useState("");
+  const [requested, request, requesting] = useActionState(requestRecordAccess.bind(null, patient.id), initial);
+  const [verified, verify, verifying] = useActionState(verifyRecordAccess.bind(null, patient.id), initial);
+  const { status, note } = patient.access;
 
   if (status === "active") {
     return (
@@ -35,27 +39,12 @@ export function AccessGate({
     );
   }
 
-  const recipient = sendTo === "nominee" && nominee ? nominee.name.split(" ")[0] : patient.firstName;
-
-  function requestOtp() {
-    setStatus("pending");
-    setNote(`OTP sent to ${recipient} just now, waiting for it to be shared`);
-  }
-
-  function verify(event: FormEvent) {
-    event.preventDefault();
-    setStatus("active");
-    setNote(
-      sendTo === "nominee"
-        ? `Opened with nominee ${recipient}’s OTP just now, expires in 24 h`
-        : `Opened with ${recipient}’s OTP just now, expires in 24 h`,
-    );
-  }
-
   const waiting = status === "pending";
+  const error = (waiting ? verified.error : undefined) ?? requested.error;
+  const sendToField = <input type="hidden" name="sendTo" value={sendTo} />;
 
   return (
-    <section className="mx-auto max-w-xl rounded-3xl border border-line bg-card p-8 text-center shadow-card">
+    <section className="mx-auto max-w-xl rounded-3xl border border-line bg-card p-6 text-center shadow-card sm:p-8">
       <span className="mx-auto inline-flex size-14 items-center justify-center rounded-2xl bg-brand-soft text-brand">
         {waiting ? <KeyRound aria-hidden className="size-6" /> : <Lock aria-hidden className="size-6" />}
       </span>
@@ -64,39 +53,60 @@ export function AccessGate({
       </h2>
       <p className="mt-2 text-sm leading-relaxed text-body">
         {waiting
-          ? note + "."
-          : `${patient.access.note}. The full history opens only after ${patient.firstName}, or a nominee they chose, shares a one-time password.`}
+          ? `${note}.`
+          : `${note}. The full history opens only after ${patient.firstName}, or a nominee they chose, shares a one-time password.`}
       </p>
 
+      {requested.devCode && waiting ? (
+        <p className="mt-4 rounded-xl bg-warning-soft px-4 py-2.5 text-sm font-semibold text-warning">
+          Development only: the OTP is {requested.devCode}
+        </p>
+      ) : null}
+      {error ? (
+        <p role="alert" className="mt-4 rounded-xl bg-danger-soft px-4 py-2.5 text-sm font-semibold text-danger">
+          {error}
+        </p>
+      ) : null}
+
       {waiting ? (
-        <form onSubmit={verify} className="mt-6 flex flex-col items-center gap-3">
-          <label htmlFor="otp" className="sr-only">
-            Six-digit OTP
-          </label>
-          <input
-            id="otp"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            pattern="[0-9]{6}"
-            maxLength={6}
-            required
-            value={otp}
-            onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-            placeholder="6-digit OTP"
-            className="w-52 rounded-xl border border-line bg-surface px-4 py-3 text-center text-xl font-bold tracking-[0.3em] text-ink placeholder:text-sm placeholder:font-medium placeholder:tracking-normal placeholder:text-body focus:border-brand focus:outline-none"
-          />
-          <button
-            type="submit"
-            className="rounded-full bg-brand px-6 py-2.5 text-sm font-bold text-white hover:bg-danger"
-          >
-            Open record
-          </button>
-          <button type="button" onClick={requestOtp} className="text-sm font-semibold text-body underline">
-            Send the OTP again
-          </button>
-        </form>
+        <div className="mt-6 flex flex-col items-center gap-3">
+          <form action={verify} className="flex flex-col items-center gap-3">
+            <label htmlFor="access-otp" className="sr-only">
+              Six-digit OTP
+            </label>
+            <input
+              id="access-otp"
+              name="otp"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="[0-9]{6}"
+              maxLength={6}
+              required
+              placeholder="6-digit OTP"
+              className="w-52 rounded-xl border border-line bg-surface px-4 py-3 text-center text-xl font-bold tracking-[0.3em] text-ink placeholder:text-sm placeholder:font-medium placeholder:tracking-normal placeholder:text-body focus:border-brand focus:outline-none"
+            />
+            <button
+              type="submit"
+              disabled={verifying}
+              className="rounded-full bg-brand px-6 py-2.5 text-sm font-bold text-white hover:bg-danger disabled:opacity-60"
+            >
+              {verifying ? "Checking…" : "Open record"}
+            </button>
+          </form>
+          <form action={request}>
+            {sendToField}
+            <button
+              type="submit"
+              disabled={requesting}
+              className="text-sm font-semibold text-body underline disabled:opacity-60"
+            >
+              {requesting ? "Sending…" : "Send the OTP again"}
+            </button>
+          </form>
+        </div>
       ) : (
-        <>
+        <form action={request}>
+          {sendToField}
           {nominee ? (
             <fieldset className="mt-6 text-left">
               <legend className="text-sm font-semibold text-ink">Send the OTP to</legend>
@@ -117,7 +127,7 @@ export function AccessGate({
                   >
                     <input
                       type="radio"
-                      name="send-to"
+                      name="send-to-choice"
                       value={option.value}
                       checked={sendTo === option.value}
                       onChange={() => setSendTo(option.value)}
@@ -131,13 +141,13 @@ export function AccessGate({
             </fieldset>
           ) : null}
           <button
-            type="button"
-            onClick={requestOtp}
-            className="mt-6 rounded-full bg-brand px-6 py-2.5 text-sm font-bold text-white hover:bg-danger"
+            type="submit"
+            disabled={requesting}
+            className="mt-6 rounded-full bg-brand px-6 py-2.5 text-sm font-bold text-white hover:bg-danger disabled:opacity-60"
           >
-            Request access with an OTP
+            {requesting ? "Sending…" : "Request access with an OTP"}
           </button>
-        </>
+        </form>
       )}
 
       <p className="mt-6 text-xs leading-relaxed text-body">

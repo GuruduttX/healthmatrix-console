@@ -12,5 +12,7 @@ export * from "./member.model";
 export * from "./pod.model";
 export * from "./prescription.model";
 export * from "./qr-link.model";
+export * from "./reminder.model";
 export * from "./scan-log.model";
 export * from "./test-order.model";
+export * from "./vaccination.model";

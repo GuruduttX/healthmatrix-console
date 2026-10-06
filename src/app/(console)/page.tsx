@@ -1,11 +1,18 @@
-import { FileSignature, FlaskConical, Sparkles, Video } from "lucide-react";
+import { Activity, FileSignature, FlaskConical, Video } from "lucide-react";
 import Link from "next/link";
 
 import { ConsultRow } from "@/components/consult-row";
 import { Avatar, Card, CardTitle, Chip, flagTone } from "@/components/ui";
-import { consults, ekaayFlags, getPatient, patients, prescriptions, testOrders } from "@/lib/data";
-import type { Tone } from "@/lib/types";
+import {
+  getAttentionFlags,
+  getPrescriptions,
+  getTestOrders,
+  getTodayConsults,
+  getTodayStats,
+} from "@/lib/console-data";
 import { getCurrentDoctor } from "@/lib/doctor-view";
+import { greeting } from "@/lib/format";
+import type { Tone } from "@/lib/types";
 
 const dotTone: Record<Tone, string> = {
   danger: "bg-danger",
@@ -17,34 +24,44 @@ const dotTone: Record<Tone, string> = {
 
 export default async function TodayPage() {
   const doctor = await getCurrentDoctor();
-  const today = consults.filter((c) => !c.day);
+  const [today, counts, flags, drafts, newResults] = await Promise.all([
+    getTodayConsults(),
+    getTodayStats(),
+    getAttentionFlags(),
+    getPrescriptions("draft"),
+    getTestOrders("result_back"),
+  ]);
   const remaining = today.filter((c) => c.status !== "completed").length;
-  const drafts = prescriptions.filter((p) => p.status === "draft");
-  const newResults = testOrders.filter((t) => t.status === "result_back");
 
   const stats = [
     { label: "Consults today", value: today.length, hint: `${remaining} still to go`, href: "/schedule" },
     {
       label: "Records open",
-      value: patients.filter((p) => p.access.status === "active").length,
+      value: counts.recordsOpen,
       hint: "Shared by OTP, expire in 24 h",
       href: "/patients?access=active",
     },
     {
       label: "Drafts to sign",
-      value: drafts.length,
+      value: counts.drafts,
       hint: "Prescriptions ready for review",
       href: "/prescriptions",
     },
-    { label: "New results", value: newResults.length, hint: "Tests you ordered, not yet reviewed", href: "/results" },
+    { label: "New results", value: counts.newResults, hint: "Tests you ordered, not yet reviewed", href: "/results" },
   ];
 
   return (
     <>
       <p className="text-sm font-semibold text-brand">Today</p>
-      <h1 className="mt-1 font-display text-2xl sm:text-3xl font-bold text-ink">Good morning, {doctor.name}</h1>
+      <h1 className="mt-1 font-display text-2xl sm:text-3xl font-bold text-ink">
+        {greeting()}, {doctor.name}
+      </h1>
       <p className="mt-2 max-w-2xl text-body">
-        {remaining} consults to go. Ekaay has a summary ready for every patient who has shared their record.
+        {today.length === 0
+          ? "No consults booked for today."
+          : remaining === 0
+            ? "All of today’s consults are done."
+            : `${remaining} ${remaining === 1 ? "consult" : "consults"} to go.`}
       </p>
 
       <ul className="mt-6 grid grid-cols-2 gap-4 xl:grid-cols-4">
@@ -70,48 +87,63 @@ export default async function TodayPage() {
               Full schedule
             </Link>
           </div>
-          <ul className="mt-3 divide-y divide-line">
-            {today.map((consult) => (
-              <ConsultRow key={consult.id} consult={consult} />
-            ))}
-          </ul>
+          {today.length > 0 ? (
+            <ul className="mt-3 divide-y divide-line">
+              {today.map((consult) => (
+                <ConsultRow key={consult.id} consult={consult} />
+              ))}
+            </ul>
+          ) : (
+            <p className="px-5 pb-8 pt-6 text-sm text-body">
+              When members book a video consult with you, it shows up here.
+            </p>
+          )}
         </Card>
 
         <div className="flex min-w-0 flex-col gap-6">
-          <Card highlight>
-            <CardTitle icon={Sparkles}>Ekaay noticed</CardTitle>
-            <ul className="mt-4 flex flex-col gap-4">
-              {ekaayFlags.map((flag) => {
-                const patient = getPatient(flag.patientId)!;
-                return (
-                  <li key={flag.patientId} className="flex gap-3">
+          <Card>
+            <CardTitle icon={Activity}>Needs a look</CardTitle>
+            {flags.length > 0 ? (
+              <ul className="mt-4 flex flex-col gap-4">
+                {flags.map((flag) => (
+                  <li key={flag.patient.id} className="flex gap-3">
                     <span aria-hidden className={`mt-1.5 size-2 shrink-0 rounded-full ${dotTone[flag.tone]}`} />
                     <p className="text-sm leading-relaxed text-ink">
-                      <Link href={`/patients/${patient.id}`} className="font-bold hover:underline">
-                        {patient.name}
+                      <Link href={`/patients/${flag.patient.id}`} className="font-bold hover:underline">
+                        {flag.patient.name}
                       </Link>
                       <br />
                       {flag.text}
                     </p>
                   </li>
-                );
-              })}
-            </ul>
-            <p className="mt-4 text-xs text-body">Ekaay informs. Doctors diagnose.</p>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-3 text-sm text-body">
+                Out-of-range readings from records shared with you show up here.
+              </p>
+            )}
           </Card>
 
           <Card>
             <CardTitle icon={FileSignature}>Prescriptions to sign</CardTitle>
+            {drafts.length === 0 ? <p className="mt-3 text-sm text-body">No drafts waiting.</p> : null}
             <ul className="mt-3 divide-y divide-line">
-              {drafts.map((draft) => {
-                const patient = getPatient(draft.patientId)!;
+              {drafts.slice(0, 5).map((draft) => {
+                const { patient } = draft;
                 return (
                   <li key={draft.id} className="flex items-center gap-3 py-3">
                     <Avatar initials={patient.initials} tone={patient.avatarTone} size="sm" />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-ink">{patient.name}</p>
                       <p className="text-xs text-body">
-                        {draft.items.length} items. {draft.source}
+                        {[
+                          draft.items.length ? `${draft.items.length} ${draft.items.length === 1 ? "item" : "items"}` : "",
+                          draft.vaccineCount ? `${draft.vaccineCount} ${draft.vaccineCount === 1 ? "vaccine" : "vaccines"}` : "",
+                        ]
+                          .filter(Boolean)
+                          .join(", ")}
+                        . {draft.source}
                       </p>
                     </div>
                     <Link href={`/prescriptions/${draft.id}`} className="text-sm font-bold text-brand hover:underline">
@@ -125,9 +157,10 @@ export default async function TodayPage() {
 
           <Card>
             <CardTitle icon={FlaskConical}>New results</CardTitle>
+            {newResults.length === 0 ? <p className="mt-3 text-sm text-body">No new results.</p> : null}
             <ul className="mt-3 divide-y divide-line">
-              {newResults.map((order) => {
-                const patient = getPatient(order.patientId)!;
+              {newResults.slice(0, 5).map((order) => {
+                const { patient } = order;
                 return (
                   <li key={order.id} className="py-3">
                     <p className="text-sm font-semibold text-ink">

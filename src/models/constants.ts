@@ -179,3 +179,77 @@ export const EMERGENCY_FIELDS = [
 ] as const;
 
 export const ALERT_CHANNELS = ["sms", "whatsapp"] as const;
+
+/** Kinds of app reminder. Keep in sync with `healthmatrix-app/src/server/constants.ts`. */
+export const REMINDER_KINDS = ["medicine", "test", "vaccine"] as const;
+
+export const VACCINE_ROUTES = ["intramuscular", "subcutaneous", "intradermal", "oral", "intranasal"] as const;
+
+export const VACCINE_DOSE_UNITS = ["mL", "drops", "dose"] as const;
+
+export const VACCINE_SITES = [
+  "left_upper_arm",
+  "right_upper_arm",
+  "left_thigh",
+  "right_thigh",
+  "buttock",
+] as const;
+
+export const VACCINE_SCHEDULES = ["one_time", "recurring"] as const;
+
+export const INTERVAL_UNITS = ["days", "weeks", "months", "years"] as const;
+
+export const VACCINATION_STATUSES = ["draft", "scheduled", "cancelled"] as const;
+
+/** Vaccines suggested on a prescription: India's UIP schedule and common IAP additions. Doctors can type others. */
+export const VACCINE_SUGGESTIONS = [
+  "BCG",
+  "Hepatitis B",
+  "OPV (oral polio)",
+  "IPV (inactivated polio)",
+  "Pentavalent (DPT-HepB-Hib)",
+  "Hexavalent (DTaP-IPV-HepB-Hib)",
+  "Rotavirus",
+  "PCV (pneumococcal conjugate)",
+  "PPSV23 (pneumococcal polysaccharide)",
+  "MR (measles-rubella)",
+  "MMR",
+  "JE (Japanese encephalitis)",
+  "DPT booster",
+  "Tdap",
+  "Td (tetanus-diphtheria)",
+  "Typhoid conjugate",
+  "Hepatitis A",
+  "Varicella (chickenpox)",
+  "HPV",
+  "Influenza",
+  "COVID-19",
+  "Rabies",
+  "Meningococcal",
+  "Cholera",
+  "Zoster (shingles)",
+] as const;
+
+/** Common brands in India for a suggested vaccine. A vaccine missing here just gets no suggestions. */
+export const VACCINE_BRANDS: Partial<Record<(typeof VACCINE_SUGGESTIONS)[number], string[]>> = {
+  "Hepatitis B": ["Engerix-B", "Genevac B", "Shanvac-B", "Revac-B"],
+  "IPV (inactivated polio)": ["Imovax Polio", "Poliorix"],
+  "Pentavalent (DPT-HepB-Hib)": ["Pentavac", "Easyfive-TT", "Pentaxim"],
+  "Hexavalent (DTaP-IPV-HepB-Hib)": ["Hexaxim", "Infanrix Hexa"],
+  Rotavirus: ["Rotavac", "Rotasiil", "Rotarix", "RotaTeq"],
+  "PCV (pneumococcal conjugate)": ["Prevenar 13", "Pneumosil", "Synflorix", "Vaxneuvance"],
+  "PPSV23 (pneumococcal polysaccharide)": ["Pneumovax 23"],
+  MMR: ["Tresivac", "Priorix", "M-M-R II"],
+  "MR (measles-rubella)": ["MR-VAC"],
+  Tdap: ["Boostrix", "Adacel"],
+  "Typhoid conjugate": ["Typbar-TCV", "ZyVac TCV", "Typhibev"],
+  "Hepatitis A": ["Havrix", "Avaxim", "Biovac-A"],
+  "Varicella (chickenpox)": ["Varivax", "Varilrix", "Nexipox"],
+  HPV: ["Gardasil 9", "Gardasil", "Cervavac", "Cervarix"],
+  Influenza: ["Vaxigrip Tetra", "Fluarix Tetra", "Influvac Tetra", "FluQuadri"],
+  "COVID-19": ["Covishield", "Covaxin", "Corbevax"],
+  Rabies: ["Rabipur", "Verorab", "Abhayrab", "Indirab"],
+  Meningococcal: ["Menactra", "MenQuadfi"],
+  "JE (Japanese encephalitis)": ["Jeev", "JENVAC", "Ixiaro"],
+  "Zoster (shingles)": ["Shingrix"],
+};

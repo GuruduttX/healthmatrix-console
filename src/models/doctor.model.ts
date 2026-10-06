@@ -2,8 +2,8 @@ import { Schema, deleteModel, model, models, type InferSchemaType } from "mongoo
 
 /**
  * A doctor on the network. Shares the `doctors` collection with
- * `healthmatrix-app/server`; `council`, `languages`, `state`, `city` and
- * `telemedicineConsentAt` are added for the console.
+ * `healthmatrix-app/server`; `council`, `languages`, `state`, `city`,
+ * `telemedicineConsentAt` and `settings` are added for the console.
  */
 const doctorSchema = new Schema(
   {
@@ -27,6 +27,14 @@ const doctorSchema = new Schema(
     city: String,
     /** When the doctor agreed to consult under the Telemedicine Practice Guidelines, 2020. */
     telemedicineConsentAt: Date,
+
+    /** Console settings. Missing on doctors saved before they existed; read with defaults. */
+    settings: {
+      availability: { gpNow: Boolean, podCalls: Boolean, appointments: Boolean },
+      alerts: { otp: Boolean, results: Boolean, starting: Boolean, ekaay: Boolean },
+      /** Notifications from before this are shown as read. */
+      notificationsSeenAt: Date,
+    },
   },
   { timestamps: true },
 );

@@ -4,19 +4,19 @@ import type { Metadata } from "next";
 import { SwitchList } from "@/components/switch-list";
 import { Card } from "@/components/ui";
 import { signOut } from "@/lib/auth-actions";
+import { getSettings } from "@/lib/console-data";
 import { getCurrentDoctor } from "@/lib/doctor-view";
 
 export const metadata: Metadata = { title: "Profile and settings" };
 
-const alerts = [
-  { id: "otp", label: "A patient shares their record", hint: "When an OTP you asked for is approved.", on: true },
-  { id: "results", label: "A result comes back", hint: "For tests you ordered, as soon as the pod or lab uploads them.", on: true },
-  { id: "starting", label: "A consult is about to start", hint: "Five minutes before, by SMS and in the console.", on: true },
-  { id: "ekaay", label: "Ekaay notices a trend", hint: "For patients whose record is open to you.", on: false },
-];
-
 export default async function ProfilePage() {
-  const doctor = await getCurrentDoctor();
+  const [doctor, settings] = await Promise.all([getCurrentDoctor(), getSettings()]);
+  const alerts = [
+    { id: "otp", label: "A patient shares their record", hint: "When an OTP you asked for is approved.", on: settings.alerts.otp },
+    { id: "results", label: "A result comes back", hint: "For tests you ordered, as soon as the pod or lab uploads them.", on: settings.alerts.results },
+    { id: "starting", label: "A consult is about to start", hint: "Five minutes before, by SMS and in the console.", on: settings.alerts.starting },
+    { id: "ekaay", label: "Ekaay notices a trend", hint: "For patients whose record is open to you.", on: settings.alerts.ekaay },
+  ];
   const details = [
     { term: "Mobile number", value: doctor.phone },
     { term: "Registration", value: [doctor.registrationNumber, doctor.council].filter(Boolean).join(", ") },
@@ -61,7 +61,7 @@ export default async function ProfilePage() {
         <div className="flex min-w-0 flex-col gap-6">
           <Card>
             <h2 className="text-sm font-bold text-ink">Tell me when</h2>
-            <SwitchList items={alerts} />
+            <SwitchList group="alerts" items={alerts} />
           </Card>
 
           <Card>

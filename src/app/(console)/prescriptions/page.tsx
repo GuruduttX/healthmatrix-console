@@ -3,9 +3,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Avatar, Chip } from "@/components/ui";
-import { getPatient, prescriptions } from "@/lib/data";
+import { getPrescriptions } from "@/lib/console-data";
+import type { Prescription } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Prescriptions" };
+
+/** "Paracetamol 500 mg; ORS +1 vaccine", or "1 vaccine" when it is only vaccines. */
+function rxSummary(rx: Prescription) {
+  const vaccines = rx.vaccineCount ? `${rx.vaccineCount} ${rx.vaccineCount === 1 ? "vaccine" : "vaccines"}` : "";
+  if (!rx.items.length) return vaccines;
+  return vaccines ? `${rx.items.join("; ")} +${vaccines}` : rx.items.join("; ");
+}
 
 const filters = [
   { value: "all", label: "All" },
@@ -16,7 +24,13 @@ const filters = [
 export default async function PrescriptionsPage(props: PageProps<"/prescriptions">) {
   const { status } = await props.searchParams;
   const active = typeof status === "string" ? status : "all";
-  const list = prescriptions.filter((p) => active === "all" || p.status === active);
+  const list = await getPrescriptions(active);
+  const empty =
+    active === "draft"
+      ? "No drafts waiting to be signed."
+      : active === "signed"
+        ? "You haven’t signed a prescription yet."
+        : "No prescriptions yet. Start one from a patient’s record or with New prescription.";
 
   return (
     <>
@@ -24,8 +38,8 @@ export default async function PrescriptionsPage(props: PageProps<"/prescriptions
         <div>
           <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink">Prescriptions</h1>
           <p className="mt-2 max-w-2xl text-body">
-            Ekaay drafts from your voice note or a photo of your note. Nothing reaches a patient
-            until you sign it.
+            Write a prescription for any patient whose record is open to you. Nothing reaches a
+            patient until you sign it.
           </p>
         </div>
         <Link
@@ -54,7 +68,7 @@ export default async function PrescriptionsPage(props: PageProps<"/prescriptions
 
       <ul className="mt-5 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-card shadow-card md:hidden">
         {list.map((rx) => {
-          const patient = getPatient(rx.patientId)!;
+          const { patient } = rx;
           return (
             <li key={rx.id}>
               <Link href={`/prescriptions/${rx.id}`} className="flex items-center gap-3 px-4 py-3.5">
@@ -66,7 +80,7 @@ export default async function PrescriptionsPage(props: PageProps<"/prescriptions
                       {rx.status === "signed" ? "Signed" : "Draft"}
                     </Chip>
                   </span>
-                  <span className="mt-2.5 line-clamp-2 text-sm text-ink">{rx.items.join("; ")}</span>
+                  <span className="mt-2.5 line-clamp-2 text-sm text-ink">{rxSummary(rx)}</span>
                   <span className="mt-1.5 block text-xs text-body">
                     {rx.date}. {rx.source}
                   </span>
@@ -77,6 +91,12 @@ export default async function PrescriptionsPage(props: PageProps<"/prescriptions
           );
         })}
       </ul>
+
+      {list.length === 0 ? (
+        <p className="mt-5 rounded-2xl border border-line bg-card px-5 py-10 text-center text-body shadow-card md:hidden">
+          {empty}
+        </p>
+      ) : null}
 
       <div className="mt-5 hidden overflow-x-auto rounded-2xl border border-line bg-card shadow-card md:block">
         <table className="w-full min-w-[760px] text-left text-sm">
@@ -94,7 +114,7 @@ export default async function PrescriptionsPage(props: PageProps<"/prescriptions
           </thead>
           <tbody className="divide-y divide-line">
             {list.map((rx) => {
-              const patient = getPatient(rx.patientId)!;
+              const { patient } = rx;
               return (
                 <tr key={rx.id} className="hover:bg-surface">
                   <td className="px-5 py-3.5">
@@ -104,7 +124,7 @@ export default async function PrescriptionsPage(props: PageProps<"/prescriptions
                     </div>
                   </td>
                   <td className="max-w-xs px-3 py-3.5 text-body">
-                    <span className="line-clamp-1">{rx.items.join("; ")}</span>
+                    <span className="line-clamp-1">{rxSummary(rx)}</span>
                   </td>
                   <td className="px-3 py-3.5 text-body">{rx.source}</td>
                   <td className="whitespace-nowrap px-3 py-3.5 text-body">{rx.date}</td>
@@ -123,6 +143,7 @@ export default async function PrescriptionsPage(props: PageProps<"/prescriptions
             })}
           </tbody>
         </table>
+        {list.length === 0 ? <p className="px-5 py-10 text-center text-body">{empty}</p> : null}
       </div>
     </>
   );

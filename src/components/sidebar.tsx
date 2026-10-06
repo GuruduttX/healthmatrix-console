@@ -6,7 +6,6 @@ import {
   FileSignature,
   FlaskConical,
   History,
-  ShieldCheck,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -14,6 +13,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { CheckNewButton } from "@/components/check-new-button";
 import type { Doctor } from "@/lib/types";
 
 const navItems: { href: string; label: string; icon: LucideIcon; also?: string[]; short?: string }[] = [
@@ -62,15 +62,7 @@ export function Sidebar({ doctor }: { doctor: Doctor }) {
         })}
       </nav>
 
-      <div className="mt-auto rounded-2xl bg-white/5 p-4">
-        <p className="flex items-center gap-2 text-sm font-bold">
-          <ShieldCheck aria-hidden className="size-4 text-brand-light" />
-          No OTP, no access
-        </p>
-        <p className="mt-2 text-xs leading-relaxed text-white/65">
-          Every view is logged, and the patient can see who opened their record.
-        </p>
-      </div>
+      <CheckNewButton variant="sidebar" />
 
       <Link href="/profile" className="mt-4 flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-white/5">
         <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-success text-xs font-bold">
