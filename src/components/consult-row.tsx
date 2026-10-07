@@ -1,6 +1,7 @@
 import { ArrowRight, MonitorSmartphone, Video } from "lucide-react";
 import Link from "next/link";
 
+import { CancelConsultButton } from "@/components/schedule/cancel-consult";
 import { AccessChip, Avatar, Chip } from "@/components/ui";
 import { ageAndSex } from "@/lib/patient-text";
 import type { Consult, ConsultStatus, Tone } from "@/lib/types";
@@ -50,6 +51,9 @@ export function ConsultRow({ consult }: { consult: Consult }) {
             )}
             {consult.mode}
           </span>
+          {consult.status === "scheduled" ? (
+            <CancelConsultButton consultId={consult.id} patientName={patient.name} when={`${consult.day}, ${consult.time}`} />
+          ) : null}
         </div>
       </div>
       <Link

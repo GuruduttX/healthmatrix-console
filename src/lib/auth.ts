@@ -21,7 +21,7 @@ export const OTP_MAX_ATTEMPTS = 5;
 export const OTP_RESEND_MS = 30 * 1000;
 
 /** Shorter than the app's 90 days: the console opens patient records. */
-const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const SESSION_TTL_MS = 3 * 24 * 60 * 60 * 1000;
 /** Time to finish onboarding after verifying the phone. */
 const ONBOARDING_TTL_MS = 30 * 60 * 1000;
 

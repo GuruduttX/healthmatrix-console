@@ -19,6 +19,8 @@ export type Tone = "success" | "warning" | "danger" | "brand" | "neutral";
 export type AvatarTone = "brand" | "ink" | "success" | "rust";
 
 export type Doctor = {
+  /** The doctor's id, for keeping their drafts apart in a shared browser. */
+  id: string;
   name: string;
   shortName: string;
   initials: string;
@@ -31,7 +33,15 @@ export type Doctor = {
   languages: string[];
   /** "New Delhi, Delhi" */
   location: string;
+  /** Cloudinary WebP, when the doctor has added one. */
+  photoUrl?: string;
+  about: string;
+  experienceYears?: number;
+  /** What Edit profile still asks for, in the order it shows them. */
+  missing: ProfileGap[];
 };
+
+export type ProfileGap = "photo" | "qualifications" | "council" | "experience" | "about";
 
 /** Just enough to show who a row is about. */
 export type PatientRef = {

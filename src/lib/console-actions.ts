@@ -23,9 +23,24 @@ import {
 
 import { generateOtp, hashOtp, OTP_MAX_ATTEMPTS, OTP_RESEND_MS, requireDoctor } from "./auth";
 import { ACCESS_OTP_TTL_MS, ACCESS_TTL_MS, DEFAULT_SETTINGS, type SettingGroup } from "./console-data";
+import { formatWhen } from "./format";
 import { connectDB } from "./db";
 import { OtpDeliveryError, sendOtp } from "./otp-sender";
 import { allergyClash, allergyTerms } from "./patient-text";
+import {
+  consultFits,
+  istDateKey,
+  istInstant,
+  LIMITS,
+  resolveSchedule,
+  scheduleInput,
+  timeOffInput,
+  timeOffRange,
+  type SavedSchedule,
+  type Schedule,
+  type ScheduleInput,
+  type TimeOffInput,
+} from "./schedule";
 import { dayToDate, describeDose, doseTitle, vaccineInput, type VaccineData, type VaccineInput } from "./vaccines";
 
 /** Server actions for the console. Each one checks the signed-in doctor itself. */
@@ -390,6 +405,143 @@ export async function endConsult(consultId: string) {
     { _id: id, doctor: doctor._id, status: "in_progress" },
     { $set: { status: "completed", endedAt: new Date() } },
   );
+  refresh();
+}
+
+/** What a member reads when the doctor calls off their consult. Never the doctor's private note. */
+const DOCTOR_CANCEL_REASON = "The doctor isn’t available at this time. Please book another slot.";
+
+/** Cancels one booked consult. The member sees it as cancelled by the doctor, with the reason. */
+export async function cancelConsult(consultId: string, reason?: string): Promise<{ error?: string }> {
+  const doctor = await signedInDoctor();
+  const id = objectId(consultId);
+  if (!id) return { error: "This consult no longer exists." };
+  const text = typeof reason === "string" ? reason.trim().replace(/\s+/g, " ") : "";
+  if (text.length > 200) return { error: "Keep the reason under 200 characters." };
+
+  const result = await ConsultModel.updateOne(
+    { _id: id, doctor: doctor._id, status: "scheduled" },
+    { $set: { status: "cancelled", cancelledAt: new Date(), cancelledBy: "doctor", cancelReason: text || DOCTOR_CANCEL_REASON } },
+  );
+  if (!result.modifiedCount) return { error: "Only a consult that hasn’t started can be cancelled." };
+  refresh();
+  return {};
+}
+
+// ---------------------------------------------------------------------------
+// Availability: the schedule the app books from
+
+export type ClashChoice = "keep" | "cancel";
+export type Clash = { id: string; name: string; when: string };
+export type ScheduleResult = {
+  errors?: string[];
+  /** Booked consults the change would leave outside the doctor's hours. Nothing was saved. */
+  clashes?: Clash[];
+  saved?: boolean;
+  cancelled?: number;
+};
+
+/** Booked consults from now on that `schedule` no longer has room for. */
+async function findClashes(doctorId: Types.ObjectId, schedule: Schedule) {
+  const upcoming = await ConsultModel.find({ doctor: doctorId, status: "scheduled", scheduledAt: { $gte: new Date() } })
+    .sort({ scheduledAt: 1 })
+    .select("member scheduledAt durationMinutes")
+    .lean();
+  const clashing = upcoming.filter((c) => !consultFits(schedule, c));
+  const members = await MemberModel.find({ _id: { $in: clashing.map((c) => c.member) } }).select("name").lean();
+  const names = new Map(members.map((m) => [String(m._id), m.name]));
+  return clashing.map((c) => ({ id: String(c._id), name: names.get(String(c.member)) ?? "A patient", when: formatWhen(c.scheduledAt) }));
+}
+
+/**
+ * Saves a schedule change, unless it leaves booked consults outside the new hours and the
+ * doctor hasn't said what to do with them yet. Then it only reports the clashes.
+ */
+async function applySchedule(
+  doctorId: Types.ObjectId,
+  next: Schedule,
+  choice: ClashChoice | undefined,
+): Promise<ScheduleResult> {
+  const clashes = await findClashes(doctorId, next);
+  if (clashes.length && !choice) return { clashes };
+
+  const now = new Date();
+  await DoctorModel.updateOne(
+    { _id: doctorId },
+    {
+      $set: {
+        "schedule.acceptingBookings": next.acceptingBookings,
+        "schedule.slotMinutes": next.slotMinutes,
+        "schedule.bookingWindowDays": next.bookingWindowDays,
+        "schedule.minNoticeMinutes": next.minNoticeMinutes,
+        "schedule.weekly": next.weekly,
+        // Past time off is dropped on every save; it no longer changes anything.
+        "schedule.timeOff": next.timeOff
+          .filter((t) => t.end > now)
+          .slice(0, LIMITS.timeOff)
+          .map(({ id, start, end, note }) => ({ ...(objectId(id) ? { _id: objectId(id) } : {}), start, end, note })),
+        "schedule.updatedAt": now,
+      },
+    },
+    { runValidators: true },
+  );
+
+  let cancelled = 0;
+  if (clashes.length && choice === "cancel") {
+    const result = await ConsultModel.updateMany(
+      { _id: { $in: clashes.map((c) => new Types.ObjectId(c.id)) }, doctor: doctorId, status: "scheduled" },
+      { $set: { status: "cancelled", cancelledAt: now, cancelledBy: "doctor", cancelReason: DOCTOR_CANCEL_REASON } },
+    );
+    cancelled = result.modifiedCount;
+  }
+  refresh();
+  return { saved: true, cancelled };
+}
+
+const currentSchedule = (doctor: Awaited<ReturnType<typeof signedInDoctor>>) =>
+  resolveSchedule(doctor.schedule as SavedSchedule);
+
+const issues = (error: z.ZodError) => [...new Set(error.issues.map((issue) => issue.message))];
+
+/** Weekly hours and booking rules. */
+export async function saveWeeklySchedule(input: ScheduleInput, choice?: ClashChoice): Promise<ScheduleResult> {
+  const doctor = await signedInDoctor();
+  const parsed = scheduleInput.safeParse(input);
+  if (!parsed.success) return { errors: issues(parsed.error) };
+  return applySchedule(doctor._id, { ...currentSchedule(doctor), ...parsed.data }, choice);
+}
+
+/** Days off, part of a day off, or the rest of today. */
+export async function addTimeOff(
+  input: TimeOffInput | { kind: "rest_of_today" },
+  choice?: ClashChoice,
+): Promise<ScheduleResult> {
+  const doctor = await signedInDoctor();
+  const now = new Date();
+  const schedule = currentSchedule(doctor);
+  if (schedule.timeOff.filter((t) => t.end > now).length >= LIMITS.timeOff) {
+    return { errors: [`You can have up to ${LIMITS.timeOff} upcoming time-off entries. Remove some first.`] };
+  }
+
+  let range: { start: Date; end: Date; note?: string };
+  if (input.kind === "rest_of_today") {
+    range = { start: now, end: istInstant(istDateKey(now, 1), "00:00") };
+  } else {
+    const parsed = timeOffInput.safeParse(input);
+    if (!parsed.success) return { errors: issues(parsed.error) };
+    const result = timeOffRange(parsed.data, now);
+    if (result.error) return { errors: [result.error] };
+    range = result.range!;
+  }
+  return applySchedule(doctor._id, { ...schedule, timeOff: [...schedule.timeOff, range] }, choice);
+}
+
+/** Taking time off back frees the time again; it can't clash with anything. */
+export async function removeTimeOff(timeOffId: string) {
+  const doctor = await signedInDoctor();
+  const id = objectId(timeOffId);
+  if (!id) return;
+  await DoctorModel.updateOne({ _id: doctor._id }, { $pull: { "schedule.timeOff": { _id: id } } });
   refresh();
 }
 

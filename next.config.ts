@@ -12,8 +12,21 @@ const privateNetworkHosts = [
   "*.local",
 ];
 
+/** Doctors' profile photos, uploaded as WebP by `src/lib/profile-photo.ts`. */
+const cloudinaryPhotos = new URL(
+  `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME ?? "_"}/image/upload/**`,
+);
+
 const nextConfig: NextConfig = {
   allowedDevOrigins: privateNetworkHosts,
+  images: { remotePatterns: [cloudinaryPhotos] },
+  // libheif's WebAssembly build, for iPhone HEIC photos; loaded at run time, not bundled.
+  serverExternalPackages: ["heic-convert"],
+  experimental: {
+    // Profile photos the browser couldn't shrink first arrive as they are (up to 9 MB, see
+    // `RAW_PHOTO_LIMIT`). Kept under the proxy's own 10 MB buffer.
+    serverActions: { bodySizeLimit: "10mb" },
+  },
   async headers() {
     const emergencyHeaders = [
       { key: "Cache-Control", value: "no-store" },

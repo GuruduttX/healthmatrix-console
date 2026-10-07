@@ -1,4 +1,4 @@
-import { Schema, model, models, type InferSchemaType } from "mongoose";
+import { Schema, deleteModel, model, models, type InferSchemaType } from "mongoose";
 
 import { CONSULT_MODES, CONSULT_STATUSES, SPECIALTIES } from "./constants";
 
@@ -13,6 +13,8 @@ const consultSchema = new Schema(
     doctor: { type: Schema.Types.ObjectId, ref: "Doctor", required: true },
     specialty: { type: String, enum: SPECIALTIES, default: "general_medicine" },
     scheduledAt: { type: Date, required: true },
+    /** The slot length when it was booked. Missing on older consults: 30. */
+    durationMinutes: Number,
     status: { type: String, enum: CONSULT_STATUSES, default: "scheduled" },
 
     mode: { type: String, enum: CONSULT_MODES, default: "video" },
@@ -20,6 +22,10 @@ const consultSchema = new Schema(
     reason: { type: String, trim: true },
     /** Set when the consult is taken from inside a pod. */
     pod: { type: Schema.Types.ObjectId, ref: "Pod" },
+    cancelledAt: Date,
+    cancelledBy: { type: String, enum: ["member", "doctor"] },
+    /** Shown to the member when the doctor cancels. */
+    cancelReason: String,
     startedAt: Date,
     endedAt: Date,
 
@@ -36,6 +42,7 @@ consultSchema.index({ doctor: 1, scheduledAt: 1 });
 
 export type Consult = InferSchemaType<typeof consultSchema>;
 
-// Next.js re-evaluates this module on hot reload; reuse the compiled model when it exists.
-const build = () => model("Consult", consultSchema);
-export const ConsultModel = (models.Consult as ReturnType<typeof build>) ?? build();
+// Rebuilt on each run, like the doctor model, so a hot reload never keeps an older schema
+// that would drop the newer fields.
+if (models.Consult) deleteModel("Consult");
+export const ConsultModel = model("Consult", consultSchema);

@@ -1,4 +1,4 @@
-import { Activity, FileSignature, FlaskConical, Video } from "lucide-react";
+import { Activity, ArrowRight, BellRing, FileSignature, FlaskConical, Video } from "lucide-react";
 import Link from "next/link";
 
 import { ConsultRow } from "@/components/consult-row";
@@ -6,6 +6,7 @@ import { Avatar, Card, CardTitle, Chip, flagTone } from "@/components/ui";
 import {
   getAttentionFlags,
   getPrescriptions,
+  getStartingSoon,
   getTestOrders,
   getTodayConsults,
   getTodayStats,
@@ -24,12 +25,13 @@ const dotTone: Record<Tone, string> = {
 
 export default async function TodayPage() {
   const doctor = await getCurrentDoctor();
-  const [today, counts, flags, drafts, newResults] = await Promise.all([
+  const [today, counts, flags, drafts, newResults, startingSoon] = await Promise.all([
     getTodayConsults(),
     getTodayStats(),
     getAttentionFlags(),
     getPrescriptions("draft"),
     getTestOrders("result_back"),
+    getStartingSoon(),
   ]);
   const remaining = today.filter((c) => c.status !== "completed").length;
 
@@ -63,6 +65,24 @@ export default async function TodayPage() {
             ? "All of today’s consults are done."
             : `${remaining} ${remaining === 1 ? "consult" : "consults"} to go.`}
       </p>
+
+      {startingSoon.map((consult) => (
+        <Link
+          key={consult.id}
+          href={`/consults/${consult.id}`}
+          className="mt-5 flex items-center gap-3 rounded-2xl border border-warning bg-warning-soft px-5 py-4 text-sm text-ink hover:brightness-95"
+        >
+          <BellRing aria-hidden className="size-5 shrink-0 text-warning" />
+          <span className="min-w-0 flex-1">
+            <span className="font-bold">{consult.patient.name}</span>’s consult starts at {consult.time}.
+            <span className="block text-body">{consult.reason}</span>
+          </span>
+          <span className="inline-flex shrink-0 items-center gap-1 font-bold text-brand">
+            Get ready
+            <ArrowRight aria-hidden className="size-4" />
+          </span>
+        </Link>
+      ))}
 
       <ul className="mt-6 grid grid-cols-2 gap-4 xl:grid-cols-4">
         {stats.map((stat) => (

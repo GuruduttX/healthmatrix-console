@@ -1,18 +1,33 @@
 "use client";
 
-import { CircleCheck, Pencil, Plus, ShieldCheck, Syringe, TriangleAlert, X } from "lucide-react";
+import { CircleCheck, History, Pencil, Plus, ShieldCheck, Syringe, TriangleAlert, X } from "lucide-react";
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
-import { VaccineDialog } from "@/components/record/vaccine-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { useDraftOwner } from "@/components/record/draft-owner";
+import { VaccineDialog, type VaccineFormMemory } from "@/components/record/vaccine-dialog";
 import { Chip } from "@/components/ui";
 import { savePrescription } from "@/lib/console-actions";
 import { allergyClash } from "@/lib/patient-text";
+import {
+  readLocalRx,
+  readVaccineForm,
+  removeLocalRx,
+  removeVaccineForm,
+  sameRx,
+  writeLocalRx,
+  writeVaccineForm,
+  type LocalRx,
+} from "@/lib/rx-autosave";
 import { describeDose, describeSchedule, formatDay, type VaccineInput } from "@/lib/vaccines";
 
 /**
  * A prescription being written: edit the lines, save the draft, then sign. Signing sends it
  * to the patient's timeline and can't be undone.
+ *
+ * Every change is also kept in this browser for the patient (see `rx-autosave.ts`), so a
+ * refresh brings back what was being written, saved as a draft or not.
  */
 export function PrescriptionDraft({
   prescriptionId: savedId,
@@ -46,6 +61,56 @@ export function PrescriptionDraft({
   const [saved, setSaved] = useState(Boolean(savedId));
   const [error, setError] = useState<string>();
   const [pending, startTransition] = useTransition();
+  const owner = useDraftOwner();
+  /** The browser's copy that was brought back on opening, for the notice. */
+  const [restored, setRestored] = useState<LocalRx | null>(null);
+  /** Autosave waits until the browser's copy has been read, so it can't overwrite it first. */
+  const [checked, setChecked] = useState(false);
+  const [askDiscard, setAskDiscard] = useState(false);
+
+  // On opening: bring back what was being written for this patient, unless the page already
+  // shows the same thing. Runs after hydration because the server can't see localStorage.
+  useEffect(() => {
+    const local = owner ? readLocalRx(owner, memberId) : null;
+    if (local && !sameRx(local, { items: initialItems, vaccines: initialVaccines })) {
+      const id = savedId ?? local.prescriptionId;
+      /* eslint-disable react-hooks/set-state-in-effect -- restoring from storage after hydration */
+      setItems(local.items.length ? local.items : [""]);
+      setVaccines(local.vaccines);
+      setPrescriptionId(id);
+      setSaved(local.saved && Boolean(id));
+      setEditing(true);
+      setRestored(local);
+    }
+    setChecked(true);
+    /* eslint-enable react-hooks/set-state-in-effect */
+    // Once per patient: later prop changes are the server catching up with this screen.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [owner, memberId]);
+
+  // Keep the browser's copy in step. Nothing to keep when it is blank or matches what the
+  // server sent; once signed, it is gone for good.
+  useEffect(() => {
+    if (!checked || !owner || signedId) return;
+    const blank = items.every((item) => !item.trim()) && vaccines.length === 0;
+    if (blank || sameRx({ items, vaccines }, { items: initialItems, vaccines: initialVaccines })) {
+      removeLocalRx(owner, memberId);
+    } else {
+      writeLocalRx(owner, memberId, { items, vaccines, prescriptionId, saved });
+    }
+  }, [checked, owner, memberId, items, vaccines, prescriptionId, saved, signedId, initialItems, initialVaccines]);
+
+  /** Drops the restored copy and goes back to what the server has. */
+  function discardRestored() {
+    setAskDiscard(false);
+    setItems(initialItems.length ? initialItems : [""]);
+    setVaccines(initialVaccines);
+    setPrescriptionId(savedId);
+    setSaved(Boolean(savedId));
+    setRestored(null);
+    if (owner) removeLocalRx(owner, memberId);
+    vaccineForm?.clear();
+  }
 
   const filled = items.map((item) => item.trim()).filter(Boolean);
   const conflict = allergyClash([...filled, ...vaccines.map((v) => [v.name, v.brand].filter(Boolean).join(" "))], allergyTerms);
@@ -56,7 +121,18 @@ export function PrescriptionDraft({
     setSaved(false);
   }
 
+  /** Keeps a half-filled "Add a vaccine" form for this patient between openings. */
+  const vaccineForm: VaccineFormMemory | undefined = owner
+    ? {
+        load: () => readVaccineForm(owner, memberId),
+        save: (form) => writeVaccineForm(owner, memberId, form),
+        clear: () => removeVaccineForm(owner, memberId),
+      }
+    : undefined;
+
   function saveVaccine(vaccine: VaccineInput) {
+    // Added: the form it came from is done with.
+    if (dialog === "new") vaccineForm?.clear();
     setVaccines((list) => (dialog === "new" ? [...list, vaccine] : list.map((v, i) => (i === dialog ? vaccine : v))));
     setDialog(null);
     setSaved(false);
@@ -76,10 +152,15 @@ export function PrescriptionDraft({
         return;
       }
       setItems(filled);
+      setRestored(null);
       setPrescriptionId(result.id);
       setSaved(true);
       setEditing(false);
-      if (result.signed) setSignedId(result.id);
+      if (result.signed) {
+        setSignedId(result.id);
+        if (owner) removeLocalRx(owner, memberId);
+        vaccineForm?.clear();
+      }
     });
   }
 
@@ -114,6 +195,33 @@ export function PrescriptionDraft({
 
   return (
     <div className="mt-4">
+      {restored ? (
+        <div role="status" className="mb-3 flex items-center gap-3 rounded-xl bg-brand-soft p-3 text-sm">
+          <History aria-hidden className="size-4 shrink-0 text-brand" />
+          <p className="min-w-0 flex-1 text-ink">
+            <span className="font-bold">Picked up where you left off.</span>{" "}
+            <span className="text-body">Last edited {lastEdited(restored.at)}.</span>
+          </p>
+          <button
+            type="button"
+            onClick={() => setAskDiscard(true)}
+            className="shrink-0 rounded-full px-3 py-1.5 text-xs font-bold text-danger hover:bg-white/60"
+          >
+            Discard
+          </button>
+        </div>
+      ) : null}
+      {askDiscard ? (
+        <ConfirmDialog
+          title="Discard this prescription?"
+          confirmLabel="Discard"
+          onConfirm={discardRestored}
+          onCancel={() => setAskDiscard(false)}
+        >
+          What you wrote for {patientName} on this device will be deleted
+          {savedId ? ", and the prescription goes back to the draft saved earlier" : ""}. This can’t be undone.
+        </ConfirmDialog>
+      ) : null}
       <ol className="divide-y divide-line">
         {/* Blank lines only matter while editing; a vaccine-only draft shows no empty line. */}
         {(editing ? items : filled).map((item, i) => (
@@ -175,6 +283,7 @@ export function PrescriptionDraft({
           vaccine={dialog === "new" ? undefined : vaccines[dialog]}
           onSave={saveVaccine}
           onClose={() => setDialog(null)}
+          memory={dialog === "new" ? vaccineForm : undefined}
         />
       ) : null}
 
@@ -202,7 +311,11 @@ export function PrescriptionDraft({
             No allergy conflicts
           </Chip>
         ) : null}
-        {saved && prescriptionId ? <span className="text-xs text-body">Draft saved</span> : null}
+        {saved && prescriptionId ? (
+          <span className="text-xs text-body">Draft saved</span>
+        ) : owner && checked && !empty ? (
+          <span className="text-xs text-body">Kept on this device</span>
+        ) : null}
         <div className="ml-auto flex flex-wrap gap-2">
           <button
             type="button"
@@ -232,6 +345,16 @@ export function PrescriptionDraft({
       <p className="mt-2 text-xs text-body">Nothing reaches {patientName} until you sign. Signing can’t be undone.</p>
     </div>
   );
+}
+
+/** "4:32 pm today", "yesterday, 6:10 pm" or "3 Oct, 9:05 am". */
+function lastEdited(at: number) {
+  const when = new Date(at);
+  const time = when.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
+  const days = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(at).setHours(0, 0, 0, 0)) / 86_400_000);
+  if (days === 0) return `${time} today`;
+  if (days === 1) return `yesterday, ${time}`;
+  return `${when.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}, ${time}`;
 }
 
 /** Vaccines on the prescription; with handlers they can be edited and removed. */

@@ -23,8 +23,12 @@ export default async function NotificationsPage() {
       <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink">Notifications</h1>
       <div className="mt-2 flex max-w-3xl flex-wrap items-center justify-between gap-3">
         <p className="text-body">
-          {unread > 0 ? `${unread} new.` : "Nothing new."} Shared records, OTPs you’re waiting on and
-          results from the last two weeks.
+          {unread > 0 ? `${unread} new.` : "Nothing new."} Bookings, shared records, OTPs you’re waiting
+          on and results from the last two weeks. Choose which in{" "}
+          <Link href="/profile" className="font-semibold text-brand hover:underline">
+            Profile and settings
+          </Link>
+          .
         </p>
         {unread > 0 ? (
           <form action={markNotificationsRead}>

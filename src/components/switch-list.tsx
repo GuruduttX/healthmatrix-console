@@ -5,7 +5,14 @@ import { useOptimistic, useTransition } from "react";
 import { updateSetting } from "@/lib/console-actions";
 import type { SettingGroup } from "@/lib/console-data";
 
-export type SwitchItem = { id: string; label: string; hint: string; on: boolean };
+export type SwitchItem = {
+  id: string;
+  label: string;
+  hint: string;
+  on: boolean;
+  /** Saved, but nothing acts on it yet. */
+  soon?: boolean;
+};
 
 /** A list of on/off settings, each saved to the doctor's profile as it is flipped. */
 export function SwitchList({ group, items }: { group: SettingGroup; items: SwitchItem[] }) {
@@ -31,6 +38,9 @@ export function SwitchList({ group, items }: { group: SettingGroup; items: Switc
             <div className="min-w-0 flex-1">
               <p id={`${item.id}-label`} className="text-sm font-semibold text-ink">
                 {item.label}
+                {item.soon ? (
+                  <span className="ml-2 rounded-full bg-selected px-2 py-0.5 text-xs font-bold text-body">Coming soon</span>
+                ) : null}
               </p>
               <p className="text-xs text-body">{item.hint}</p>
             </div>

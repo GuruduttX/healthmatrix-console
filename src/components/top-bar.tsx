@@ -1,10 +1,11 @@
-import { Bell, History, LogOut, Search, UserRound } from "lucide-react";
+import { Bell, History, LogOut, Search, UserRound, UserRoundPen } from "lucide-react";
 import Form from "next/form";
 import Image from "next/image";
 import Link from "next/link";
 
 import { CheckNewButton } from "@/components/check-new-button";
-import { signOut } from "@/lib/auth-actions";
+import { DoctorAvatar } from "@/components/doctor-avatar";
+import { SignOutForm } from "@/components/sign-out-form";
 import type { Doctor } from "@/lib/types";
 
 const menuItem = "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold text-ink hover:bg-selected";
@@ -53,11 +54,11 @@ export function TopBar({ doctor, unread }: { doctor: Doctor; unread: number }) {
               <span className="block text-sm font-semibold text-ink">{doctor.shortName}</span>
               <span className="block text-xs text-body">{doctor.qualifications}</span>
             </span>
-            <span
-              aria-hidden
-              className="inline-flex size-9 items-center justify-center rounded-full bg-success text-xs font-bold text-white"
-            >
-              {doctor.initials}
+            <span className="relative">
+              <DoctorAvatar photoUrl={doctor.photoUrl} initials={doctor.initials} />
+              {doctor.missing.length ? (
+                <span aria-hidden className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-brand ring-2 ring-card lg:hidden" />
+              ) : null}
             </span>
             <span className="sr-only">Account menu</span>
           </summary>
@@ -66,16 +67,25 @@ export function TopBar({ doctor, unread }: { doctor: Doctor; unread: number }) {
               <UserRound aria-hidden className="size-4 text-body" />
               Profile and settings
             </Link>
+            <Link href="/profile/edit" className={menuItem}>
+              <UserRoundPen aria-hidden className="size-4 text-body" />
+              Edit profile
+              {doctor.missing.length ? (
+                <span className="ml-auto rounded-full bg-brand-soft px-2 py-0.5 text-xs font-bold text-brand">
+                  {doctor.missing.length} to add
+                </span>
+              ) : null}
+            </Link>
             <Link href="/access-log" className={menuItem}>
               <History aria-hidden className="size-4 text-body" />
               Access log
             </Link>
-            <form action={signOut} className="mt-1 border-t border-line pt-1">
+            <SignOutForm className="mt-1 border-t border-line pt-1">
               <button type="submit" className={`${menuItem} text-danger`}>
                 <LogOut aria-hidden className="size-4" />
                 Sign out
               </button>
-            </form>
+            </SignOutForm>
           </div>
         </details>
       </div>

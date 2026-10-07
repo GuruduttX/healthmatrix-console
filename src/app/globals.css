@@ -85,8 +85,42 @@ html {
   }
 }
 
+/* The photo sheet on Edit profile rises from the bottom on phones and fades in elsewhere. */
+dialog.sheet[open] {
+  animation: sheet-up 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+dialog.sheet[open]::backdrop {
+  animation: fade-in 0.2s ease-out;
+}
+
+@media (min-width: 640px) {
+  dialog.sheet[open] {
+    animation-name: fade-in;
+  }
+}
+
+.nudge-enter {
+  animation: page-enter 0.3s ease-out;
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .page-enter {
+  .page-enter,
+  .nudge-enter,
+  dialog.sheet[open],
+  dialog.sheet[open]::backdrop {
     animation: none;
   }
 }

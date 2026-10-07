@@ -21,35 +21,65 @@ import {
 } from "./auth";
 import { connectDB } from "./db";
 import { OtpDeliveryError, sendOtp } from "./otp-sender";
-import { DEV_OTP_COOKIE, OTP_PHONE_COOKIE } from "./session";
-import {
-  canonicalList,
-  canonicalState,
-  languageSuggestions,
-  specialtySuggestions,
-  type Suggestion,
-} from "./onboarding";
+import { DEV_OTP_COOKIE, OTP_INTENT_COOKIE, OTP_PHONE_COOKIE } from "./session";
+import { canonicalList, languageSuggestions, specialtySuggestions } from "./onboarding";
+import { profileFields } from "./profile-schema";
 import { DoctorModel, DoctorOtpChallengeModel } from "@/models";
 
-export type AuthFormState = { error?: string; notice?: string };
+export type AuthFormState = {
+  error?: string;
+  notice?: string;
+  /** The other page to offer when the number doesn't fit this one. */
+  switchTo?: "login" | "register";
+};
+
+/** "login" needs a registered number; "register" needs one that isn't registered yet. */
+export type AuthIntent = "login" | "register";
 
 const DISABLED = "This account is switched off. Write to the HealthMatrix team to turn it back on.";
+const NOT_REGISTERED = "This number does not exist on HealthMatrix. Check it, or register as a new doctor.";
+const ALREADY_REGISTERED = "This number is already registered. Sign in instead.";
 
-/** Keeps the phone being verified out of the URL. Lives as long as the code. */
+/**
+ * Keeps the phone being verified out of the URL. Lives as long as the code. Path `/` so
+ * both the sign-in and register pages (and their actions) can read it.
+ */
 const otpCookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
   sameSite: "lax" as const,
-  path: "/login",
+  path: "/",
   maxAge: OTP_TTL_MS / 1000,
 };
 
+const parseIntent = (value: unknown): AuthIntent => (value === "register" ? "register" : "login");
+
+/** The intent the current code was asked for with. */
+async function otpIntent(): Promise<AuthIntent> {
+  return parseIntent((await cookies()).get(OTP_INTENT_COOKIE)?.value);
+}
+
+/**
+ * Whether this number may go ahead with this intent. Signing in needs a doctor record;
+ * registering is refused once the profile is complete (a half-finished one may carry on).
+ */
+function checkIntent(
+  intent: AuthIntent,
+  doctor: Parameters<typeof isProfileComplete>[0] | null,
+): AuthFormState | null {
+  if (doctor && !doctor.isActive) return { error: DISABLED };
+  if (intent === "login" && !doctor) return { error: NOT_REGISTERED, switchTo: "register" };
+  if (intent === "register" && doctor && isProfileComplete(doctor)) return { error: ALREADY_REGISTERED, switchTo: "login" };
+  return null;
+}
+
 /** Creates and sends a fresh code, or says why not. */
-async function issueOtp(phone: string): Promise<AuthFormState | null> {
+async function issueOtp(phone: string, intent: AuthIntent): Promise<AuthFormState | null> {
   await connectDB();
 
-  const doctor = await DoctorModel.findOne({ phone }, { isActive: 1 }).lean();
-  if (doctor && !doctor.isActive) return { error: DISABLED };
+  const doctor = await DoctorModel.findOne({ phone }).lean();
+  const refused = checkIntent(intent, doctor);
+  if (refused) return refused;
 
   const recent = await DoctorOtpChallengeModel.findOne({ phone }).sort({ createdAt: -1 });
   if (recent && Date.now() - recent.createdAt.getTime() < OTP_RESEND_MS) {
@@ -75,18 +105,24 @@ async function issueOtp(phone: string): Promise<AuthFormState | null> {
 
   const cookieStore = await cookies();
   cookieStore.set(OTP_PHONE_COOKIE, phone, otpCookieOptions);
+  cookieStore.set(OTP_INTENT_COOKIE, intent, otpCookieOptions);
   if (devCode) cookieStore.set(DEV_OTP_COOKIE, devCode, otpCookieOptions);
   return null;
 }
 
-/** Step 1: send a code to the mobile number. Works the same for new and returning doctors. */
+/** Step 1: send a code to the mobile number, for signing in or for registering. */
 export async function requestOtp(_prev: AuthFormState, formData: FormData): Promise<AuthFormState> {
+  const intent = parseIntent(formData.get("intent"));
   const phone = String(formData.get("phone") ?? "").replace(/\D/g, "").slice(-10);
   if (!PHONE_PATTERN.test(phone)) return { error: "Enter a valid 10-digit mobile number." };
 
-  // A second tap, or a resubmitted form, from the browser that just got a code for this number:
-  // take it to the code screen rather than refusing.
-  if ((await cookies()).get(OTP_PHONE_COOKIE)?.value === phone) {
+  // A second tap, or a resubmitted form, from the browser that just got a code for this number
+  // and intent: take it to the code screen rather than refusing.
+  const cookieStore = await cookies();
+  if (
+    cookieStore.get(OTP_PHONE_COOKIE)?.value === phone &&
+    parseIntent(cookieStore.get(OTP_INTENT_COOKIE)?.value) === intent
+  ) {
     await connectDB();
     const recent = await DoctorOtpChallengeModel.exists({
       phone,
@@ -96,7 +132,7 @@ export async function requestOtp(_prev: AuthFormState, formData: FormData): Prom
     if (recent) redirect("/login/verify");
   }
 
-  const failure = await issueOtp(phone);
+  const failure = await issueOtp(phone, intent);
   if (failure) return failure;
   redirect("/login/verify");
 }
@@ -106,11 +142,11 @@ export async function resendOtp(): Promise<AuthFormState> {
   const phone = (await cookies()).get(OTP_PHONE_COOKIE)?.value;
   if (!phone || !PHONE_PATTERN.test(phone)) redirect("/login");
 
-  const failure = await issueOtp(phone);
+  const failure = await issueOtp(phone, await otpIntent());
   return failure ?? { notice: "We sent a new code." };
 }
 
-/** Step 2: check the code, then sign in, or start onboarding for a new number. */
+/** Step 2: check the code, then sign in, or start onboarding when registering. */
 export async function verifyOtp(_prev: AuthFormState, formData: FormData): Promise<AuthFormState> {
   const cookieStore = await cookies();
   const phone = cookieStore.get(OTP_PHONE_COOKIE)?.value;
@@ -140,11 +176,14 @@ export async function verifyOtp(_prev: AuthFormState, formData: FormData): Promi
   }
   await challenge.deleteOne();
 
+  // Checked again: the number may have been registered (or switched off) since the code was sent.
   const doctor = await DoctorModel.findOne({ phone }).lean();
-  if (doctor && !doctor.isActive) return { error: DISABLED };
+  const refused = checkIntent(await otpIntent(), doctor);
+  if (refused) return refused;
 
-  cookieStore.delete({ name: OTP_PHONE_COOKIE, path: "/login" });
-  cookieStore.delete({ name: DEV_OTP_COOKIE, path: "/login" });
+  for (const name of [OTP_PHONE_COOKIE, OTP_INTENT_COOKIE, DEV_OTP_COOKIE]) {
+    cookieStore.delete({ name, path: "/" });
+  }
   await createSession(phone, doctor?._id);
   redirect(doctor && isProfileComplete(doctor) ? "/" : "/onboarding");
 }
@@ -178,54 +217,15 @@ export type OnboardingState = {
   attempt?: number;
 };
 
-const optionalText = (max: number) =>
-  z
-    .string()
-    .trim()
-    .max(max, `Keep this under ${max} characters`)
-    .transform((value) => value || undefined);
-
-/** A typed specialty or language: starts with a letter, no digits or odd symbols. */
-/**
- * Suggestions pass as they are (the app's specialties are keys like `general_medicine`);
- * only what the doctor typed is checked.
- */
-const entry = (suggestions: Suggestion[], max: number, message: string) => {
-  const known = new Set(suggestions.map((s) => s.value));
-  const typed = /^\p{L}[\p{L}\p{M} &()\/.'-]*$/u;
-  return z
-    .string()
-    .refine((value) => known.has(value) || (value.length >= 2 && typed.test(value)), message)
-    .refine((value) => known.has(value) || value.length <= max, `Keep each under ${max} characters`);
-};
-
 const onboardingSchema = z.object({
-  name: z.string().trim().min(2, "Enter your full name").max(80, "Keep this under 80 characters"),
-  registrationNumber: z
-    .string()
-    .trim()
-    .min(3, "Enter your medical registration number")
-    .max(40, "Keep this under 40 characters"),
-  council: optionalText(80),
-  qualifications: optionalText(120),
-  specialties: z
-    .array(entry(specialtySuggestions, 50, "Specialties can use letters, spaces and & ( ) / - only"))
-    .min(1, "Add at least one specialty")
-    .max(10, "Add up to 10 specialties"),
-  languages: z
-    .array(entry(languageSuggestions, 30, "Languages can use letters and spaces only"))
-    .min(1, "Add at least one language you consult in")
-    .max(12, "Add up to 12 languages"),
-  state: z
-    .string()
-    .transform((state): string => canonicalState(state) ?? "")
-    .pipe(z.string().min(1, "Choose your state or union territory from the list")),
-  city: z
-    .string()
-    .trim()
-    .min(2, "Enter your city")
-    .max(60, "Keep this under 60 characters")
-    .regex(/^\p{L}[\p{L}\p{M} .'-]*$/u, "City can use letters, spaces and . ' - only"),
+  name: profileFields.name,
+  registrationNumber: profileFields.registrationNumber,
+  council: profileFields.council,
+  qualifications: profileFields.qualifications,
+  specialties: profileFields.specialties,
+  languages: profileFields.languages,
+  state: profileFields.state,
+  city: profileFields.city,
   consent: z.literal(true, { error: "Please confirm to continue" }),
 });
 

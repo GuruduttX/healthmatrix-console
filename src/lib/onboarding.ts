@@ -14,6 +14,9 @@ import {
 
 export type Suggestion = { value: string; label: string };
 
+/** How long "About you" on Edit profile may be. */
+export const ABOUT_MAX = 600;
+
 /** The app's specialties are stored as their keys; the rest as written. */
 export const specialtySuggestions: Suggestion[] = [
   ...SPECIALTIES.map((key) => ({ value: key, label: SPECIALTY_LABELS[key] })),

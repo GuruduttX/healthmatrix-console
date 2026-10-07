@@ -1,5 +1,6 @@
 import { CircleCheck } from "lucide-react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { LoginForm } from "@/components/auth/login-form";
@@ -28,14 +29,16 @@ export default async function LoginPage(props: PageProps<"/login">) {
 
       <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink">Sign in to the doctor console</h1>
       <p className="mt-2 text-body">
-        Enter your mobile number. We’ll send a one-time password.
+        Enter your registered mobile number. We’ll send a one-time password.
       </p>
 
-      <LoginForm />
+      <LoginForm intent="login" />
 
       <p className="mt-6 text-sm text-body">
-        New to the network? Use your mobile number above to get started. You’ll set up your
-        profile after the OTP.
+        New to the network?{" "}
+        <Link href="/register" className="font-bold text-brand hover:underline">
+          Register as a doctor
+        </Link>
       </p>
       <p className="mt-10 text-xs leading-relaxed text-body">
         For registered medical practitioners. Consultations follow India’s Telemedicine Practice

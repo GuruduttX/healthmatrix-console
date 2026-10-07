@@ -1,6 +1,6 @@
 "use client";
 
-import { Syringe, X } from "lucide-react";
+import { History, Syringe, X } from "lucide-react";
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 
 import {
@@ -61,6 +61,46 @@ function toDraft(v?: VaccineInput): Draft {
   };
 }
 
+const blankDraft = () => JSON.stringify(toDraft());
+
+/**
+ * A form kept from earlier (see `rx-autosave.ts`), if it still has the shape of a `Draft`.
+ * Anything missing or odd is dropped rather than trusted.
+ */
+function fromStored(value: unknown): Draft | null {
+  if (!value || typeof value !== "object") return null;
+  const v = value as Record<string, unknown>;
+  const text = (key: keyof Draft) => (typeof v[key] === "string" ? (v[key] as string) : undefined);
+  const oneOf = <T extends string>(key: keyof Draft, allowed: readonly T[]) =>
+    allowed.includes(v[key] as T) ? (v[key] as T) : undefined;
+  const dates = Array.isArray(v.dates) && v.dates.every((d) => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d))
+    ? (v.dates as string[]).slice(0, MAX_DOSES)
+    : undefined;
+  const base = toDraft();
+  return {
+    name: text("name") ?? base.name,
+    brand: text("brand") ?? base.brand,
+    doseAmount: text("doseAmount") ?? base.doseAmount,
+    doseUnit: oneOf("doseUnit", VACCINE_DOSE_UNITS) ?? base.doseUnit,
+    route: oneOf("route", VACCINE_ROUTES) ?? "",
+    site: oneOf("site", VACCINE_SITES) ?? "",
+    schedule: oneOf("schedule", ["one_time", "recurring"] as const) ?? base.schedule,
+    everyCount: text("everyCount") ?? base.everyCount,
+    everyUnit: oneOf("everyUnit", INTERVAL_UNITS) ?? base.everyUnit,
+    doseCount: text("doseCount") ?? base.doseCount,
+    startDose: text("startDose") ?? base.startDose,
+    dates: dates?.length ? dates : base.dates,
+    instructions: text("instructions") ?? base.instructions,
+  };
+}
+
+/** Where a half-filled "Add a vaccine" form is kept between openings. */
+export type VaccineFormMemory = {
+  load: () => unknown;
+  save: (form: Draft) => void;
+  clear: () => void;
+};
+
 const toNumber = (text: string) => (text.trim() === "" ? NaN : Number(text));
 
 function toInput(d: Draft) {
@@ -98,17 +138,36 @@ export function VaccineDialog({
   vaccine,
   onSave,
   onClose,
+  memory,
 }: {
   open: boolean;
   /** The vaccine being edited; empty to add a new one. */
   vaccine?: VaccineInput;
+  /** Adding only: keeps what is typed, so closing or a refresh doesn't lose it. */
+  memory?: VaccineFormMemory;
   onSave: (vaccine: VaccineInput) => void;
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const id = useId();
-  const [draft, setDraft] = useState(() => toDraft(vaccine));
+  // Opened by a click, never on the server, so storage can be read straight away.
+  const [kept] = useState(() => (!vaccine && memory ? fromStored(memory.load()) : null));
+  const [draft, setDraft] = useState(() => kept ?? toDraft(vaccine));
   const [errors, setErrors] = useState<Errors>({});
+  const [showKept, setShowKept] = useState(Boolean(kept));
+
+  // Keep what has been typed; an untouched form leaves nothing behind.
+  useEffect(() => {
+    if (!memory) return;
+    if (JSON.stringify(draft) === blankDraft()) memory.clear();
+    else memory.save(draft);
+  }, [draft, memory]);
+
+  function startOver() {
+    setDraft(toDraft());
+    setErrors({});
+    setShowKept(false);
+  }
 
   useEffect(() => {
     const dialog = ref.current;
@@ -181,6 +240,19 @@ export function VaccineDialog({
 
         {/* Two columns from md up: what the vaccine is, then when it is given. Wide enough not to scroll. */}
         <div className="flex-1 overflow-y-auto px-5 py-5 md:grid md:py-4 md:grid-cols-2 md:gap-x-8 md:px-6">
+          {showKept ? (
+            <div role="status" className="mb-5 flex items-center gap-3 rounded-xl bg-brand-soft p-3 text-sm md:col-span-2 md:mb-4">
+              <History aria-hidden className="size-4 shrink-0 text-brand" />
+              <p className="min-w-0 flex-1 font-semibold text-ink">Filled in with what you started earlier.</p>
+              <button
+                type="button"
+                onClick={startOver}
+                className="shrink-0 rounded-full px-3 py-1.5 text-xs font-bold text-danger hover:bg-white/60"
+              >
+                Start over
+              </button>
+            </div>
+          ) : null}
           <div className="mb-5 md:mb-0">
             <Section title="Vaccine">
               <Field id={`${id}-name`} label="Name" error={errorFor("name")}>

@@ -16,6 +16,7 @@ import {
   TestOrderModel,
   VaccinationModel,
   type AccessGrant,
+  type Doctor,
   type EmergencyProfile,
   type HealthRecord,
   type Member,
@@ -36,6 +37,14 @@ import {
   timeLeft,
 } from "./format";
 import { allergyTerms } from "./patient-text";
+import {
+  istInstant,
+  resolveSchedule,
+  slotDays,
+  type SavedSchedule,
+  type Schedule,
+  type Session,
+} from "./schedule";
 import { dateToDay, describeDose, describeSchedule, formatDay, todayInIndia, type VaccineInput } from "./vaccines";
 import type {
   AccessLogEntry,
@@ -897,19 +906,43 @@ export async function getAttentionFlags(): Promise<AttentionFlag[]> {
 
 const NOTIFICATION_DAYS = 14;
 
-/** Built from what happened: shared records, OTPs waiting, results back and access ending. */
+/** A consult this close to its start shows as starting soon. */
+const STARTING_SOON_MS = 10 * 60 * 1000;
+
+/**
+ * Built from what happened: shared records, OTPs waiting, results back, access ending,
+ * bookings and cancellations, and consults about to start. The doctor's alert switches
+ * decide which of these are listed.
+ */
 export async function getNotifications() {
   const doctor = await requireDoctor();
   await connectDB();
   const now = new Date();
   const since = new Date(now.getTime() - NOTIFICATION_DAYS * 24 * 60 * 60 * 1000);
   const seenAt = doctor.settings?.notificationsSeenAt ?? new Date(0);
+  const { alerts } = resolveSettings(doctor.settings);
 
-  const [logs, results] = await Promise.all([
-    AccessLogModel.find({ doctor: doctor._id, updatedAt: { $gte: since } }).sort({ updatedAt: -1 }).limit(50).lean(),
-    TestOrderModel.find({ doctor: doctor._id, status: "result_back" }).sort({ updatedAt: -1 }).limit(50).lean(),
+  const [logs, results, booked, cancelled, starting] = await Promise.all([
+    alerts.otp
+      ? AccessLogModel.find({ doctor: doctor._id, updatedAt: { $gte: since } }).sort({ updatedAt: -1 }).limit(50).lean()
+      : [],
+    alerts.results
+      ? TestOrderModel.find({ doctor: doctor._id, status: "result_back" }).sort({ updatedAt: -1 }).limit(50).lean()
+      : [],
+    alerts.bookings
+      ? ConsultModel.find({ doctor: doctor._id, createdAt: { $gte: since } }).sort({ createdAt: -1 }).limit(50).lean()
+      : [],
+    // Before consults said who cancelled, only members could.
+    alerts.bookings
+      ? ConsultModel.find({ doctor: doctor._id, status: "cancelled", cancelledBy: { $ne: "doctor" }, cancelledAt: { $gte: since } })
+          .sort({ cancelledAt: -1 })
+          .limit(50)
+          .lean()
+      : [],
+    alerts.starting ? findStartingSoon(doctor._id, now) : [],
   ]);
-  const members = await MemberModel.find({ _id: { $in: [...logs, ...results].map((r) => r.member) } })
+  const memberIds = [...logs, ...results, ...booked, ...cancelled, ...starting].map((r) => r.member);
+  const members = await MemberModel.find({ _id: { $in: memberIds } })
     .select("name")
     .lean();
   const memberOf = new Map(members.map((m) => [String(m._id), toRef(m)]));
@@ -963,6 +996,42 @@ export async function getNotifications() {
       tone: flag === "high" || flag === "low" ? "danger" : flag === "borderline" || flag === "watch" ? "warning" : "brand",
     });
   }
+  for (const consult of booked) {
+    const patient = memberOf.get(String(consult.member));
+    if (!patient) continue;
+    items.push({
+      id: `${consult._id}-booked`,
+      at: consult.createdAt,
+      title: `${patient.name} booked a consult`,
+      body: [formatWhen(consult.scheduledAt, now), consult.reason?.trim()].filter(Boolean).join(". ") + ".",
+      href: `/consults/${consult._id}`,
+      tone: "brand",
+    });
+  }
+  for (const consult of cancelled) {
+    const patient = memberOf.get(String(consult.member));
+    if (!patient || !consult.cancelledAt) continue;
+    items.push({
+      id: `${consult._id}-cancelled`,
+      at: consult.cancelledAt,
+      title: `${patient.name} cancelled their consult`,
+      body: `It was for ${formatWhen(consult.scheduledAt, now)}. The slot is free again.`,
+      href: "/schedule",
+      tone: "neutral",
+    });
+  }
+  for (const consult of starting) {
+    const patient = memberOf.get(String(consult.member));
+    if (!patient) continue;
+    items.push({
+      id: `${consult._id}-starting`,
+      at: new Date(Math.min(now.getTime(), consult.scheduledAt.getTime() - STARTING_SOON_MS)),
+      title: `${patient.firstName}’s consult starts at ${formatTime(consult.scheduledAt)}`,
+      body: consult.reason?.trim() ? `About: ${consult.reason.trim()}` : "Open the consult to get ready.",
+      href: `/consults/${consult._id}`,
+      tone: "warning",
+    });
+  }
 
   const list: Notification[] = items
     .sort((a, b) => b.at.getTime() - a.at.getTime())
@@ -970,19 +1039,39 @@ export async function getNotifications() {
   return { list, unread: list.filter((n) => n.unread).length };
 }
 
+function findStartingSoon(doctorId: Id, now: Date) {
+  return ConsultModel.find({
+    doctor: doctorId,
+    status: "scheduled",
+    scheduledAt: { $gte: now, $lte: new Date(now.getTime() + STARTING_SOON_MS) },
+  })
+    .sort({ scheduledAt: 1 })
+    .lean();
+}
+
+/** Consults starting in the next few minutes, for the banner on Today. Empty when that alert is off. */
+export async function getStartingSoon() {
+  const doctor = await requireDoctor();
+  if (!resolveSettings(doctor.settings).alerts.starting) return [];
+  await connectDB();
+  const docs = await findStartingSoon(doctor._id, new Date());
+  return toConsults(doctor._id, docs);
+}
+
 // ---------------------------------------------------------------------------
 // Settings
 
 export const DEFAULT_SETTINGS = {
-  availability: { gpNow: true, podCalls: true, appointments: false },
-  alerts: { otp: true, results: true, starting: true, ekaay: false },
+  /** Not used by the app yet; shown as coming soon. Bookings are `schedule.acceptingBookings`. */
+  availability: { gpNow: true, podCalls: true },
+  alerts: { otp: true, results: true, starting: true, bookings: true, ekaay: false },
 };
 
 export type SettingGroup = keyof typeof DEFAULT_SETTINGS;
 
-export async function getSettings() {
-  const doctor = await requireDoctor();
-  const saved = doctor.settings;
+type SavedSettings = Doc<Doctor>["settings"];
+
+function resolveSettings(saved: SavedSettings) {
   const pick = <G extends SettingGroup>(group: G) =>
     Object.fromEntries(
       Object.entries(DEFAULT_SETTINGS[group]).map(([key, fallback]) => {
@@ -991,4 +1080,98 @@ export async function getSettings() {
       }),
     ) as (typeof DEFAULT_SETTINGS)[G];
   return { availability: pick("availability"), alerts: pick("alerts") };
+}
+
+export async function getSettings() {
+  const doctor = await requireDoctor();
+  return resolveSettings(doctor.settings);
+}
+
+// ---------------------------------------------------------------------------
+// Availability: when members can book, as the app reads it
+
+export type TimeOffView = { id: string; label: string; note?: string; now: boolean };
+
+export type Availability = {
+  acceptingBookings: boolean;
+  slotMinutes: number;
+  bookingWindowDays: number;
+  minNoticeMinutes: number;
+  weekly: Session[];
+  timeOff: TimeOffView[];
+};
+
+const atMidnight = (date: Date) => istDayStart(date).getTime() === date.getTime();
+
+/** "Fri 9 Oct to Sat 10 Oct", "Tomorrow", or "Thu 8 Oct, 10:00 am to 11:00 am". */
+export function describeTimeOff(start: Date, end: Date, now = new Date()) {
+  if (atMidnight(start) && atMidnight(end)) {
+    const last = new Date(end.getTime() - 1);
+    const first = dayLabel(start, now);
+    const final = dayLabel(last, now);
+    return first === final ? first : `${first} to ${final}`;
+  }
+  if (istDayStart(start).getTime() === istDayStart(end).getTime() || (atMidnight(end) && istDayStart(start, 1).getTime() === end.getTime())) {
+    return `${dayLabel(start, now)}, ${formatTime(start)} to ${atMidnight(end) ? "midnight" : formatTime(end)}`;
+  }
+  return `${formatWhen(start, now)} to ${formatWhen(end, now)}`;
+}
+
+/** Part-day time off that touches a working day, as one line. */
+function partDayNote(schedule: Schedule, date: string) {
+  const dayStart = istInstant(date, "00:00").getTime();
+  const dayEnd = dayStart + 86_400_000;
+  const parts = schedule.timeOff.filter((t) => t.start.getTime() < dayEnd && dayStart < t.end.getTime());
+  if (parts.length === 0) return undefined;
+  return (
+    "Away " +
+    parts
+      .map((t) => {
+        const from = t.start.getTime() <= dayStart ? "start of day" : formatTime(t.start);
+        const to = t.end.getTime() >= dayEnd ? "end of day" : formatTime(t.end);
+        return `${from} to ${to}`;
+      })
+      .join(", ")
+  );
+}
+
+export async function getAvailability(): Promise<Availability> {
+  const doctor = await requireDoctor();
+  await connectDB();
+  const schedule = resolveSchedule(doctor.schedule as SavedSchedule);
+  const now = new Date();
+
+  return {
+    acceptingBookings: schedule.acceptingBookings,
+    slotMinutes: schedule.slotMinutes,
+    bookingWindowDays: schedule.bookingWindowDays,
+    minNoticeMinutes: schedule.minNoticeMinutes,
+    weekly: schedule.weekly,
+    timeOff: schedule.timeOff
+      .filter((t) => t.end > now)
+      .map((t) => ({
+        id: t.id ?? "",
+        label: describeTimeOff(t.start, t.end, now),
+        note: t.note,
+        now: t.start <= now,
+      })),
+  };
+}
+
+/**
+ * What each of the next two weeks looks like for the schedule list: "Day off", "Away" or a
+ * part-day note, keyed by the same day labels consults use.
+ */
+export async function getDayNotes(): Promise<Record<string, string>> {
+  const doctor = await requireDoctor();
+  const schedule = resolveSchedule(doctor.schedule as SavedSchedule);
+  const now = new Date();
+  const notes: Record<string, string> = {};
+  // Every working day, ignoring pauses and notice: this is about the doctor's own time.
+  for (const day of slotDays({ ...schedule, acceptingBookings: true, minNoticeMinutes: 0, bookingWindowDays: 15 }, [], now)) {
+    const label = dayLabel(istInstant(day.date, "12:00"), now);
+    const note = day.off === "weekly" ? "Not a working day" : day.off === "time_off" ? "Time off" : partDayNote(schedule, day.date);
+    if (note) notes[label] = note;
+  }
+  return notes;
 }

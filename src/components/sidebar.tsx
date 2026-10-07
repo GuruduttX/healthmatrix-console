@@ -14,6 +14,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { CheckNewButton } from "@/components/check-new-button";
+import { DoctorAvatar } from "@/components/doctor-avatar";
+import { isFocusScreen } from "@/components/mobile-chrome";
 import type { Doctor } from "@/lib/types";
 
 const navItems: { href: string; label: string; icon: LucideIcon; also?: string[]; short?: string }[] = [
@@ -65,9 +67,7 @@ export function Sidebar({ doctor }: { doctor: Doctor }) {
       <CheckNewButton variant="sidebar" />
 
       <Link href="/profile" className="mt-4 flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-white/5">
-        <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-success text-xs font-bold">
-          {doctor.initials}
-        </span>
+        <DoctorAvatar photoUrl={doctor.photoUrl} initials={doctor.initials} />
         <span className="min-w-0 leading-tight">
           <span className="block truncate text-sm font-semibold">{doctor.name}</span>
           <span className="block truncate text-xs text-white/60">{doctor.specialty}</span>
@@ -80,6 +80,8 @@ export function Sidebar({ doctor }: { doctor: Doctor }) {
 /** Bottom tab bar shown when the sidebar is hidden. Access log stays in the account menu. */
 export function MobileNav() {
   const pathname = usePathname();
+  // Focus screens have their own action bar along the bottom.
+  if (isFocusScreen(pathname)) return null;
 
   return (
     <nav
