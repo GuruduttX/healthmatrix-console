@@ -1,8 +1,8 @@
 "use client";
 
-import { CircleCheck, LockOpen, Mic, MicOff, PhoneOff, Video, VideoOff } from "lucide-react";
+import { CircleCheck, LockOpen, Maximize2, Mic, MicOff, Minimize2, PhoneOff, Video, VideoOff } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 import { endConsult, startConsult } from "@/lib/console-actions";
 import type { ConsultStatus } from "@/lib/types";
@@ -25,7 +25,7 @@ const secondsSince = (iso?: string) => (iso ? Math.max(0, Math.floor((Date.now()
 
 /**
  * The video area of a consult. Starting and ending are saved to the consult; the picture is a
- * placeholder until a video provider is chosen.
+ * placeholder until Twilio Video is connected. It can fill the screen and shrink back.
  */
 export function ConsultStage({
   consultId,
@@ -50,6 +50,41 @@ export function ConsultStage({
   const [phase, setPhase] = useState<Phase>(initialPhase[status]);
   const [seconds, setSeconds] = useState(() => secondsSince(startedAt));
   const [pending, startTransition] = useTransition();
+  const stageRef = useRef<HTMLElement>(null);
+  /** Filling the screen. Browser full screen where allowed, else a fixed overlay (iPhone Safari). */
+  const [expanded, setExpanded] = useState(false);
+
+  function expand() {
+    setExpanded(true);
+    stageRef.current?.requestFullscreen?.().catch(() => {});
+  }
+
+  function shrink() {
+    setExpanded(false);
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  }
+
+  // Leaving browser full screen (Esc, a swipe) or pressing Esc on the overlay shrinks it too, and
+  // the page behind stops scrolling while it fills the screen.
+  useEffect(() => {
+    if (!expanded) return;
+    const onFullscreen = () => {
+      if (!document.fullscreenElement) setExpanded(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setExpanded(false);
+    };
+    const root = document.documentElement;
+    const overflow = root.style.overflow;
+    root.style.overflow = "hidden";
+    document.addEventListener("fullscreenchange", onFullscreen);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      root.style.overflow = overflow;
+      document.removeEventListener("fullscreenchange", onFullscreen);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [expanded]);
 
   function start() {
     startTransition(async () => {
@@ -62,6 +97,7 @@ export function ConsultStage({
   function end() {
     startTransition(async () => {
       await endConsult(consultId);
+      shrink();
       setPhase("ended");
     });
   }
@@ -104,10 +140,15 @@ export function ConsultStage({
 
   return (
     <section
+      ref={stageRef}
       aria-label="Video consult"
-      className="relative flex aspect-video min-h-80 w-full flex-col items-center justify-center overflow-hidden rounded-3xl bg-linear-to-br from-ink-mid to-ink text-white"
+      className={`flex flex-col items-center justify-center overflow-hidden bg-linear-to-br from-ink-mid to-ink text-white ${
+        expanded ? "fixed inset-0 z-50 h-dvh w-full" : "relative aspect-video min-h-80 w-full rounded-3xl"
+      }`}
     >
-      <div className="absolute inset-x-4 top-4 flex items-center justify-between gap-3">
+      <div
+        className={`absolute inset-x-4 flex items-center justify-between gap-3 ${expanded ? "top-[calc(1rem+env(safe-area-inset-top))]" : "top-4"}`}
+      >
         {recordShared ? (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-success-soft px-3 py-1.5 text-xs font-bold text-success">
             <LockOpen aria-hidden className="size-3.5" />
@@ -116,11 +157,22 @@ export function ConsultStage({
         ) : (
           <span className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold">Record not shared yet</span>
         )}
-        {live ? (
-          <span className="rounded-full bg-black/30 px-3 py-1.5 text-sm font-bold tabular-nums" aria-label="Call time">
-            {clock(seconds)}
-          </span>
-        ) : null}
+        <div className="flex shrink-0 items-center gap-2">
+          {live ? (
+            <span className="rounded-full bg-black/30 px-3 py-1.5 text-sm font-bold tabular-nums" aria-label="Call time">
+              {clock(seconds)}
+            </span>
+          ) : null}
+          <button
+            type="button"
+            onClick={expanded ? shrink : expand}
+            aria-label={expanded ? "Exit full screen" : "Full screen"}
+            title={expanded ? "Exit full screen" : "Full screen"}
+            className="inline-flex size-9 items-center justify-center rounded-full bg-black/30 hover:bg-black/50"
+          >
+            {expanded ? <Minimize2 aria-hidden className="size-4" /> : <Maximize2 aria-hidden className="size-4" />}
+          </button>
+        </div>
       </div>
 
       <span className="inline-flex size-28 items-center justify-center rounded-full bg-brand-mid font-display text-4xl font-bold">
@@ -133,7 +185,13 @@ export function ConsultStage({
 
       {live ? (
         <>
-          <span className="absolute right-4 top-16 flex h-20 w-16 items-center sm:bottom-20 sm:top-auto sm:h-24 sm:w-20 justify-center rounded-xl border border-white/40 bg-ink-mid">
+          <span
+            className={`absolute right-4 flex h-20 w-16 items-center justify-center rounded-xl border border-white/40 bg-ink-mid sm:top-auto ${
+              expanded
+                ? "top-[calc(4rem+env(safe-area-inset-top))] sm:bottom-[calc(6rem+env(safe-area-inset-bottom))] sm:h-36 sm:w-28"
+                : "top-16 sm:bottom-20 sm:h-24 sm:w-20"
+            }`}
+          >
             {cameraOn ? (
               <span className="inline-flex size-10 items-center justify-center rounded-full bg-success text-xs font-bold">
                 {doctorInitials}
@@ -142,7 +200,7 @@ export function ConsultStage({
               <VideoOff aria-hidden className="size-5 text-white/70" />
             )}
           </span>
-          <div className="absolute bottom-4 flex items-center gap-3">
+          <div className={`absolute flex items-center gap-3 ${expanded ? "bottom-[calc(1.5rem+env(safe-area-inset-bottom))]" : "bottom-4"}`}>
             <button
               type="button"
               aria-pressed={!micOn}
