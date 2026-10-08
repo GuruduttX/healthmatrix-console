@@ -32,6 +32,9 @@ export default async function EditProfilePage() {
       }}
       photo={<PhotoPicker photoUrl={doctor.photoUrl} initials={doctor.initials} />}
       progress={profilePercent(doctor.missing)}
+      missing={doctor.missing}
+      name={doctor.name}
+      specialty={doctor.specialty}
     />
   );
 }

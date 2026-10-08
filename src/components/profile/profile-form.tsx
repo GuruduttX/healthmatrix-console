@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, Lock } from "lucide-react";
+import { ChevronLeft, CircleCheck, CircleDashed, Lock } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState, type ReactNode } from "react";
@@ -9,12 +9,14 @@ import { FormMessage } from "@/components/auth/form-message";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { TagInput } from "@/components/auth/tag-input";
 import { ABOUT_MAX, languageSuggestions, specialtySuggestions } from "@/lib/onboarding";
+import { GAP_LABELS } from "@/lib/profile-gaps";
 import {
   updateProfile,
   type ProfileField,
   type ProfileFormState,
   type ProfileValues,
 } from "@/lib/profile-actions";
+import type { ProfileGap } from "@/lib/types";
 import { INDIAN_STATES } from "@/models/constants";
 
 const councils = [
@@ -31,6 +33,14 @@ const inputClass =
 
 type Errors = Partial<Record<ProfileField, string>>;
 
+/** The field each missing part is filled in at; the photo has its own picker. */
+const GAP_FIELDS: Partial<Record<ProfileGap, string>> = {
+  qualifications: "qualifications",
+  council: "council",
+  experience: "experienceYears",
+  about: "about",
+};
+
 /** Read-only details shown at the end; changing them goes through the HealthMatrix team. */
 export type LockedDetails = { phone: string; registrationNumber: string; council: string };
 
@@ -39,6 +49,9 @@ export function ProfileForm({
   locked,
   photo,
   progress,
+  missing,
+  name,
+  specialty,
 }: {
   initial: ProfileValues;
   locked: LockedDetails;
@@ -46,6 +59,11 @@ export function ProfileForm({
   photo: ReactNode;
   /** How complete the profile is, for the bar under the header. */
   progress: number;
+  /** What the profile still lacks, listed beside the form on wide screens. */
+  missing: ProfileGap[];
+  /** As saved, for the card beside the form. */
+  name: string;
+  specialty: string;
 }) {
   const [state, action, pending] = useActionState(updateProfile, {} satisfies ProfileFormState);
   const router = useRouter();
@@ -56,6 +74,13 @@ export function ProfileForm({
   function leave() {
     if (document.querySelector("form[data-dirty='true']")) setLeaving(true);
     else router.push("/profile");
+  }
+
+  /** Takes the doctor to the field for a missing part. */
+  function goTo(field: string) {
+    const el = document.getElementById(field);
+    el?.scrollIntoView({ block: "center", behavior: "smooth" });
+    el?.focus({ preventScroll: true });
   }
 
   return (
@@ -80,29 +105,79 @@ export function ProfileForm({
           Profile and settings
         </Link>
         <h1 className="mt-2 font-display text-3xl font-bold text-ink">Edit profile</h1>
+        <p className="mt-2 max-w-2xl text-body">Patients see this before they share their record with you.</p>
       </div>
 
-      <div className="mx-auto w-full max-w-2xl lg:mx-0 lg:mt-6">
-        {photo}
-        <div className="mx-auto mt-4 max-w-xs" aria-hidden>
-          <div className="h-1.5 overflow-hidden rounded-full bg-line">
-            <div className="h-full rounded-full bg-success transition-[width]" style={{ width: `${progress}%` }} />
+      {/* Phones: one column, photo first. Wide screens: the photo and progress stay beside the form. */}
+      <div className="mx-auto w-full max-w-2xl lg:mx-0 lg:mt-6 lg:grid lg:max-w-6xl lg:grid-cols-[18rem_minmax(0,1fr)] lg:items-start lg:gap-8">
+        <aside className="lg:sticky lg:top-6 lg:rounded-2xl lg:border lg:border-line lg:bg-card lg:p-6 lg:shadow-card">
+          {photo}
+          <div className="hidden text-center lg:block">
+            <p className="font-display text-lg font-bold text-ink">{name}</p>
+            {specialty ? <p className="text-sm text-body">{specialty}</p> : null}
           </div>
+
+          <div className="mx-auto mt-4 max-w-xs lg:mt-6 lg:max-w-none lg:border-t lg:border-line lg:pt-5">
+            <p className="mb-2 hidden items-center justify-between text-sm lg:flex">
+              <span className="font-semibold text-ink">Profile complete</span>
+              <span className="font-bold text-success">{progress}%</span>
+            </p>
+            <div aria-hidden className="h-1.5 overflow-hidden rounded-full bg-line">
+              <div className="h-full rounded-full bg-success transition-[width]" style={{ width: `${progress}%` }} />
+            </div>
+            {missing.length ? (
+              <ul className="mt-4 hidden flex-col gap-1 lg:flex">
+                {missing.map((gap) => {
+                  const field = GAP_FIELDS[gap];
+                  const label = `Add ${GAP_LABELS[gap].toLowerCase()}`;
+                  return (
+                    <li key={gap}>
+                      {field ? (
+                        <button
+                          type="button"
+                          onClick={() => goTo(field)}
+                          className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-sm font-semibold text-ink hover:bg-selected"
+                        >
+                          <CircleDashed aria-hidden className="size-4 shrink-0 text-brand" />
+                          {label}
+                        </button>
+                      ) : (
+                        <span className="flex items-center gap-2.5 px-2 py-1.5 text-sm font-semibold text-ink">
+                          <CircleDashed aria-hidden className="size-4 shrink-0 text-brand" />
+                          {label}
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="mt-4 hidden items-center gap-2 text-sm font-semibold text-success lg:flex">
+                <CircleCheck aria-hidden className="size-4" />
+                Everything patients look for is there.
+              </p>
+            )}
+            <p className="mt-4 hidden text-xs leading-relaxed text-body lg:block">
+              A complete profile helps patients trust who they are sharing with.
+            </p>
+          </div>
+        </aside>
+
+        <div className="min-w-0">
+          <FormMessage error={state.error} />
+
+          {/* Re-mounted after each attempt so a rejected form comes back filled in. */}
+          <Fields
+            key={state.attempt ?? 0}
+            action={action}
+            pending={pending}
+            values={state.values ?? initial}
+            errors={state.fieldErrors ?? {}}
+            locked={locked}
+            attempt={state.attempt ?? 0}
+            onCancel={leave}
+          />
         </div>
-
-        <FormMessage error={state.error} />
-
-        {/* Re-mounted after each attempt so a rejected form comes back filled in. */}
-        <Fields
-          key={state.attempt ?? 0}
-          action={action}
-          pending={pending}
-          values={state.values ?? initial}
-          errors={state.fieldErrors ?? {}}
-          locked={locked}
-          attempt={state.attempt ?? 0}
-          onCancel={leave}
-        />
       </div>
 
       {leaving ? (
@@ -120,13 +195,34 @@ export function ProfileForm({
   );
 }
 
-function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
+/**
+ * A group of fields. Phones: a small caps label above the card, like a settings app. Wide
+ * screens: the title and hint head the card itself.
+ */
+function Section({
+  title,
+  hint,
+  first = false,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  /** Lines up with the photo card on wide screens. (`first:` can't tell: React puts hidden inputs ahead of it.) */
+  first?: boolean;
+  children: ReactNode;
+}) {
   return (
-    <section className="mt-6">
-      <h2 className="px-1 text-xs font-bold uppercase tracking-wider text-body">{title}</h2>
-      {hint ? <p className="mt-1 px-1 text-xs text-body">{hint}</p> : null}
-      <div className="mt-2 flex flex-col gap-5 rounded-2xl border border-line bg-card p-4 shadow-card sm:p-5">
-        {children}
+    <section className={`mt-6 ${first ? "lg:mt-0" : ""}`}>
+      <div className="lg:hidden">
+        <h2 className="px-1 text-xs font-bold uppercase tracking-wider text-body">{title}</h2>
+        {hint ? <p className="mt-1 px-1 text-xs text-body">{hint}</p> : null}
+      </div>
+      <div className="mt-2 rounded-2xl border border-line bg-card shadow-card lg:mt-0">
+        <div className="hidden border-b border-line px-6 py-4 lg:block">
+          <h2 className="font-display text-base font-bold text-ink">{title}</h2>
+          {hint ? <p className="mt-0.5 text-sm text-body">{hint}</p> : null}
+        </div>
+        <div className="flex flex-col gap-5 p-4 sm:p-5 lg:p-6">{children}</div>
       </div>
     </section>
   );
@@ -217,29 +313,31 @@ function Fields({
       // Room for the save bar that floats over the bottom on phones.
       className="pb-24 lg:pb-0"
     >
-      <Section title="About you" hint="Patients see this before they share their record with you.">
-        <Field id="name" label="Full name" error={errors.name}>
-          <input
-            id="name"
-            name="name"
-            autoComplete="name"
-            defaultValue={values.name}
-            placeholder="Dr Anjali Mehta"
-            className={inputClass}
-            {...invalid("name")}
-          />
-        </Field>
-        <Field id="qualifications" label="Qualifications" optional error={errors.qualifications}>
-          <input
-            id="qualifications"
-            name="qualifications"
-            autoComplete="off"
-            defaultValue={values.qualifications}
-            placeholder="MBBS, MD (Medicine)"
-            className={inputClass}
-            {...invalid("qualifications")}
-          />
-        </Field>
+      <Section first title="About you" hint="Your name, training and a few lines in your own words.">
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field id="name" label="Full name" error={errors.name}>
+            <input
+              id="name"
+              name="name"
+              autoComplete="name"
+              defaultValue={values.name}
+              placeholder="Dr Anjali Mehta"
+              className={inputClass}
+              {...invalid("name")}
+            />
+          </Field>
+          <Field id="qualifications" label="Qualifications" optional error={errors.qualifications}>
+            <input
+              id="qualifications"
+              name="qualifications"
+              autoComplete="off"
+              defaultValue={values.qualifications}
+              placeholder="MBBS, MD (Medicine)"
+              className={inputClass}
+              {...invalid("qualifications")}
+            />
+          </Field>
+        </div>
         <Field id="experienceYears" label="Years of experience" optional error={errors.experienceYears}>
           <input
             id="experienceYears"
@@ -279,44 +377,46 @@ function Fields({
         </Field>
       </Section>
 
-      <Section title="Practice">
-        <Field
-          id="specialties"
-          label="Specialties you consult in"
-          error={errors.specialties}
-          hint={<p id="specialties-hint" className="text-xs text-body">Pick from the suggestions, or type your own and press Enter.</p>}
-        >
-          <TagInput
+      <Section title="Practice" hint="Patients find you by these.">
+        <div className="grid gap-5 xl:grid-cols-2">
+          <Field
             id="specialties"
-            name="specialties"
-            suggestions={specialtySuggestions}
-            defaultValue={values.specialties}
-            placeholder="Start typing, e.g. Cardiology"
-            invalid={Boolean(errors.specialties)}
-            describedBy="specialties-hint specialties-error"
-            onChange={markDirty}
-          />
-        </Field>
-        <Field
-          id="languages"
-          label="Languages you consult in"
-          error={errors.languages}
-          hint={<p id="languages-hint" className="text-xs text-body">Pick from the suggestions, or type your own and press Enter.</p>}
-        >
-          <TagInput
+            label="Specialties you consult in"
+            error={errors.specialties}
+            hint={<p id="specialties-hint" className="text-xs text-body">Pick from the suggestions, or type your own and press Enter.</p>}
+          >
+            <TagInput
+              id="specialties"
+              name="specialties"
+              suggestions={specialtySuggestions}
+              defaultValue={values.specialties}
+              placeholder="Start typing, e.g. Cardiology"
+              invalid={Boolean(errors.specialties)}
+              describedBy="specialties-hint specialties-error"
+              onChange={markDirty}
+            />
+          </Field>
+          <Field
             id="languages"
-            name="languages"
-            suggestions={languageSuggestions}
-            defaultValue={values.languages}
-            placeholder="Start typing, e.g. Hindi"
-            invalid={Boolean(errors.languages)}
-            describedBy="languages-hint languages-error"
-            onChange={markDirty}
-          />
-        </Field>
+            label="Languages you consult in"
+            error={errors.languages}
+            hint={<p id="languages-hint" className="text-xs text-body">Pick from the suggestions, or type your own and press Enter.</p>}
+          >
+            <TagInput
+              id="languages"
+              name="languages"
+              suggestions={languageSuggestions}
+              defaultValue={values.languages}
+              placeholder="Start typing, e.g. Hindi"
+              invalid={Boolean(errors.languages)}
+              describedBy="languages-hint languages-error"
+              onChange={markDirty}
+            />
+          </Field>
+        </div>
       </Section>
 
-      <Section title="Location">
+      <Section title="Location" hint="Where you practise.">
         <div className="grid gap-5 sm:grid-cols-2">
           <Field id="state" label="State or union territory" error={errors.state}>
             <input
@@ -350,15 +450,18 @@ function Fields({
       </Section>
 
       <Section title="Registration" hint="To change these, write to the HealthMatrix team.">
-        <dl className="-my-2 divide-y divide-line">
+        <dl className="-my-2 divide-y divide-line lg:my-0 lg:grid lg:grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] lg:gap-3 lg:divide-y-0">
           {[
             { term: "Mobile number", value: locked.phone },
             { term: "Registration number", value: locked.registrationNumber },
             ...(locked.council ? [{ term: "Medical council", value: locked.council }] : []),
           ].map((row) => (
-            <div key={row.term} className="flex items-center justify-between gap-4 py-3 text-sm">
-              <dt className="font-semibold text-body">{row.term}</dt>
-              <dd className="flex min-w-0 items-center gap-2 font-medium text-ink">
+            <div
+              key={row.term}
+              className="flex items-center justify-between gap-4 py-3 text-sm lg:flex-col lg:items-start lg:gap-1 lg:rounded-xl lg:bg-surface lg:px-4"
+            >
+              <dt className="font-semibold text-body lg:text-xs">{row.term}</dt>
+              <dd className="flex min-w-0 max-w-full items-center gap-2 font-medium text-ink">
                 <span className="truncate">{row.value}</span>
                 <Lock aria-label="Locked" className="size-3.5 shrink-0 text-muted" />
               </dd>
@@ -378,9 +481,12 @@ function Fields({
         )}
       </Section>
 
-      {/* Phones: floats over the bottom like an app's action bar. Wider screens: under the form. */}
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-card/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur lg:static lg:mt-8 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none print:hidden">
-        <div className="mx-auto flex max-w-2xl items-center gap-3 lg:mx-0 lg:justify-end">
+      {/* Phones: floats over the bottom like an app's action bar. Wide screens: sticks to the bottom of the form column. */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-card/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur lg:sticky lg:bottom-4 lg:mt-6 lg:rounded-2xl lg:border lg:px-5 lg:py-3 lg:shadow-floating print:hidden">
+        <div className="mx-auto flex max-w-2xl items-center gap-3 lg:max-w-none">
+          <p className="mr-auto hidden text-sm font-semibold lg:block">
+            {dirty ? <span className="text-warning">Unsaved changes</span> : <span className="text-body">No changes yet</span>}
+          </p>
           <button
             type="button"
             onClick={onCancel}

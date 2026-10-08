@@ -80,11 +80,9 @@ export default async function SchedulePage() {
 
         {/* Everything about when members can book, in one card. */}
         <Card>
-          <CardTitle icon={Clock}>Availability</CardTitle>
-          <p className="mt-1 text-sm text-body">
-            When members can book a {availability.slotMinutes}-minute video consult with you in the app.
-          </p>
           <AvailabilityCard
+            title={<CardTitle icon={Clock}>Availability</CardTitle>}
+            description={`When members can book a ${availability.slotMinutes}-minute video consult with you in the app.`}
             acceptingBookings={availability.acceptingBookings}
             weekly={availability.weekly}
             slotMinutes={availability.slotMinutes}
@@ -93,9 +91,13 @@ export default async function SchedulePage() {
           />
 
           <section className="mt-6 border-t border-line pt-5">
-            <CardTitle icon={CalendarOff}>Time off</CardTitle>
-            <p className="mt-1 text-xs text-body">Saved straight away. Members can’t book you then.</p>
-            <TimeOff entries={availability.timeOff} today={istDateKey()} />
+            <TimeOff
+              title={<CardTitle icon={CalendarOff}>Time off</CardTitle>}
+              description="Saved straight away. Members can’t book you then."
+              entries={availability.timeOff}
+              today={istDateKey()}
+              offRestOfToday={availability.offRestOfToday}
+            />
           </section>
 
           <section className="mt-6 border-t border-line pt-5">

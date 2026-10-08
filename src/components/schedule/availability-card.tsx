@@ -1,12 +1,13 @@
 "use client";
 
 import { Plus, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState, type ReactNode } from "react";
 
 import { saveWeeklySchedule } from "@/lib/console-actions";
 import { fromMinutes, LIMITS, toMinutes, WEEKDAYS, type Session } from "@/lib/schedule";
 
 import { ClockField } from "./clock-field";
+import { SectionHeader } from "./section-header";
 import { SaveMessage, useScheduleSave } from "./use-schedule-save";
 
 /** Monday first, as a working week reads. */
@@ -160,15 +161,19 @@ function RuleField({
 /**
  * Everything about when members can book, in one place: open or paused, the hours for each
  * day of the week, and the booking rules. One Save sends it all, checked against consults
- * already booked.
+ * already booked. The chevron by the title hides everything below the weekday tabs.
  */
 export function AvailabilityCard({
+  title,
+  description,
   acceptingBookings,
   weekly,
   slotMinutes,
   bookingWindowDays,
   minNoticeMinutes,
 }: {
+  title: ReactNode;
+  description: ReactNode;
   acceptingBookings: boolean;
   weekly: Session[];
   slotMinutes: number;
@@ -188,6 +193,8 @@ export function AvailabilityCard({
   const [custom, setCustom] = useState(savedSplit.custom);
   const [rules, setRules] = useState(savedRules);
   const [tab, setTab] = useState<Tab>("daily");
+  const [open, setOpen] = useState(true);
+  const bodyId = useId();
   const { run, pending, result, clear, dialog } = useScheduleSave();
 
   const hoursFor = (weekday: number) => custom[weekday] ?? daily;
@@ -201,6 +208,12 @@ export function AvailabilityCard({
   function setDay(weekday: number, hours: Hours[] | undefined) {
     clear();
     setCustom((current) => ({ ...current, [weekday]: hours }));
+  }
+
+  /** Picking a tab while collapsed opens the section, so the tap shows something. */
+  function pickTab(next: Tab) {
+    setTab(next);
+    setOpen(true);
   }
 
   function undo() {
@@ -232,6 +245,9 @@ export function AvailabilityCard({
 
   return (
     <>
+      <SectionHeader title={title} open={open} onToggle={() => setOpen((o) => !o)} controls={bodyId} />
+      <p className="mt-1 text-sm text-body">{description}</p>
+
       <div className="mt-4 flex items-center gap-3 rounded-xl bg-surface p-3">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-ink">Taking new bookings</p>
@@ -251,41 +267,41 @@ export function AvailabilityCard({
         />
       </div>
 
-      <div className={`mt-5 ${accepting ? "" : "opacity-60"}`}>
-        <div role="tablist" aria-label="Timing for" className="flex flex-wrap gap-1.5">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "daily"}
-            onClick={() => setTab("daily")}
-            className={`${tabClass(tab === "daily")} px-4`}
-          >
-            Daily
-          </button>
-          {WEEK_ORDER.map((day) => {
-            const own = custom[day];
-            const off = hoursFor(day).length === 0;
-            const state = off ? "day off" : own ? "own hours" : "daily timing";
-            return (
-              <button
-                key={day}
-                type="button"
-                role="tab"
-                aria-selected={tab === day}
-                aria-label={`${WEEKDAYS[day]}, ${state}`}
-                onClick={() => setTab(day)}
-                className={`${tabClass(tab === day)} w-9 ${off && tab !== day ? "text-muted line-through" : ""}`}
-              >
-                {INITIALS[day]}
-                {own && !off ? (
-                  <span aria-hidden className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-brand ring-2 ring-card" />
-                ) : null}
-              </button>
-            );
-          })}
-        </div>
+      <div role="tablist" aria-label="Timing for" className={`mt-5 flex flex-wrap gap-1.5 ${accepting ? "" : "opacity-60"}`}>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "daily"}
+          onClick={() => pickTab("daily")}
+          className={`${tabClass(tab === "daily")} px-4`}
+        >
+          Daily
+        </button>
+        {WEEK_ORDER.map((day) => {
+          const own = custom[day];
+          const off = hoursFor(day).length === 0;
+          const state = off ? "day off" : own ? "own hours" : "daily timing";
+          return (
+            <button
+              key={day}
+              type="button"
+              role="tab"
+              aria-selected={tab === day}
+              aria-label={`${WEEKDAYS[day]}, ${state}`}
+              onClick={() => pickTab(day)}
+              className={`${tabClass(tab === day)} w-9 ${off && tab !== day ? "text-muted line-through" : ""}`}
+            >
+              {INITIALS[day]}
+              {own && !off ? (
+                <span aria-hidden className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-brand ring-2 ring-card" />
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
 
-        <div role="tabpanel" className="mt-4 rounded-xl border border-line p-3.5">
+      <div id={bodyId} hidden={!open}>
+        <div role="tabpanel" className={`mt-4 rounded-xl border border-line p-3.5 ${accepting ? "" : "opacity-60"}`}>
           {weekday === null ? (
             <>
               <p className="mb-3 text-xs text-body">
@@ -349,54 +365,63 @@ export function AvailabilityCard({
             </>
           )}
         </div>
-      </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-2">
-        <RuleField
-          label="Consult length"
-          unit="min"
-          value={rules.slotMinutes}
-          onChange={(slot) => {
-            clear();
-            setRules((r) => ({ ...r, slotMinutes: slot }));
-          }}
-          min={LIMITS.slotMinutes.min}
-          max={LIMITS.slotMinutes.max}
-          step={LIMITS.slotMinutes.step}
-        />
-        <RuleField
-          label="Patients can book up to"
-          unit="days ahead"
-          value={rules.bookingWindowDays}
-          onChange={(window) => {
-            clear();
-            setRules((r) => ({ ...r, bookingWindowDays: window }));
-          }}
-          min={LIMITS.bookingWindowDays.min}
-          max={LIMITS.bookingWindowDays.max}
-        />
-      </div>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <RuleField
+            label="Consult length"
+            unit="min"
+            value={rules.slotMinutes}
+            onChange={(slot) => {
+              clear();
+              setRules((r) => ({ ...r, slotMinutes: slot }));
+            }}
+            min={LIMITS.slotMinutes.min}
+            max={LIMITS.slotMinutes.max}
+            step={LIMITS.slotMinutes.step}
+          />
+          <RuleField
+            label="Patients can book up to"
+            unit="days ahead"
+            value={rules.bookingWindowDays}
+            onChange={(window) => {
+              clear();
+              setRules((r) => ({ ...r, bookingWindowDays: window }));
+            }}
+            min={LIMITS.bookingWindowDays.min}
+            max={LIMITS.bookingWindowDays.max}
+          />
+        </div>
 
-      <SaveMessage result={result} savedText="Saved. The app now offers these hours." />
+        <SaveMessage result={result} savedText="Saved. The app now offers these hours." />
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={save}
-          disabled={pending || !dirty}
-          className="rounded-full bg-brand px-5 py-2 text-sm font-bold text-white hover:bg-danger disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {pending ? "Saving…" : "Save changes"}
-        </button>
-        {dirty ? (
-          <>
-            <button type="button" onClick={undo} className="text-sm font-semibold text-body hover:text-ink">
-              Undo
-            </button>
-            <span className="text-xs font-semibold text-warning">Not saved yet</span>
-          </>
-        ) : null}
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={save}
+            disabled={pending || !dirty}
+            className="rounded-full bg-brand px-5 py-2 text-sm font-bold text-white hover:bg-danger disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {pending ? "Saving…" : "Save changes"}
+          </button>
+          {dirty ? (
+            <>
+              <button type="button" onClick={undo} className="text-sm font-semibold text-body hover:text-ink">
+                Undo
+              </button>
+              <span className="text-xs font-semibold text-warning">Not saved yet</span>
+            </>
+          ) : null}
+        </div>
       </div>
+      {/* Collapsed with the bookings switch changed, the save still has to be reachable. */}
+      {!open && dirty ? (
+        <p className="mt-3 text-xs font-semibold text-warning">
+          Not saved yet.{" "}
+          <button type="button" onClick={() => setOpen(true)} className="font-bold text-brand hover:underline">
+            Show and save
+          </button>
+        </p>
+      ) : null}
       {dialog}
     </>
   );

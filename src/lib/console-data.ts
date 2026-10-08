@@ -38,6 +38,7 @@ import {
 } from "./format";
 import { allergyTerms } from "./patient-text";
 import {
+  istDateKey,
   istInstant,
   resolveSchedule,
   slotDays,
@@ -1099,7 +1100,15 @@ export type Availability = {
   minNoticeMinutes: number;
   weekly: Session[];
   timeOff: TimeOffView[];
+  /** Already away from now until midnight, so another "rest of today" would add nothing. */
+  offRestOfToday: boolean;
 };
+
+/** Whether time off already covers everything from `now` to the end of the India-time day. */
+export function offRestOfToday(timeOff: Schedule["timeOff"], now = new Date()) {
+  const midnight = istInstant(istDateKey(now, 1), "00:00");
+  return timeOff.some((t) => t.start <= now && t.end >= midnight);
+}
 
 const atMidnight = (date: Date) => istDayStart(date).getTime() === date.getTime();
 
@@ -1155,6 +1164,7 @@ export async function getAvailability(): Promise<Availability> {
         note: t.note,
         now: t.start <= now,
       })),
+    offRestOfToday: offRestOfToday(schedule.timeOff, now),
   };
 }
 

@@ -22,7 +22,7 @@ import {
 } from "@/models";
 
 import { generateOtp, hashOtp, OTP_MAX_ATTEMPTS, OTP_RESEND_MS, requireDoctor } from "./auth";
-import { ACCESS_OTP_TTL_MS, ACCESS_TTL_MS, DEFAULT_SETTINGS, type SettingGroup } from "./console-data";
+import { ACCESS_OTP_TTL_MS, ACCESS_TTL_MS, DEFAULT_SETTINGS, offRestOfToday, type SettingGroup } from "./console-data";
 import { formatWhen } from "./format";
 import { connectDB } from "./db";
 import { OtpDeliveryError, sendOtp } from "./otp-sender";
@@ -525,6 +525,7 @@ export async function addTimeOff(
 
   let range: { start: Date; end: Date; note?: string };
   if (input.kind === "rest_of_today") {
+    if (offRestOfToday(schedule.timeOff, now)) return { errors: ["You’re already off for the rest of today."] };
     range = { start: now, end: istInstant(istDateKey(now, 1), "00:00") };
   } else {
     const parsed = timeOffInput.safeParse(input);

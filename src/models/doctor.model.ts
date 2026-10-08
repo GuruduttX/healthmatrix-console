@@ -28,7 +28,7 @@ const doctorSchema = new Schema(
     name: { type: String, required: true },
     phone: { type: String, required: true, unique: true },
     qualifications: String, // "MBBS, MD (Medicine)"
-    registrationNumber: { type: String, required: true },
+    registrationNumber: { type: String, required: true },  
     /**
      * `SPECIALTIES` keys, or a specialty the doctor typed ("Orthopaedics"). The app's copy of
      * this schema still restricts it to `SPECIALTIES`; loosen it there before the app saves doctors.
