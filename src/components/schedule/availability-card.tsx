@@ -391,6 +391,9 @@ export function AvailabilityCard({
             max={LIMITS.bookingWindowDays.max}
           />
         </div>
+        <p className="mt-2 text-xs text-body">
+          Patients book in slots of this length. When you end a consult early, the app offers the time you freed straight away.
+        </p>
 
         <SaveMessage result={result} savedText="Saved. The app now offers these hours." />
 
