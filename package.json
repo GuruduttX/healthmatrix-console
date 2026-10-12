@@ -16,6 +16,7 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "sharp": "^0.35.5",
+    "twilio-video": "2.36.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {

@@ -82,6 +82,8 @@ export type Consult = {
   status: ConsultStatus;
   /** ISO time the call started, while it is in progress. */
   startedAt?: string;
+  /** The patient is in the consult's video room, waiting to be admitted. Today and Schedule only. */
+  patientWaiting?: boolean;
 };
 
 export type TimelineEntry = {

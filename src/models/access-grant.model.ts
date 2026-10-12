@@ -12,7 +12,10 @@ const accessGrantSchema = new Schema(
     doctor: { type: Schema.Types.ObjectId, ref: "Doctor", required: true },
 
     status: { type: String, enum: ACCESS_STATUSES, default: "pending" },
+    /** The OTP's hash when it was made here (test mode); Twilio keeps its own codes. */
     otpHash: String,
+    /** Twilio Verify's id for the OTP (VE…), when Twilio sent it. Added by the console. */
+    verificationSid: String,
     /** The phone the OTP went to: the member's or their nominee's. */
     otpSentTo: String,
     /** Wrong OTPs entered. Added by the console; the app's schema doesn't have it. */

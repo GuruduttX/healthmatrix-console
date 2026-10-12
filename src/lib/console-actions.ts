@@ -1,7 +1,5 @@
 "use server";
 
-import { timingSafeEqual } from "node:crypto";
-
 import { isValidObjectId, Types } from "mongoose";
 import { refresh } from "next/cache";
 import { headers } from "next/headers";
@@ -21,11 +19,11 @@ import {
   VaccinationModel,
 } from "@/models";
 
-import { generateOtp, hashOtp, OTP_MAX_ATTEMPTS, OTP_RESEND_MS, requireDoctor } from "./auth";
+import { OTP_MAX_ATTEMPTS, OTP_RESEND_MS, requireDoctor } from "./auth";
 import { ACCESS_OTP_TTL_MS, ACCESS_TTL_MS, DEFAULT_SETTINGS, offRestOfToday, type SettingGroup } from "./console-data";
 import { formatWhen } from "./format";
 import { connectDB } from "./db";
-import { OtpDeliveryError, sendOtp } from "./otp-sender";
+import { cancelOtp, checkOtp, OtpDeliveryError, sendOtp, type SentOtp } from "./otp-sender";
 import { allergyClash, allergyTerms } from "./patient-text";
 import {
   consultFits,
@@ -42,6 +40,7 @@ import {
   type TimeOffInput,
 } from "./schedule";
 import { dayToDate, describeDose, doseTitle, vaccineInput, type VaccineData, type VaccineInput } from "./vaccines";
+import { completeRoom, doctorIdentity, ensureRoom, roomNameFor, videoReady, videoToken } from "./video";
 
 /** Server actions for the console. Each one checks the signed-in doctor itself. */
 
@@ -97,19 +96,28 @@ export async function requestRecordAccess(
     return { error: "An OTP was sent a moment ago. Wait a few seconds before sending another." };
   }
 
-  const code = generateOtp();
-  let devCode: string | undefined;
+  let sent: SentOtp;
   try {
-    ({ devCode } = await sendOtp(phone, code, "record_access"));
+    sent = await sendOtp(phone, "record_access");
   } catch (error) {
     if (error instanceof OtpDeliveryError) return { error: error.message };
     throw error;
   }
 
-  const otp = { otpHash: hashOtp(phone, code), otpSentTo: phone, attempts: 0, expiresAt: new Date(now.getTime() + ACCESS_OTP_TTL_MS) };
+  // Either a hash (test mode) or Twilio's id, never both: checkOtp goes by whichever is there.
+  const { codeHash, verificationSid, devCode } = sent;
+  const otp = {
+    ...(codeHash ? { otpHash: codeHash } : { verificationSid }),
+    otpSentTo: phone,
+    attempts: 0,
+    expiresAt: new Date(now.getTime() + ACCESS_OTP_TTL_MS),
+  };
   if (pending) {
     // updatedAt moves on, which restarts the resend wait and the "sent at" time.
-    await AccessGrantModel.updateOne({ _id: pending._id }, { $set: otp });
+    await AccessGrantModel.updateOne(
+      { _id: pending._id },
+      { $set: otp, $unset: codeHash ? { verificationSid: 1 } : { otpHash: 1 } },
+    );
     await AccessLogModel.updateOne(
       { accessGrant: pending._id },
       { $set: { requestedAt: now, expiresAt: otp.expiresAt } },
@@ -149,19 +157,31 @@ export async function verifyRecordAccess(
 
   const now = new Date();
   const grant = await AccessGrantModel.findOne({ doctor: doctor._id, member: member._id, status: "pending" }).sort({ createdAt: -1 });
-  if (!grant?.otpHash || !grant.otpSentTo || !grant.expiresAt || grant.expiresAt <= now) {
+  if (!(grant?.otpHash || grant?.verificationSid) || !grant.otpSentTo || !grant.expiresAt || grant.expiresAt <= now) {
     return { error: "This OTP has expired. Send a new one." };
   }
 
-  const expected = Buffer.from(grant.otpHash, "hex");
-  const actual = Buffer.from(hashOtp(grant.otpSentTo, parsed.data), "hex");
-  if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) {
+  /** Burns the code: the next try needs a fresh OTP. */
+  const burn = async (attempts: number) => {
+    await AccessGrantModel.updateOne(
+      { _id: grant._id },
+      { $set: { attempts, expiresAt: now }, $unset: { otpHash: 1, verificationSid: 1 } },
+    );
+    await AccessLogModel.updateOne({ accessGrant: grant._id }, { $set: { expiresAt: now } });
+    refresh();
+  };
+
+  const result = await checkOtp("record_access", grant.otpSentTo, parsed.data, grant);
+  if (result === "unavailable") return { error: "We couldn’t check the OTP just now. Please try again." };
+  if (result === "expired") {
+    await burn(grant.attempts ?? 0);
+    return { error: "This OTP has expired. Send a new one." };
+  }
+  if (result === "wrong") {
     const attempts = (grant.attempts ?? 0) + 1;
     if (attempts >= OTP_MAX_ATTEMPTS) {
-      // Burn the code: the next try needs a fresh OTP.
-      await AccessGrantModel.updateOne({ _id: grant._id }, { $set: { attempts, expiresAt: now }, $unset: { otpHash: 1 } });
-      await AccessLogModel.updateOne({ accessGrant: grant._id }, { $set: { expiresAt: now } });
-      refresh();
+      await burn(attempts);
+      await cancelOtp("record_access", grant.verificationSid);
       return { error: "Too many wrong OTPs. Send a new one." };
     }
     await AccessGrantModel.updateOne({ _id: grant._id }, { $set: { attempts } });
@@ -179,7 +199,7 @@ export async function verifyRecordAccess(
   const expiresAt = new Date(now.getTime() + ACCESS_TTL_MS);
   await AccessGrantModel.updateOne(
     { _id: grant._id },
-    { $set: { status: "active", approvedAt: now, expiresAt }, $unset: { otpHash: 1 } },
+    { $set: { status: "active", approvedAt: now, expiresAt }, $unset: { otpHash: 1, verificationSid: 1 } },
   );
   await AccessLogModel.updateOne(
     { accessGrant: grant._id },
@@ -385,18 +405,66 @@ export async function discardPrescription(prescriptionId: string) {
 // ---------------------------------------------------------------------------
 // Consults
 
-/** Marks a consult as started. The video call itself isn't connected yet. */
-export async function startConsult(consultId: string) {
+const VIDEO_NOT_SET_UP = "Video calls are not set up.";
+
+/** Closes the consult's video room, which takes the member out of it. Logged, never thrown. */
+async function closeRoom(consultId: string) {
+  if (!videoReady()) return;
+  await completeRoom(consultId).catch((error: unknown) => {
+    console.error(`[video] Couldn't close the room for consult ${consultId}`, error);
+  });
+}
+
+/**
+ * What the browser needs to join a consult's room, or why it can't. `status` says whether to
+ * wait for Admit (`scheduled`) or share camera and mic at once. `ended`: the consult is over.
+ */
+export type ConsultRoom =
+  | { roomName: string; token: string; status: "scheduled" | "in_progress" }
+  | { error: string; ended?: boolean };
+
+/** A token for the signed-in doctor to join their own consult's room, before or during the call. */
+export async function getConsultRoom(consultId: string): Promise<ConsultRoom> {
   const doctor = await signedInDoctor();
   const id = objectId(consultId);
-  if (!id) return;
-  await ConsultModel.updateOne(
+  const consult = id ? await ConsultModel.findOne({ _id: id, doctor: doctor._id }, { status: 1 }).lean() : null;
+  if (!consult) return { error: "This consult no longer exists." };
+  if (consult.status === "completed") return { error: "This consult has ended.", ended: true };
+  if (consult.status !== "scheduled" && consult.status !== "in_progress") return { error: "This consult was cancelled." };
+  if (!videoReady()) return { error: VIDEO_NOT_SET_UP };
+
+  try {
+    await ensureRoom(consultId);
+  } catch (error) {
+    console.error(`[video] Couldn't open the room for consult ${consultId}`, error);
+    return { error: "The video room couldn’t be opened just now. Try again in a moment." };
+  }
+  const roomName = roomNameFor(consultId);
+  return { roomName, token: videoToken(doctorIdentity(String(doctor._id)), roomName), status: consult.status };
+}
+
+/**
+ * Starts the consult when the doctor admits the member. Saved before the doctor's camera and mic
+ * go to the room, so a member who rejoins from now on goes straight into the call. Returns the
+ * consult's status: `in_progress` means share camera and mic, even if it was already started.
+ */
+export async function admitPatient(consultId: string): Promise<{ status?: string }> {
+  const doctor = await signedInDoctor();
+  const id = objectId(consultId);
+  if (!id) return {};
+  const started = await ConsultModel.updateOne(
     { _id: id, doctor: doctor._id, status: "scheduled" },
     { $set: { status: "in_progress", startedAt: new Date() } },
   );
-  refresh();
+  if (started.modifiedCount) {
+    refresh();
+    return { status: "in_progress" };
+  }
+  const consult = await ConsultModel.findOne({ _id: id, doctor: doctor._id }, { status: 1 }).lean();
+  return { status: consult?.status };
 }
 
+/** Ends a consult and closes its video room, which takes the member out of the call too. */
 export async function endConsult(consultId: string) {
   const doctor = await signedInDoctor();
   const id = objectId(consultId);
@@ -405,6 +473,7 @@ export async function endConsult(consultId: string) {
     { _id: id, doctor: doctor._id, status: "in_progress" },
     { $set: { status: "completed", endedAt: new Date() } },
   );
+  await closeRoom(consultId);
   refresh();
 }
 
@@ -424,6 +493,8 @@ export async function cancelConsult(consultId: string, reason?: string): Promise
     { $set: { status: "cancelled", cancelledAt: new Date(), cancelledBy: "doctor", cancelReason: text || DOCTOR_CANCEL_REASON } },
   );
   if (!result.modifiedCount) return { error: "Only a consult that hasn’t started can be cancelled." };
+  // A member in the waiting room is told at once.
+  await closeRoom(consultId);
   refresh();
   return {};
 }

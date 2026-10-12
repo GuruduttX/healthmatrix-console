@@ -8,7 +8,10 @@ import { Schema, model, models, type InferSchemaType } from "mongoose";
 const doctorOtpChallengeSchema = new Schema(
   {
     phone: { type: String, required: true, index: true },
-    codeHash: { type: String, required: true },
+    /** The code's hash when it was made here (test mode); Twilio keeps its own codes. */
+    codeHash: String,
+    /** Twilio Verify's id for the code (VE…), when Twilio sent it. */
+    verificationSid: String,
     attempts: { type: Number, default: 0 },
     expiresAt: { type: Date, required: true, expires: 0 },
   },

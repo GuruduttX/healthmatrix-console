@@ -46,6 +46,7 @@ import {
   type Schedule,
   type Session,
 } from "./schedule";
+import { patientInRoom, videoReady } from "./video";
 import { dateToDay, describeDose, describeSchedule, formatDay, todayInIndia, type VaccineInput } from "./vaccines";
 import type {
   AccessLogEntry,
@@ -223,7 +224,7 @@ async function loadPatients(doctorId: Id, memberIds: Id[]) {
     EmergencyProfileModel.find({ member: { $in: unique } }).lean<ProfileDoc[]>(),
     AccessGrantModel.find({ doctor: doctorId, member: { $in: unique } })
       .sort({ createdAt: -1 })
-      .select("-otpHash")
+      .select("-otpHash -verificationSid")
       .lean<GrantDoc[]>(),
   ]);
 
@@ -605,9 +606,30 @@ function findConsults(filter: Record<string, unknown>) {
   return ConsultModel.find({ status: { $ne: "cancelled" }, ...filter }).sort({ scheduledAt: 1 }).lean();
 }
 
-async function toConsults(doctorId: Id, docs: ConsultDoc[]) {
-  const patients = await loadPatients(doctorId, docs.map((c) => c.member));
+const MINUTE_MS = 60 * 1000;
+
+/** The app lets the member join from 5 minutes before the slot to 30 minutes after it ends. */
+function inJoinWindow(c: ConsultDoc, now: Date) {
+  const start = c.scheduledAt.getTime();
+  const end = start + (c.durationMinutes ?? 30) * MINUTE_MS;
+  return now.getTime() >= start - 5 * MINUTE_MS && now.getTime() <= end + 30 * MINUTE_MS;
+}
+
+/** Ids of the consults whose member is in the app's waiting room, asked of Twilio in parallel. */
+async function waitingConsults(docs: ConsultDoc[], now: Date) {
+  if (!videoReady()) return new Set<string>();
+  const candidates = docs.filter((c) => c.status === "scheduled" && inJoinWindow(c, now)).map((c) => String(c._id));
+  const present = await Promise.all(candidates.map((id) => patientInRoom(id).catch(() => false)));
+  return new Set(candidates.filter((_, i) => present[i]));
+}
+
+/** `withWaiting`: find out who is in the waiting room, for the Today and Schedule lists. */
+async function toConsults(doctorId: Id, docs: ConsultDoc[], { withWaiting = false } = {}) {
   const now = new Date();
+  const [patients, waiting] = await Promise.all([
+    loadPatients(doctorId, docs.map((c) => c.member)),
+    withWaiting ? waitingConsults(docs, now) : new Set<string>(),
+  ]);
   return docs.flatMap((c): Consult[] => {
     const entry = patients.get(String(c.member));
     if (!entry) return [];
@@ -621,6 +643,7 @@ async function toConsults(doctorId: Id, docs: ConsultDoc[]) {
         reason: c.reason?.trim() || "No reason given",
         status: c.status as Consult["status"],
         startedAt: c.status === "in_progress" && c.startedAt ? c.startedAt.toISOString() : undefined,
+        patientWaiting: waiting.has(String(c._id)),
       },
     ];
   });
@@ -630,7 +653,7 @@ async function toConsults(doctorId: Id, docs: ConsultDoc[]) {
 export async function getTodayConsults() {
   const doctorId = await currentDoctorId();
   const docs = await findConsults({ doctor: doctorId, scheduledAt: { $gte: istDayStart(), $lt: istDayStart(new Date(), 1) } });
-  return toConsults(doctorId, docs);
+  return toConsults(doctorId, docs, { withWaiting: true });
 }
 
 /** Today and the next two weeks, plus anything still in progress from before. */
@@ -643,7 +666,7 @@ export async function getSchedule() {
       { status: "in_progress" },
     ],
   });
-  return toConsults(doctorId, docs);
+  return toConsults(doctorId, docs, { withWaiting: true });
 }
 
 /** One of this doctor's consults, with the record when it is open. */

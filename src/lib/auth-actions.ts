@@ -1,7 +1,5 @@
 "use server";
 
-import { timingSafeEqual } from "node:crypto";
-
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -9,9 +7,7 @@ import { z } from "zod";
 import {
   createSession,
   destroySession,
-  generateOtp,
   getSession,
-  hashOtp,
   isProfileComplete,
   OTP_MAX_ATTEMPTS,
   OTP_RESEND_MS,
@@ -20,7 +16,7 @@ import {
   upgradeSession,
 } from "./auth";
 import { connectDB } from "./db";
-import { OtpDeliveryError, sendOtp } from "./otp-sender";
+import { cancelOtp, checkOtp, OtpDeliveryError, sendOtp, type SentOtp } from "./otp-sender";
 import { DEV_OTP_COOKIE, OTP_INTENT_COOKIE, OTP_PHONE_COOKIE } from "./session";
 import { canonicalList, languageSuggestions, specialtySuggestions } from "./onboarding";
 import { profileFields } from "./profile-schema";
@@ -86,27 +82,27 @@ async function issueOtp(phone: string, intent: AuthIntent): Promise<AuthFormStat
     return { error: "Please wait a few seconds before asking for another code." };
   }
 
-  const code = generateOtp();
-  await DoctorOtpChallengeModel.deleteMany({ phone });
-  await DoctorOtpChallengeModel.create({
-    phone,
-    codeHash: hashOtp(phone, code),
-    expiresAt: new Date(Date.now() + OTP_TTL_MS),
-  });
-
-  let devCode: string | undefined;
+  let sent: SentOtp;
   try {
-    ({ devCode } = await sendOtp(phone, code));
+    sent = await sendOtp(phone, "doctor_sign_in");
   } catch (error) {
-    await DoctorOtpChallengeModel.deleteMany({ phone });
     if (error instanceof OtpDeliveryError) return { error: error.message };
     throw error;
   }
 
+  await DoctorOtpChallengeModel.deleteMany({ phone });
+  await DoctorOtpChallengeModel.create({
+    phone,
+    codeHash: sent.codeHash,
+    verificationSid: sent.verificationSid,
+    expiresAt: new Date(Date.now() + OTP_TTL_MS),
+  });
+
   const cookieStore = await cookies();
   cookieStore.set(OTP_PHONE_COOKIE, phone, otpCookieOptions);
   cookieStore.set(OTP_INTENT_COOKIE, intent, otpCookieOptions);
-  if (devCode) cookieStore.set(DEV_OTP_COOKIE, devCode, otpCookieOptions);
+  if (sent.devCode) cookieStore.set(DEV_OTP_COOKIE, sent.devCode, otpCookieOptions);
+  else cookieStore.delete({ name: DEV_OTP_COOKIE, path: "/" });
   return null;
 }
 
@@ -162,12 +158,17 @@ export async function verifyOtp(_prev: AuthFormState, formData: FormData): Promi
   }).sort({ createdAt: -1 });
   if (!challenge) return { error: "This code has expired. Ask for a new one." };
 
-  const expected = Buffer.from(challenge.codeHash, "hex");
-  const actual = Buffer.from(hashOtp(phone, code), "hex");
-  if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) {
+  const result = await checkOtp("doctor_sign_in", phone, code, challenge);
+  if (result === "unavailable") return { error: "We couldn’t check the code just now. Please try again." };
+  if (result === "expired") {
+    await challenge.deleteOne();
+    return { error: "This code has expired. Ask for a new one." };
+  }
+  if (result === "wrong") {
     challenge.attempts += 1;
     if (challenge.attempts >= OTP_MAX_ATTEMPTS) {
       await challenge.deleteOne();
+      await cancelOtp("doctor_sign_in", challenge.verificationSid);
       return { error: "Too many wrong codes. Ask for a new one." };
     }
     await challenge.save();

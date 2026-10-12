@@ -11,6 +11,7 @@ import { Card, CardTitle, Chip } from "@/components/ui";
 import { getConsult, getVaccineSchedule } from "@/lib/console-data";
 import { getCurrentDoctor } from "@/lib/doctor-view";
 import { ageAndSex } from "@/lib/patient-text";
+import { videoReady } from "@/lib/video";
 
 export const metadata: Metadata = { title: "Consult" };
 
@@ -42,10 +43,10 @@ export default async function ConsultPage(props: PageProps<"/consults/[id]">) {
             startedAt={consult.startedAt}
             patientName={patient.name}
             patientInitials={patient.initials}
-            doctorInitials={doctor.initials}
             status={consult.status}
             recordShared={patient.access.status === "active"}
             time={consult.time}
+            videoReady={videoReady()}
           />
           <Card>
             <h2 className="text-sm font-bold text-ink">Reason for the consult</h2>

@@ -17,6 +17,7 @@ export function ConsultRow({ consult }: { consult: Consult }) {
   const about = ageAndSex(patient);
   const status = consultStatus[consult.status];
   const live = consult.status === "in_progress";
+  const waiting = consult.status === "scheduled" && !!consult.patientWaiting;
 
   return (
     <li
@@ -42,6 +43,7 @@ export function ConsultRow({ consult }: { consult: Consult }) {
           <span className="hidden sm:inline-flex">
             <Chip tone={status.tone}>{status.label}</Chip>
           </span>
+          {waiting ? <Chip tone="success">In waiting room</Chip> : null}
           <AccessChip status={patient.access.status} />
           <span className="flex items-center gap-1.5 text-xs text-body">
             {consult.mode === "Video" ? (
@@ -59,10 +61,10 @@ export function ConsultRow({ consult }: { consult: Consult }) {
       <Link
         href={`/consults/${consult.id}`}
         className={`col-span-2 inline-flex items-center justify-center gap-1.5 self-center rounded-full px-4 py-2.5 text-sm font-bold sm:w-auto sm:py-2 ${
-          live ? "bg-brand text-white hover:bg-danger" : "border border-line bg-card text-ink hover:bg-selected"
+          live || waiting ? "bg-brand text-white hover:bg-danger" : "border border-line bg-card text-ink hover:bg-selected"
         }`}
       >
-        {status.action}
+        {waiting ? "Admit" : status.action}
         <ArrowRight aria-hidden className="size-4" />
       </Link>
     </li>
