@@ -1,19 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import type { ChartSpec } from "@/lib/types";
 
-const W = 360;
-const H = 170;
-const PAD = { left: 30, right: 16, top: 18, bottom: 24 };
+/** Close to the width the chart is drawn at, so its labels stay readable at 11–12 px. */
+const W = 320;
+const H = 168;
+const PAD = { left: 34, right: 14, top: 22, bottom: 26 };
 
 /** Fixed series order: colour follows the series, never its rank. */
-const SERIES_COLORS = ["#DD4301", "#00809A"];
-const BAND_FILL = { success: "#DAF0EA", warning: "#FBEFD2" };
+const SERIES_COLORS = ["#DD4301", "#244C56"];
+/** The normal range is a quiet grey band; its label says what it is. */
+const BAND_FILL = { success: "#EEF2F3", warning: "#FBF1D8" };
 
 export function LineChart({ spec }: { spec: ChartSpec }) {
   const [hover, setHover] = useState<number | null>(null);
+  // Plain characters only: the id goes inside an SVG `url(#…)`.
+  const gradientId = useId().replace(/[^a-zA-Z0-9_-]/g, "");
 
   const { labels, series, bands = [], refLines } = spec;
   const n = labels.length;
@@ -74,9 +78,9 @@ export function LineChart({ spec }: { spec: ChartSpec }) {
           {ticks.map((t) => (
             <g key={t}>
               {bands.length === 0 ? (
-                <line x1={PAD.left} x2={W - PAD.right} y1={y(t)} y2={y(t)} stroke="#D3DFE0" strokeWidth="1" />
+                <line x1={PAD.left} x2={W - PAD.right} y1={y(t)} y2={y(t)} stroke="#E3E8E9" strokeWidth="1" />
               ) : null}
-              <text x={PAD.left - 6} y={y(t) + 3} fontSize="9" textAnchor="end" fill="#4D6368">
+              <text x={PAD.left - 7} y={y(t) + 4} fontSize="11" textAnchor="end" fill="#87979B" className="tabular-nums">
                 {format(t)}
               </text>
             </g>
@@ -91,6 +95,24 @@ export function LineChart({ spec }: { spec: ChartSpec }) {
               stroke="#8A9A9E"
               strokeWidth="1"
               strokeDasharray="3 3"
+            />
+          ) : null}
+
+          {/* A soft wash under the first series, fading to nothing at the baseline. */}
+          <defs>
+            <linearGradient id={`${gradientId}-area`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={SERIES_COLORS[0]} stopOpacity="0.16" />
+              <stop offset="100%" stopColor={SERIES_COLORS[0]} stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          {series[0] && n > 1 ? (
+            <polygon
+              points={[
+                `${x(0)},${H - PAD.bottom}`,
+                ...series[0].values.map((v, i) => `${x(i)},${y(v)}`),
+                `${x(n - 1)},${H - PAD.bottom}`,
+              ].join(" ")}
+              fill={`url(#${gradientId}-area)`}
             />
           ) : null}
 
@@ -117,9 +139,9 @@ export function LineChart({ spec }: { spec: ChartSpec }) {
                   {labelEvery || i === n - 1 ? (
                     <text
                       x={x(i)}
-                      y={y(v) - 9}
-                      fontSize="10"
-                      fontWeight="700"
+                      y={y(v) - 10}
+                      fontSize="12"
+                      fontWeight="600"
                       textAnchor="middle"
                       fill="#0E2A33"
                     >
@@ -136,11 +158,11 @@ export function LineChart({ spec }: { spec: ChartSpec }) {
               <text
                 key={label}
                 x={x(i)}
-                y={H - 7}
-                fontSize="9"
+                y={H - 6}
+                fontSize="11"
                 textAnchor={i === 0 ? "start" : i === n - 1 ? "end" : "middle"}
                 dx={i === 0 ? -10 : i === n - 1 ? 10 : 0}
-                fill="#4D6368"
+                fill="#87979B"
               >
                 {label}
               </text>
@@ -203,7 +225,7 @@ export function LineChart({ spec }: { spec: ChartSpec }) {
         </ul>
       ) : null}
 
-      {spec.caption ? <figcaption className="mt-1 text-xs text-body">{spec.caption}</figcaption> : null}
+      {spec.caption ? <figcaption className="mt-1 text-xs text-muted">{spec.caption}</figcaption> : null}
 
       <table className="sr-only">
         <caption>

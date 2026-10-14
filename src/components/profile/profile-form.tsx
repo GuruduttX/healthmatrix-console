@@ -1,13 +1,14 @@
 "use client";
 
-import { ChevronLeft, CircleCheck, CircleDashed, Lock } from "lucide-react";
-import Link from "next/link";
+import { CircleCheck, CircleDashed, Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { FormMessage } from "@/components/auth/form-message";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { TagInput } from "@/components/auth/tag-input";
+import { StackBar } from "@/components/stack-bar";
+import { PageHeader } from "@/components/ui";
 import { ABOUT_MAX, languageSuggestions, specialtySuggestions } from "@/lib/onboarding";
 import { GAP_LABELS } from "@/lib/profile-gaps";
 import {
@@ -28,8 +29,7 @@ const councils = [
   "Other state medical council",
 ];
 
-const inputClass =
-  "w-full rounded-xl border border-line bg-card px-4 py-3 text-ink placeholder:text-body focus:border-brand focus:outline-none aria-invalid:border-danger";
+const inputClass = "field aria-invalid:border-danger";
 
 type Errors = Partial<Record<ProfileField, string>>;
 
@@ -85,48 +85,41 @@ export function ProfileForm({
 
   return (
     <>
-      {/* Phones: an app-style header in place of the console's top bar. */}
-      <header className="sticky top-0 z-20 -mx-4 -mt-5 mb-5 flex items-center gap-2 border-b border-line bg-card/95 px-2 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))] backdrop-blur sm:-mx-6 lg:hidden">
-        <button
-          type="button"
-          onClick={leave}
-          aria-label="Back to profile"
-          className="inline-flex size-10 items-center justify-center rounded-full text-ink hover:bg-selected"
-        >
-          <ChevronLeft aria-hidden className="size-6" />
-        </button>
-        <h1 className="flex-1 font-display text-lg font-bold text-ink">Edit profile</h1>
-        <span className="pr-3 text-xs font-bold text-body">{progress}% complete</span>
-      </header>
+      {/* Phones: the app's bar, asking before it leaves unsaved changes behind. */}
+      <StackBar
+        back={{ href: "/profile", label: "Profile and settings" }}
+        title="Edit profile"
+        onBack={leave}
+        right={<span className="text-xs font-bold tabular-nums text-muted">{progress}%</span>}
+      />
 
       <div className="hidden lg:block">
-        <Link href="/profile" className="inline-flex items-center gap-1 text-sm font-semibold text-body hover:text-ink">
-          <ChevronLeft aria-hidden className="size-4" />
-          Profile and settings
-        </Link>
-        <h1 className="mt-2 font-display text-3xl font-bold text-ink">Edit profile</h1>
-        <p className="mt-2 max-w-2xl text-body">Patients see this before they share their record with you.</p>
+        <PageHeader
+          back={{ href: "/profile", label: "Profile and settings" }}
+          title="Edit profile"
+          description="Patients see this before they share their record with you."
+        />
       </div>
 
       {/* Phones: one column, photo first. Wide screens: the photo and progress stay beside the form. */}
-      <div className="mx-auto w-full max-w-2xl lg:mx-0 lg:mt-6 lg:grid lg:max-w-6xl lg:grid-cols-[18rem_minmax(0,1fr)] lg:items-start lg:gap-8">
-        <aside className="lg:sticky lg:top-6 lg:rounded-2xl lg:border lg:border-line lg:bg-card lg:p-6 lg:shadow-card">
+      <div className="mx-auto w-full max-w-2xl lg:mx-0 lg:grid lg:max-w-6xl lg:grid-cols-[17rem_minmax(0,1fr)] lg:items-start lg:gap-6">
+        <aside className="mt-2 lg:sticky lg:top-20 lg:mt-0 lg:rounded-xl lg:border lg:border-line lg:bg-card lg:p-5 lg:shadow-card">
           {photo}
-          <div className="hidden text-center lg:block">
-            <p className="font-display text-lg font-bold text-ink">{name}</p>
-            {specialty ? <p className="text-sm text-body">{specialty}</p> : null}
+          <div className="mt-2 hidden text-center lg:block">
+            <p className="font-display text-base font-bold tracking-[-0.01em] text-ink">{name}</p>
+            {specialty ? <p className="text-[13px] text-body">{specialty}</p> : null}
           </div>
 
-          <div className="mx-auto mt-4 max-w-xs lg:mt-6 lg:max-w-none lg:border-t lg:border-line lg:pt-5">
-            <p className="mb-2 hidden items-center justify-between text-sm lg:flex">
+          <div className="mx-auto mt-3 max-w-xs lg:mt-5 lg:max-w-none lg:border-t lg:border-line lg:pt-4">
+            <p className="mb-2 hidden items-center justify-between text-[13px] lg:flex">
               <span className="font-semibold text-ink">Profile complete</span>
-              <span className="font-bold text-success">{progress}%</span>
+              <span className="font-semibold tabular-nums text-ink">{progress}%</span>
             </p>
-            <div aria-hidden className="h-1.5 overflow-hidden rounded-full bg-line">
-              <div className="h-full rounded-full bg-success transition-[width]" style={{ width: `${progress}%` }} />
+            <div aria-hidden className="h-2 overflow-hidden rounded-full bg-selected">
+              <div className="h-full rounded-full bg-linear-to-r from-brand-mid to-brand transition-[width]" style={{ width: `${progress}%` }} />
             </div>
             {missing.length ? (
-              <ul className="mt-4 hidden flex-col gap-1 lg:flex">
+              <ul className="-mx-2 mt-3 hidden flex-col lg:flex">
                 {missing.map((gap) => {
                   const field = GAP_FIELDS[gap];
                   const label = `Add ${GAP_LABELS[gap].toLowerCase()}`;
@@ -136,13 +129,13 @@ export function ProfileForm({
                         <button
                           type="button"
                           onClick={() => goTo(field)}
-                          className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-sm font-semibold text-ink hover:bg-selected"
+                          className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] font-medium text-ink transition-colors hover:bg-selected"
                         >
                           <CircleDashed aria-hidden className="size-4 shrink-0 text-brand" />
                           {label}
                         </button>
                       ) : (
-                        <span className="flex items-center gap-2.5 px-2 py-1.5 text-sm font-semibold text-ink">
+                        <span className="flex items-center gap-2.5 px-2 py-1.5 text-[13px] font-medium text-ink">
                           <CircleDashed aria-hidden className="size-4 shrink-0 text-brand" />
                           {label}
                         </span>
@@ -152,19 +145,19 @@ export function ProfileForm({
                 })}
               </ul>
             ) : (
-              <p className="mt-4 hidden items-center gap-2 text-sm font-semibold text-success lg:flex">
+              <p className="mt-3 hidden items-center gap-2 text-[13px] font-medium text-brand lg:flex">
                 <CircleCheck aria-hidden className="size-4" />
                 Everything patients look for is there.
               </p>
             )}
-            <p className="mt-4 hidden text-xs leading-relaxed text-body lg:block">
+            <p className="mt-3 hidden text-xs leading-relaxed text-muted lg:block">
               A complete profile helps patients trust who they are sharing with.
             </p>
           </div>
         </aside>
 
         <div className="min-w-0">
-          <FormMessage error={state.error} />
+          <FormMessage error={state.error} className="mb-4 mt-4 lg:mt-0" />
 
           {/* Re-mounted after each attempt so a rejected form comes back filled in. */}
           <Fields
@@ -196,8 +189,8 @@ export function ProfileForm({
 }
 
 /**
- * A group of fields. Phones: a small caps label above the card, like a settings app. Wide
- * screens: the title and hint head the card itself.
+ * A group of fields. Phones: the title above the card, like a settings app. Wide screens: the
+ * title and hint head the card itself.
  */
 function Section({
   title,
@@ -212,17 +205,17 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <section className={`mt-6 ${first ? "lg:mt-0" : ""}`}>
+    <section className={`mt-7 ${first ? "lg:mt-0" : "lg:mt-5"}`}>
       <div className="lg:hidden">
-        <h2 className="px-1 text-xs font-bold uppercase tracking-wider text-body">{title}</h2>
-        {hint ? <p className="mt-1 px-1 text-xs text-body">{hint}</p> : null}
+        <h2 className="px-1 font-display text-[19px] font-bold leading-6 tracking-[-0.01em] text-ink">{title}</h2>
+        {hint ? <p className="mt-0.5 px-1 text-[13px] text-body">{hint}</p> : null}
       </div>
-      <div className="mt-2 rounded-2xl border border-line bg-card shadow-card lg:mt-0">
-        <div className="hidden border-b border-line px-6 py-4 lg:block">
+      <div className="mt-3 rounded-xl border border-line bg-card shadow-card lg:mt-0">
+        <div className="hidden border-b border-line px-5 py-3.5 lg:block">
           <h2 className="font-display text-base font-bold text-ink">{title}</h2>
-          {hint ? <p className="mt-0.5 text-sm text-body">{hint}</p> : null}
+          {hint ? <p className="mt-0.5 text-[13px] text-body">{hint}</p> : null}
         </div>
-        <div className="flex flex-col gap-5 p-4 sm:p-5 lg:p-6">{children}</div>
+        <div className="flex flex-col gap-4 p-4 sm:p-5">{children}</div>
       </div>
     </section>
   );
@@ -244,14 +237,14 @@ function Field({
   children: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-2">
-      <label htmlFor={id} className="text-sm font-semibold text-ink">
-        {label} {optional ? <span className="font-normal text-body">(optional)</span> : null}
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={id} className="text-[13px] font-bold text-ink">
+        {label} {optional ? <span className="font-normal text-muted">(optional)</span> : null}
       </label>
       {children}
       {hint}
       {error ? (
-        <p id={`${id}-error`} className="text-sm font-semibold text-danger">
+        <p id={`${id}-error`} className="text-xs font-semibold text-danger">
           {error}
         </p>
       ) : null}
@@ -314,7 +307,7 @@ function Fields({
       className="pb-24 lg:pb-0"
     >
       <Section first title="About you" hint="Your name, training and a few lines in your own words.">
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2">
           <Field id="name" label="Full name" error={errors.name}>
             <input
               id="name"
@@ -358,7 +351,7 @@ function Fields({
           optional
           error={errors.about}
           hint={
-            <p className="text-right text-xs text-body" aria-live="polite">
+            <p className="text-right text-xs tabular-nums text-muted" aria-live="polite">
               {aboutLength}/{ABOUT_MAX}
             </p>
           }
@@ -378,12 +371,12 @@ function Fields({
       </Section>
 
       <Section title="Practice" hint="Patients find you by these.">
-        <div className="grid gap-5 xl:grid-cols-2">
+        <div className="grid gap-4 xl:grid-cols-2">
           <Field
             id="specialties"
             label="Specialties you consult in"
             error={errors.specialties}
-            hint={<p id="specialties-hint" className="text-xs text-body">Pick from the suggestions, or type your own and press Enter.</p>}
+            hint={<p id="specialties-hint" className="text-xs text-muted">Pick from the suggestions, or type your own and press Enter.</p>}
           >
             <TagInput
               id="specialties"
@@ -400,7 +393,7 @@ function Fields({
             id="languages"
             label="Languages you consult in"
             error={errors.languages}
-            hint={<p id="languages-hint" className="text-xs text-body">Pick from the suggestions, or type your own and press Enter.</p>}
+            hint={<p id="languages-hint" className="text-xs text-muted">Pick from the suggestions, or type your own and press Enter.</p>}
           >
             <TagInput
               id="languages"
@@ -417,7 +410,7 @@ function Fields({
       </Section>
 
       <Section title="Location" hint="Where you practise.">
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2">
           <Field id="state" label="State or union territory" error={errors.state}>
             <input
               id="state"
@@ -450,7 +443,7 @@ function Fields({
       </Section>
 
       <Section title="Registration" hint="To change these, write to the HealthMatrix team.">
-        <dl className="-my-2 divide-y divide-line lg:my-0 lg:grid lg:grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] lg:gap-3 lg:divide-y-0">
+        <dl className="-my-2.5 divide-y divide-line lg:my-0 lg:grid lg:grid-cols-[repeat(auto-fill,minmax(13rem,1fr))] lg:gap-2.5 lg:divide-y-0">
           {[
             { term: "Mobile number", value: locked.phone },
             { term: "Registration number", value: locked.registrationNumber },
@@ -458,10 +451,10 @@ function Fields({
           ].map((row) => (
             <div
               key={row.term}
-              className="flex items-center justify-between gap-4 py-3 text-sm lg:flex-col lg:items-start lg:gap-1 lg:rounded-xl lg:bg-surface lg:px-4"
+              className="flex items-center justify-between gap-4 py-3 text-[13px] lg:flex-col lg:items-start lg:gap-0.5 lg:rounded-2xl lg:border-0 lg:bg-surface lg:px-3.5"
             >
-              <dt className="font-semibold text-body lg:text-xs">{row.term}</dt>
-              <dd className="flex min-w-0 max-w-full items-center gap-2 font-medium text-ink">
+              <dt className="text-muted lg:text-xs">{row.term}</dt>
+              <dd className="flex min-w-0 max-w-full items-center gap-1.5 font-semibold tabular-nums text-ink">
                 <span className="truncate">{row.value}</span>
                 <Lock aria-label="Locked" className="size-3.5 shrink-0 text-muted" />
               </dd>
@@ -482,23 +475,22 @@ function Fields({
       </Section>
 
       {/* Phones: floats over the bottom like an app's action bar. Wide screens: sticks to the bottom of the form column. */}
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-card/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur lg:sticky lg:bottom-4 lg:mt-6 lg:rounded-2xl lg:border lg:px-5 lg:py-3 lg:shadow-floating print:hidden">
-        <div className="mx-auto flex max-w-2xl items-center gap-3 lg:max-w-none">
-          <p className="mr-auto hidden text-sm font-semibold lg:block">
-            {dirty ? <span className="text-warning">Unsaved changes</span> : <span className="text-body">No changes yet</span>}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-card/90 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl backdrop-saturate-150 lg:sticky lg:bottom-4 lg:mt-5 lg:rounded-full lg:border lg:bg-card/95 lg:py-2.5 lg:pl-6 lg:pr-2.5 lg:shadow-floating print:hidden">
+        <div className="mx-auto flex max-w-2xl items-center gap-2 lg:max-w-none">
+          <p className="mr-auto hidden text-[13px] font-medium lg:block">
+            {dirty ? (
+              <span className="inline-flex items-center gap-1.5 text-warning">
+                <span aria-hidden className="size-2 rounded-full bg-[#c98a00]" />
+                Unsaved changes
+              </span>
+            ) : (
+              <span className="text-muted">No changes yet</span>
+            )}
           </p>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="hidden rounded-full border border-line bg-card px-5 py-3 text-sm font-bold text-ink hover:bg-selected lg:inline-flex"
-          >
+          <button type="button" onClick={onCancel} className="btn btn-secondary hidden lg:inline-flex">
             Cancel
           </button>
-          <button
-            type="submit"
-            disabled={pending}
-            className="w-full rounded-full bg-brand px-6 py-3.5 text-base font-bold text-white hover:bg-danger disabled:opacity-60 lg:w-auto lg:py-3 lg:text-sm"
-          >
+          <button type="submit" disabled={pending} className="btn btn-primary w-full max-lg:btn-lg lg:w-auto">
             {pending ? "Saving…" : "Save changes"}
           </button>
         </div>

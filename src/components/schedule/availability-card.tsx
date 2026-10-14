@@ -14,6 +14,9 @@ import { SaveMessage, useScheduleSave } from "./use-schedule-save";
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
 const INITIALS: Record<number, string> = { 0: "S", 1: "M", 2: "T", 3: "W", 4: "T", 5: "F", 6: "S" };
 
+const segmentClass = "segment inline-flex h-9 items-center justify-center lg:h-8";
+const inlineLink = "font-semibold text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink";
+
 type Hours = { from: string; to: string };
 /** A weekday's own hours, or undefined while it follows the daily timing. `[]` is a day off. */
 type Custom = Partial<Record<number, Hours[]>>;
@@ -65,11 +68,11 @@ function Switch({ on, onToggle, label }: { on: boolean; onToggle: () => void; la
       aria-checked={on}
       aria-label={label}
       onClick={onToggle}
-      className={`relative h-6 w-10 shrink-0 rounded-full transition-colors ${on ? "bg-success" : "bg-muted"}`}
+      className={`relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 before:absolute before:-inset-2 ${on ? "bg-success" : "bg-line-strong"}`}
     >
       <span
         aria-hidden
-        className={`absolute top-0.5 size-5 rounded-full bg-white transition-[left] ${on ? "left-4.5" : "left-0.5"}`}
+        className={`absolute top-0.5 size-6 rounded-full bg-white shadow-[0_2px_4px_rgba(14,42,51,0.24)] transition-[left] duration-200 ${on ? "left-5.5" : "left-0.5"}`}
       />
     </button>
   );
@@ -86,7 +89,7 @@ function HoursEditor({ hours, onChange, label }: { hours: Hours[]; onChange: (ho
             value={block.from}
             onChange={(from) => onChange(hours.map((h, j) => (j === i ? { ...h, from } : h)))}
           />
-          <span aria-hidden className="text-sm text-body">
+          <span aria-hidden className="text-sm text-muted">
             –
           </span>
           <ClockField
@@ -100,7 +103,7 @@ function HoursEditor({ hours, onChange, label }: { hours: Hours[]; onChange: (ho
               type="button"
               aria-label={`Remove ${label} block ${i + 1}`}
               onClick={() => onChange(hours.filter((_, j) => j !== i))}
-              className="rounded-full p-1 text-body hover:bg-selected"
+              className="btn btn-ghost btn-sm btn-icon -mr-1.5 text-muted"
             >
               <X aria-hidden className="size-4" />
             </button>
@@ -111,9 +114,9 @@ function HoursEditor({ hours, onChange, label }: { hours: Hours[]; onChange: (ho
         <button
           type="button"
           onClick={() => onChange([...hours, nextHours(hours)])}
-          className="inline-flex w-fit items-center gap-1 text-xs font-bold text-brand"
+          className="btn btn-ghost btn-sm -ml-2.5 w-fit"
         >
-          <Plus aria-hidden className="size-3.5" />
+          <Plus aria-hidden className="size-4" />
           Add more hours, e.g. an evening
         </button>
       ) : null}
@@ -139,9 +142,9 @@ function RuleField({
   step?: number;
 }) {
   return (
-    <label className="flex flex-col gap-1 text-xs font-semibold text-body">
+    <label className="flex min-w-0 flex-col gap-1.5 text-[13px] font-semibold text-ink">
       {label}
-      <span className="flex items-center rounded-lg border border-line bg-surface focus-within:border-brand">
+      <span className="field flex items-center gap-2 py-0 focus-within:border-brand focus-within:shadow-[0_0_0_3px_rgba(221,67,1,0.14)]">
         <input
           type="number"
           inputMode="numeric"
@@ -150,9 +153,9 @@ function RuleField({
           step={step}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full min-w-0 bg-transparent py-1.5 pl-2.5 text-sm font-semibold text-ink focus:outline-none"
+          className="w-full min-w-0 self-stretch bg-transparent font-normal tabular-nums text-ink outline-none"
         />
-        <span className="pr-2.5 text-xs text-body">{unit}</span>
+        <span className="shrink-0 whitespace-nowrap text-xs font-normal text-muted">{unit}</span>
       </span>
     </label>
   );
@@ -235,23 +238,18 @@ export function AvailabilityCard({
     run((choice) => saveWeeklySchedule(input, choice));
   }
 
-  const tabClass = (active: boolean) =>
-    `relative inline-flex h-9 items-center justify-center rounded-full text-sm font-bold transition-colors ${
-      active ? "bg-ink text-white" : "bg-surface text-ink hover:bg-selected"
-    }`;
-
   const weekday = tab === "daily" ? null : tab;
   const dayOn = weekday !== null && hoursFor(weekday).length > 0;
 
   return (
     <>
       <SectionHeader title={title} open={open} onToggle={() => setOpen((o) => !o)} controls={bodyId} />
-      <p className="mt-1 text-sm text-body">{description}</p>
+      <p className="mt-1 text-[13px] text-body">{description}</p>
 
-      <div className="mt-4 flex items-center gap-3 rounded-xl bg-surface p-3">
+      <div className="mt-4 flex items-center gap-4 rounded-2xl bg-surface px-4 py-3.5">
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-ink">Taking new bookings</p>
-          <p className="text-xs text-body">
+          <p className="text-sm font-bold text-ink">Taking new bookings</p>
+          <p className="mt-0.5 text-xs text-body">
             {accepting
               ? "Members can book you in the app during your hours."
               : "Paused. You don’t show up in the app. Consults already booked stay."}
@@ -267,13 +265,13 @@ export function AvailabilityCard({
         />
       </div>
 
-      <div role="tablist" aria-label="Timing for" className={`mt-5 flex flex-wrap gap-1.5 ${accepting ? "" : "opacity-60"}`}>
+      <div role="tablist" aria-label="Timing for" className={`segmented mt-5 ${accepting ? "" : "opacity-60"}`}>
         <button
           type="button"
           role="tab"
           aria-selected={tab === "daily"}
           onClick={() => pickTab("daily")}
-          className={`${tabClass(tab === "daily")} px-4`}
+          className={`${segmentClass} flex-none px-3 sm:px-4`}
         >
           Daily
         </button>
@@ -289,19 +287,19 @@ export function AvailabilityCard({
               aria-selected={tab === day}
               aria-label={`${WEEKDAYS[day]}, ${state}`}
               onClick={() => pickTab(day)}
-              className={`${tabClass(tab === day)} w-9 ${off && tab !== day ? "text-muted line-through" : ""}`}
+              className={`${segmentClass} px-0 ${off && tab !== day ? "text-muted line-through" : ""}`}
             >
-              {INITIALS[day]}
-              {own && !off ? (
-                <span aria-hidden className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-brand ring-2 ring-card" />
-              ) : null}
+              <span className="relative">
+                {INITIALS[day]}
+                {own && !off ? <span aria-hidden className="absolute -right-2 top-0 size-1.5 rounded-full bg-brand" /> : null}
+              </span>
             </button>
           );
         })}
       </div>
 
       <div id={bodyId} hidden={!open}>
-        <div role="tabpanel" className={`mt-4 rounded-xl border border-line p-3.5 ${accepting ? "" : "opacity-60"}`}>
+        <div role="tabpanel" className={`mt-3 rounded-2xl bg-surface p-3.5 sm:p-4 ${accepting ? "" : "opacity-60"}`}>
           {weekday === null ? (
             <>
               <p className="mb-3 text-xs text-body">
@@ -339,11 +337,11 @@ export function AvailabilityCard({
                     label={WEEKDAYS[weekday]}
                     onChange={(hours) => setDay(weekday, same(hours, daily) ? undefined : hours)}
                   />
-                  <p className="mt-3 text-xs text-body">
+                  <p className="mt-2 text-xs text-body">
                     {custom[weekday] ? (
                       <>
                         Own hours for {WEEKDAYS[weekday]}.{" "}
-                        <button type="button" onClick={() => setDay(weekday, undefined)} className="font-bold text-brand hover:underline">
+                        <button type="button" onClick={() => setDay(weekday, undefined)} className={inlineLink}>
                           Use daily timing
                         </button>
                       </>
@@ -353,10 +351,10 @@ export function AvailabilityCard({
                   </p>
                 </>
               ) : (
-                <p className="text-sm text-body">
+                <p className="text-[13px] text-body">
                   Members can’t book you on {WEEKDAYS[weekday]}s.{" "}
                   {daily.length ? (
-                    <button type="button" onClick={() => setDay(weekday, undefined)} className="font-bold text-brand hover:underline">
+                    <button type="button" onClick={() => setDay(weekday, undefined)} className={inlineLink}>
                       Use daily timing
                     </button>
                   ) : null}
@@ -366,7 +364,7 @@ export function AvailabilityCard({
           )}
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-2">
+        <div className="mt-5 grid grid-cols-2 gap-3">
           <RuleField
             label="Consult length"
             unit="min"
@@ -391,36 +389,31 @@ export function AvailabilityCard({
             max={LIMITS.bookingWindowDays.max}
           />
         </div>
-        <p className="mt-2 text-xs text-body">
+        <p className="mt-2 text-xs text-muted">
           Patients book in slots of this length. When you end a consult early, the app offers the time you freed straight away.
         </p>
 
         <SaveMessage result={result} savedText="Saved. The app now offers these hours." />
 
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={save}
-            disabled={pending || !dirty}
-            className="rounded-full bg-brand px-5 py-2 text-sm font-bold text-white hover:bg-danger disabled:cursor-not-allowed disabled:opacity-50"
-          >
+        <div className="mt-5 flex flex-wrap items-center gap-2">
+          <button type="button" onClick={save} disabled={pending || !dirty} className="btn btn-primary">
             {pending ? "Saving…" : "Save changes"}
           </button>
           {dirty ? (
             <>
-              <button type="button" onClick={undo} className="text-sm font-semibold text-body hover:text-ink">
+              <button type="button" onClick={undo} className="btn btn-ghost">
                 Undo
               </button>
-              <span className="text-xs font-semibold text-warning">Not saved yet</span>
+              <span className="ml-1 inline-flex items-center gap-1.5 text-xs font-bold text-warning"><span aria-hidden className="size-1.5 rounded-full bg-[#c98a00]" />Not saved yet</span>
             </>
           ) : null}
         </div>
       </div>
       {/* Collapsed with the bookings switch changed, the save still has to be reachable. */}
       {!open && dirty ? (
-        <p className="mt-3 text-xs font-semibold text-warning">
+        <p className="mt-3 text-xs font-medium text-warning">
           Not saved yet.{" "}
-          <button type="button" onClick={() => setOpen(true)} className="font-bold text-brand hover:underline">
+          <button type="button" onClick={() => setOpen(true)} className={inlineLink}>
             Show and save
           </button>
         </p>

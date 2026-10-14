@@ -1,8 +1,9 @@
 "use client";
 
-import { History, Syringe, X } from "lucide-react";
+import { History, Syringe } from "lucide-react";
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 
+import { DialogFooter, DialogHeader } from "@/components/dialog-parts";
 import {
   ROUTE_LABELS,
   SITE_LABELS,
@@ -22,8 +23,7 @@ import { INTERVAL_UNITS, VACCINE_DOSE_UNITS, VACCINE_ROUTES, VACCINE_SITES } fro
 
 type Errors = Partial<Record<string, string>>;
 
-const field =
-  "w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-ink placeholder:text-body focus:border-brand focus:outline-none aria-invalid:border-danger";
+const field = "field aria-invalid:border-danger";
 
 /** Fields kept as text while typing, turned into numbers on save. */
 type Draft = {
@@ -223,37 +223,33 @@ export function VaccineDialog({
       ref={ref}
       onClose={onClose}
       aria-labelledby={`${id}-title`}
-      className="m-0 h-dvh max-h-none w-full max-w-none bg-card p-0 text-ink backdrop:bg-ink/50 sm:m-auto sm:h-auto sm:max-h-[90dvh] sm:max-w-lg sm:rounded-3xl md:max-w-3xl sm:shadow-floating"
+      className="sheet m-0 h-dvh max-h-none w-full max-w-none bg-card p-0 text-ink backdrop:bg-ink/40 backdrop:backdrop-blur-[2px] sm:m-auto sm:h-fit sm:max-h-[90dvh] sm:max-w-lg sm:rounded-2xl sm:border sm:border-line sm:shadow-floating md:max-w-3xl"
     >
       <form onSubmit={submit} noValidate className="flex h-full flex-col sm:max-h-[90dvh]">
-        <header className="flex items-center gap-3 border-b border-line px-5 py-4">
-          <span className="inline-flex size-9 items-center justify-center rounded-xl bg-brand-soft text-brand">
-            <Syringe aria-hidden className="size-5" />
-          </span>
-          <h2 id={`${id}-title`} className="flex-1 font-display text-lg font-bold">
-            {vaccine ? "Edit vaccine" : "Add a vaccine"}
-          </h2>
-          <button type="button" onClick={onClose} aria-label="Close" className="rounded-full p-2 text-body hover:bg-selected">
-            <X aria-hidden className="size-5" />
-          </button>
-        </header>
+        <div className="border-b border-line pb-3">
+          <DialogHeader
+            titleId={`${id}-title`}
+            title={vaccine ? "Edit vaccine" : "Add a vaccine"}
+            icon={Syringe}
+            onClose={onClose}
+          />
+        </div>
 
         {/* Two columns from md up: what the vaccine is, then when it is given. Wide enough not to scroll. */}
-        <div className="flex-1 overflow-y-auto px-5 py-5 md:grid md:py-4 md:grid-cols-2 md:gap-x-8 md:px-6">
+        <div className="flex-1 overflow-y-auto px-5 py-5 md:grid md:grid-cols-2 md:gap-x-8 md:py-4">
           {showKept ? (
-            <div role="status" className="mb-5 flex items-center gap-3 rounded-xl bg-brand-soft p-3 text-sm md:col-span-2 md:mb-4">
-              <History aria-hidden className="size-4 shrink-0 text-brand" />
-              <p className="min-w-0 flex-1 font-semibold text-ink">Filled in with what you started earlier.</p>
-              <button
-                type="button"
-                onClick={startOver}
-                className="shrink-0 rounded-full px-3 py-1.5 text-xs font-bold text-danger hover:bg-white/60"
-              >
+            <div
+              role="status"
+              className="mb-5 flex items-center gap-3 rounded-2xl bg-surface py-1.5 pl-3.5 pr-1.5 text-[13px] md:col-span-2 md:mb-4"
+            >
+              <History aria-hidden className="size-4 shrink-0 text-muted" />
+              <p className="min-w-0 flex-1 font-medium text-ink">Filled in with what you started earlier.</p>
+              <button type="button" onClick={startOver} className="btn btn-danger-ghost btn-sm shrink-0">
                 Start over
               </button>
             </div>
           ) : null}
-          <div className="mb-5 md:mb-0">
+          <div>
             <Section title="Vaccine">
               <Field id={`${id}-name`} label="Name" error={errorFor("name")}>
                 <input
@@ -377,11 +373,11 @@ export function VaccineDialog({
             </Section>
           </div>
 
-          <div>
+          <div className="mt-5 border-t border-line pt-5 md:mt-0 md:border-t-0 md:pt-0">
             <Section title="Schedule">
               <fieldset>
                 <legend className="sr-only">How often</legend>
-                <div className="grid grid-cols-2 gap-1 rounded-full bg-surface p-1">
+                <div className="segmented">
                   {(
                     [
                       ["one_time", "One time"],
@@ -390,7 +386,7 @@ export function VaccineDialog({
                   ).map(([value, label]) => (
                     <label
                       key={value}
-                      className="cursor-pointer rounded-full px-3 py-2 text-center text-sm font-bold text-body has-checked:bg-ink has-checked:text-white has-focus-visible:outline-2 has-focus-visible:outline-brand"
+                      className="segment cursor-pointer py-2 text-center has-checked:bg-card has-checked:text-ink has-checked:shadow-[0_1px_2px_rgba(14,42,51,0.1),0_0_0_1px_rgba(14,42,51,0.04)] has-focus-visible:outline-2 has-focus-visible:outline-offset-1 has-focus-visible:outline-brand lg:py-1.5"
                     >
                       <input
                         type="radio"
@@ -408,8 +404,8 @@ export function VaccineDialog({
 
               {recurring ? (
                 <>
-                  <div className="grid grid-cols-[auto_5rem_minmax(0,1fr)] items-end gap-2">
-                    <span className="pb-3 text-sm font-semibold">Every</span>
+                  <div className="grid grid-cols-[auto_5rem_minmax(0,1fr)] items-center gap-2">
+                    <span className="text-[13px] font-semibold text-ink">Every</span>
                     <Field id={`${id}-every`} label="Every" hideLabel error={errorFor("everyCount")}>
                       <input
                         id={`${id}-every`}
@@ -501,7 +497,7 @@ export function VaccineDialog({
                           value={day}
                           onChange={(e) => setDate(i, e.target.value)}
                           aria-invalid={Boolean(errorFor(key)) || undefined}
-                          className={`${field} py-2`}
+                          className={field}
                         />
                       </Field>
                     </li>
@@ -512,21 +508,14 @@ export function VaccineDialog({
           </div>
         </div>
 
-        <footer className="flex gap-2 border-t border-line bg-card px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 sm:justify-end sm:pb-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 rounded-full border border-line px-5 py-2.5 text-sm font-bold text-ink hover:bg-selected sm:flex-none"
-          >
+        <DialogFooter>
+          <button type="button" onClick={onClose} className="btn btn-secondary">
             Cancel
           </button>
-          <button
-            type="submit"
-            className="flex-1 rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-white hover:bg-danger sm:flex-none"
-          >
+          <button type="submit" className="btn btn-primary">
             {vaccine ? "Save changes" : "Add vaccine"}
           </button>
-        </footer>
+        </DialogFooter>
       </form>
     </dialog>
   );
@@ -545,11 +534,11 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <section className="mb-5 flex flex-col gap-3 last:mb-0">
-      <h3 className="text-xs font-bold uppercase tracking-wide text-body">
+    <section className="flex flex-col gap-3 border-line not-first:mt-5 not-first:border-t not-first:pt-5">
+      <h3 className="text-sm font-semibold text-ink">
         {title}
-        {optional ? <span className="font-medium normal-case tracking-normal"> (optional)</span> : null}
-        {note ? <span className="font-medium normal-case tracking-normal">, {note}</span> : null}
+        {optional ? <span className="font-normal text-muted"> (optional)</span> : null}
+        {note ? <span className="font-normal text-muted">, {note}</span> : null}
       </h3>
       {children}
     </section>
@@ -589,14 +578,14 @@ function Field({
     >
       <label
         htmlFor={id}
-        className={hideLabel ? "sr-only" : compact ? "text-xs font-semibold text-body" : "text-sm font-semibold text-ink"}
+        className={hideLabel ? "sr-only" : compact ? "text-xs font-medium text-body" : "text-[13px] font-semibold text-ink"}
       >
         {label}
-        {optional ? <span className="font-normal text-body"> (optional)</span> : null}
+        {optional ? <span className="font-normal text-muted"> (optional)</span> : null}
       </label>
       <div className="flex min-w-0 flex-col gap-1">
         {children}
-        {hint && !error ? <p className="text-xs text-body">{hint}</p> : null}
+        {hint && !error ? <p className="text-xs text-muted">{hint}</p> : null}
         {error && !hideLabel ? <FieldError>{error}</FieldError> : null}
       </div>
     </div>
@@ -604,5 +593,5 @@ function Field({
 }
 
 function FieldError({ children }: { children: ReactNode }) {
-  return <p className="text-xs font-semibold text-danger">{children}</p>;
+  return <p className="text-xs font-medium text-danger">{children}</p>;
 }

@@ -1,3 +1,4 @@
+import type { LabTestInput } from "./lab-tests";
 import type { VaccineInput } from "./vaccines";
 
 /**
@@ -13,6 +14,8 @@ import type { VaccineInput } from "./vaccines";
 export type LocalRx = {
   items: string[];
   vaccines: VaccineInput[];
+  /** Lab tests; missing on copies kept before tests could be added. */
+  tests?: LabTestInput[];
   /** The server draft these edits belong to, once there is one. */
   prescriptionId?: string;
   /** Whether these exact lines are also saved as a draft on the server. */
@@ -45,6 +48,7 @@ function parse(raw: string | null): LocalRx | null {
   try {
     const rx = JSON.parse(raw) as LocalRx;
     if (!Array.isArray(rx.items) || !Array.isArray(rx.vaccines) || typeof rx.at !== "number") return null;
+    if (rx.tests !== undefined && !Array.isArray(rx.tests)) return null;
     return Date.now() - rx.at > MAX_AGE_MS ? null : rx;
   } catch {
     return null;
@@ -150,11 +154,14 @@ export function removeVaccineForm(owner: string, memberId: string) {
   }
 }
 
-/** Whether two prescriptions have the same lines and vaccines. Blank lines don't count. */
-export function sameRx(a: Pick<LocalRx, "items" | "vaccines">, b: Pick<LocalRx, "items" | "vaccines">) {
+type RxContent = Pick<LocalRx, "items" | "vaccines" | "tests">;
+
+/** Whether two prescriptions have the same lines, vaccines and tests. Blank lines don't count. */
+export function sameRx(a: RxContent, b: RxContent) {
   const lines = (items: string[]) => items.map((item) => item.trim()).filter(Boolean);
   return (
     JSON.stringify(lines(a.items)) === JSON.stringify(lines(b.items)) &&
-    JSON.stringify(a.vaccines) === JSON.stringify(b.vaccines)
+    JSON.stringify(a.vaccines) === JSON.stringify(b.vaccines) &&
+    JSON.stringify(a.tests ?? []) === JSON.stringify(b.tests ?? [])
   );
 }

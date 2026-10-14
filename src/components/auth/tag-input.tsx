@@ -93,23 +93,24 @@ export function TagInput({
   return (
     <div className="relative">
       <div
-        className={`flex flex-wrap items-center gap-2 rounded-xl border bg-card px-3 py-2 focus-within:border-brand ${
-          invalid ? "border-danger" : "border-line"
+        className={`flex min-h-12 flex-wrap items-center gap-1.5 rounded-lg border-[1.5px] bg-card px-2 py-1.5 transition-[border-color,box-shadow] focus-within:border-brand focus-within:shadow-[0_0_0_4px_rgba(221,67,1,0.12)] lg:min-h-10 lg:rounded-xl lg:border ${
+          invalid ? "border-danger" : "border-line-strong"
         }`}
       >
         {values.map((value) => (
           <span
             key={value}
-            className="inline-flex items-center gap-1 rounded-full bg-ink py-1 pl-3 pr-1.5 text-sm font-semibold text-white"
+            className="inline-flex items-center gap-0.5 rounded-full bg-brand-soft py-1 pl-3 pr-1 text-[13px] font-bold leading-5 text-brand"
           >
             {labelOf(value)}
             <button
               type="button"
               onClick={() => update(values.filter((v) => v !== value))}
               aria-label={`Remove ${labelOf(value)}`}
-              className="inline-flex size-5 items-center justify-center rounded-full hover:bg-white/20"
+              // A bigger target than it looks, for fingers.
+              className="relative inline-flex size-5 items-center justify-center rounded-full text-brand/70 transition-colors after:absolute after:-inset-1.5 hover:bg-brand/15 hover:text-brand"
             >
-              <X aria-hidden className="size-3.5" />
+              <X aria-hidden className="size-3" />
             </button>
             <input type="hidden" name={name} value={value} />
           </span>
@@ -133,7 +134,7 @@ export function TagInput({
           }}
           onBlur={() => setOpen(false)}
           onKeyDown={onKeyDown}
-          className="min-w-32 flex-1 bg-transparent py-1.5 text-ink placeholder:text-body focus:outline-none focus-visible:outline-none"
+          className="min-w-32 flex-1 bg-transparent px-1 py-0.5 text-sm text-ink placeholder:text-muted outline-none"
         />
       </div>
 
@@ -141,7 +142,7 @@ export function TagInput({
         <ul
           id={listId}
           role="listbox"
-          className="absolute inset-x-0 top-full z-10 mt-1 max-h-64 overflow-auto rounded-xl border border-line bg-card p-1 shadow-floating"
+          className="absolute inset-x-0 top-full z-10 mt-1.5 max-h-64 overflow-auto rounded-2xl border border-line bg-card p-1.5 shadow-floating"
         >
           {options.map((option, i) => (
             <li
@@ -153,13 +154,13 @@ export function TagInput({
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => add(option.value)}
               onMouseEnter={() => setActive(i)}
-              className={`flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink ${
+              className={`flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-ink ${
                 i === current ? "bg-selected" : ""
               }`}
             >
               {option.custom ? (
                 <>
-                  <Plus aria-hidden className="size-4 text-brand" />
+                  <Plus aria-hidden className="size-4 text-muted" />
                   Add “{option.label}”
                 </>
               ) : (

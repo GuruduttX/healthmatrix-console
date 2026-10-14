@@ -39,30 +39,30 @@ function subscribe(notify: () => void) {
 
 /** A ring showing how complete the profile is. */
 function Ring({ percent }: { percent: number }) {
-  const radius = 18;
+  const radius = 19;
   const length = 2 * Math.PI * radius;
   return (
-    <span className="relative inline-flex size-12 shrink-0 items-center justify-center">
+    <span className="relative inline-flex size-11 shrink-0 items-center justify-center">
       <svg viewBox="0 0 44 44" className="absolute inset-0 -rotate-90" aria-hidden>
-        <circle cx="22" cy="22" r={radius} fill="none" strokeWidth="4" className="stroke-brand-light/50" />
+        <circle cx="22" cy="22" r={radius} fill="none" strokeWidth="3" className="stroke-line" />
         <circle
           cx="22"
           cy="22"
           r={radius}
           fill="none"
-          strokeWidth="4"
+          strokeWidth="3"
           strokeLinecap="round"
           strokeDasharray={length}
           strokeDashoffset={length * (1 - percent / 100)}
           className="stroke-brand"
         />
       </svg>
-      <span className="text-xs font-bold text-ink">{percent}%</span>
+      <span className="text-[11px] font-bold tabular-nums text-ink">{percent}%</span>
     </span>
   );
 }
 
-/** Phones only: asks the doctor to finish the parts of their profile onboarding skipped. */
+/** Phones, on Today: asks the doctor to finish the parts of their profile onboarding skipped. */
 export function ProfileNudge({ missing }: { missing: ProfileGap[] }) {
   const pathname = usePathname();
   // Hidden on the server and on first paint, so a dismissed nudge never flashes back in.
@@ -77,22 +77,17 @@ export function ProfileNudge({ missing }: { missing: ProfileGap[] }) {
   return (
     <aside
       aria-label="Complete your profile"
-      className="nudge-enter relative mb-5 flex items-center gap-3 rounded-2xl border border-brand-light bg-brand-soft p-3 pr-2 lg:hidden print:hidden"
+      className="nudge-enter relative flex items-center gap-1 rounded-xl border border-line bg-card py-3 pl-3.5 pr-2 shadow-card lg:hidden print:hidden"
     >
-      <Link href="/profile/edit" className="flex min-w-0 flex-1 items-center gap-3">
+      <Link href="/profile/edit" className="pressable flex min-w-0 flex-1 items-center gap-3">
         <Ring percent={percent} />
         <span className="min-w-0 flex-1">
-          <span className="block text-sm font-bold text-ink">Complete your profile</span>
-          <span className="block truncate text-xs text-body">Add {gapSummary(missing).toLowerCase()}</span>
+          <span className="block text-[15px] font-bold text-ink">Complete your profile</span>
+          <span className="block truncate text-[13px] text-body">Add {gapSummary(missing).toLowerCase()}</span>
         </span>
-        <ChevronRight aria-hidden className="size-5 shrink-0 text-brand" />
+        <ChevronRight aria-hidden className="size-4.5 shrink-0 text-muted" />
       </Link>
-      <button
-        type="button"
-        onClick={dismiss}
-        aria-label="Hide for now"
-        className="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-body hover:bg-white/60"
-      >
+      <button type="button" onClick={dismiss} aria-label="Hide for now" className="btn btn-ghost btn-sm btn-icon shrink-0 text-muted">
         <X aria-hidden className="size-4" />
       </button>
     </aside>

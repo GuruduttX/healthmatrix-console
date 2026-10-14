@@ -2,6 +2,7 @@ export * from "./access-grant.model";
 export * from "./access-log.model";
 export * from "./booking.model";
 export * from "./consult.model";
+export * from "./consult-request.model";
 export * from "./constants";
 export * from "./doctor.model";
 export * from "./doctor-otp-challenge.model";

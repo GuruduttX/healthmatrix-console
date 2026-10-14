@@ -14,22 +14,24 @@ export default async function RegisterPage() {
 
   return (
     <>
-      <p className="text-xs font-bold uppercase tracking-wider text-brand">New doctor</p>
-      <h1 className="mt-2 font-display text-2xl sm:text-3xl font-bold text-ink">Join the doctor console</h1>
-      <p className="mt-2 text-body">
+      <p className="mb-1 text-[13px] font-bold text-brand">New doctor</p>
+      <h1 className="font-display text-[1.6875rem] font-bold leading-tight tracking-[-0.015em] text-ink">
+        Join the doctor console
+      </h1>
+      <p className="mt-2 text-[15px] leading-relaxed text-body">
         Enter your mobile number. After the one-time password, you’ll set up your profile with
         your registration details.
       </p>
 
       <LoginForm intent="register" />
 
-      <p className="mt-6 text-sm text-body">
+      <p className="mt-5 text-center text-[13px] text-body">
         Already registered?{" "}
-        <Link href="/login" className="font-bold text-brand hover:underline">
+        <Link href="/login" className="font-bold text-brand hover:text-brand-strong">
           Sign in
         </Link>
       </p>
-      <p className="mt-10 text-xs leading-relaxed text-body">
+      <p className="mt-6 text-center text-xs leading-relaxed text-muted">
         For registered medical practitioners. Consultations follow India’s Telemedicine Practice
         Guidelines, 2020.
       </p>

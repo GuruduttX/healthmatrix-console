@@ -55,12 +55,28 @@ export function formatShortWhen(date: Date, now = new Date()) {
   return day === "Yesterday" ? day : shortDateFormat.format(date);
 }
 
+const longDayFormat = new Intl.DateTimeFormat("en-GB", { timeZone: ZONE, weekday: "long", day: "numeric", month: "long" });
+
+/** "Monday, 12 October", for the top of Today. */
+export const formatLongDay = (date = new Date()) => longDayFormat.format(date).replace(/^(\w+) /, "$1, ");
+
 /** "Good morning" by the hour in India. */
 export function greeting(now = new Date()) {
   const hour = Number(hourFormat.format(now));
   if (hour < 12) return "Good morning";
   if (hour < 17) return "Good afternoon";
   return "Good evening";
+}
+
+/** "just now", "12 min ago", "3 h ago" or "2 days ago". */
+export function timeAgo(date: Date, now = new Date()) {
+  const minutes = Math.floor((now.getTime() - date.getTime()) / 60000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} ${days === 1 ? "day" : "days"} ago`;
 }
 
 /** "in 23 h" or "in 40 min" until `date`. */

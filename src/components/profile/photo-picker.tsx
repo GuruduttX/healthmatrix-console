@@ -1,9 +1,10 @@
 "use client";
 
-import { Camera, ImagePlus, LoaderCircle, Trash2, X } from "lucide-react";
+import { Camera, ImagePlus, LoaderCircle, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useRef, useState, useTransition, type ChangeEvent } from "react";
 
+import { DialogHeader, dialogClass } from "@/components/dialog-parts";
 import { removeProfilePhoto, uploadProfilePhoto } from "@/lib/profile-actions";
 
 /** Files under this go up as they are; bigger ones are shrunk in the browser first. */
@@ -106,11 +107,11 @@ export function PhotoPicker({ photoUrl, initials }: { photoUrl?: string; initial
   }
 
   const shown = preview ?? saved;
-  const sheetItem =
-    "flex w-full items-center gap-4 rounded-2xl px-4 py-3.5 text-left text-base font-semibold text-ink hover:bg-selected";
+  const sheetItem = "btn btn-lg w-full justify-start gap-3 px-2.5 text-left font-medium";
+  const sheetIcon = "inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-line bg-surface text-body";
 
   return (
-    <div className="flex flex-col items-center gap-3 text-center">
+    <div className="flex flex-col items-center gap-2.5 text-center">
       <button
         type="button"
         onClick={() => sheetRef.current?.showModal()}
@@ -118,13 +119,13 @@ export function PhotoPicker({ photoUrl, initials }: { photoUrl?: string; initial
         aria-label={saved ? "Change profile photo" : "Add profile photo"}
         className="group relative rounded-full disabled:cursor-wait"
       >
-        <span className="relative inline-flex size-28 items-center justify-center overflow-hidden rounded-full bg-success text-3xl font-bold text-white ring-4 ring-card shadow-card">
+        <span className="relative inline-flex size-24 items-center justify-center overflow-hidden rounded-full bg-linear-to-br from-brand-mid to-brand text-2xl font-bold text-white shadow-card ring-4 ring-card">
           {shown ? (
             <Image
               src={shown}
               alt=""
               fill
-              sizes="112px"
+              sizes="96px"
               unoptimized={Boolean(preview)}
               className="object-cover"
               onError={() => setPreview(undefined)}
@@ -134,25 +135,25 @@ export function PhotoPicker({ photoUrl, initials }: { photoUrl?: string; initial
           )}
           {pending ? (
             <span className="absolute inset-0 flex items-center justify-center bg-ink/55">
-              <LoaderCircle aria-hidden className="size-8 animate-spin" />
+              <LoaderCircle aria-hidden className="size-6 animate-spin" />
             </span>
           ) : null}
         </span>
-        <span className="absolute bottom-0.5 right-0.5 inline-flex size-9 items-center justify-center rounded-full bg-brand text-white ring-4 ring-card transition-transform group-hover:scale-105">
-          <Camera aria-hidden className="size-4.5" />
+        <span className="absolute -bottom-0.5 -right-0.5 inline-flex size-9 items-center justify-center rounded-full border-[3px] border-card bg-brand text-white shadow-raised transition-transform group-active:scale-95">
+          <Camera aria-hidden className="size-4" />
         </span>
       </button>
 
-      <p aria-live="polite" className="min-h-5 text-sm font-semibold">
+      <p aria-live="polite" className="min-h-5 text-[13px] font-medium">
         {pending ? (
           <span className="text-body">Saving your photo…</span>
         ) : message ? (
-          <span className={message.tone === "error" ? "text-danger" : "text-success"}>{message.text}</span>
+          <span className={message.tone === "error" ? "text-danger" : "text-brand"}>{message.text}</span>
         ) : (
           <button
             type="button"
             onClick={() => sheetRef.current?.showModal()}
-            className="text-brand hover:underline"
+            className="font-semibold text-body hover:text-ink hover:underline"
           >
             {saved ? "Change photo" : "Add a photo"}
           </button>
@@ -167,42 +168,31 @@ export function PhotoPicker({ photoUrl, initials }: { photoUrl?: string; initial
         ref={sheetRef}
         aria-labelledby="photo-sheet-title"
         onClick={(event) => event.target === sheetRef.current && close()}
-        className="sheet fixed inset-x-0 bottom-0 top-auto m-0 w-full max-w-none rounded-t-3xl bg-card p-0 text-ink shadow-floating backdrop:bg-ink/45 sm:inset-0 sm:m-auto sm:h-fit sm:max-w-sm sm:rounded-3xl"
+        className={`${dialogClass} text-left`}
       >
-        <div className="px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 sm:pb-3">
-          <span aria-hidden className="mx-auto mb-2 block h-1.5 w-10 rounded-full bg-line sm:hidden" />
-          <div className="flex items-center justify-between px-4 py-2">
-            <h2 id="photo-sheet-title" className="font-display text-lg font-bold">Profile photo</h2>
-            <button
-              type="button"
-              onClick={close}
-              aria-label="Close"
-              className="inline-flex size-9 items-center justify-center rounded-full text-body hover:bg-selected"
-            >
-              <X aria-hidden className="size-5" />
-            </button>
-          </div>
-          <p className="px-4 pb-2 text-left text-xs text-body">
+        <DialogHeader titleId="photo-sheet-title" title="Profile photo" onClose={close} />
+        <div className="px-2.5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-1 sm:pb-3">
+          <p className="px-2.5 pb-2 text-left text-xs text-muted">
             Any photo format works. We turn it into a small WebP under 2 MB.
           </p>
           {/* Phones and tablets only: on a computer the camera option opens the same file picker. */}
-          <button type="button" onClick={() => choose(cameraRef.current)} className={`${sheetItem} hidden pointer-coarse:flex`}>
-            <span className="inline-flex size-10 items-center justify-center rounded-full bg-brand-soft text-brand">
-              <Camera aria-hidden className="size-5" />
+          <button type="button" onClick={() => choose(cameraRef.current)} className={`${sheetItem} btn-ghost text-ink pointer-fine:hidden`}>
+            <span className={sheetIcon}>
+              <Camera aria-hidden className="size-4" />
             </span>
             Take a photo
           </button>
-          <button type="button" onClick={() => choose(galleryRef.current)} className={sheetItem}>
-            <span className="inline-flex size-10 items-center justify-center rounded-full bg-brand-soft text-brand">
-              <ImagePlus aria-hidden className="size-5" />
+          <button type="button" onClick={() => choose(galleryRef.current)} className={`${sheetItem} btn-ghost text-ink`}>
+            <span className={sheetIcon}>
+              <ImagePlus aria-hidden className="size-4" />
             </span>
             <span className="pointer-coarse:hidden">Choose a file</span>
             <span className="hidden pointer-coarse:inline">Choose from gallery</span>
           </button>
           {saved ? (
-            <button type="button" onClick={remove} className={`${sheetItem} text-danger`}>
-              <span className="inline-flex size-10 items-center justify-center rounded-full bg-danger-soft">
-                <Trash2 aria-hidden className="size-5" />
+            <button type="button" onClick={remove} className={`${sheetItem} btn-danger-ghost`}>
+              <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-danger-soft">
+                <Trash2 aria-hidden className="size-4" />
               </span>
               Remove photo
             </button>

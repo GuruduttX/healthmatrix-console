@@ -20,10 +20,21 @@ import { useEffect, useRef, useState, useTransition, type RefObject } from "reac
 import type { LocalAudioTrack, LocalVideoTrack, RemoteParticipant, RemoteTrack, Room } from "twilio-video";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { PRESCRIPTION_HASH } from "@/components/consult/consult-panel";
 import { admitPatient, endConsult, getConsultRoom } from "@/lib/console-actions";
 import type { ConsultStatus } from "@/lib/types";
 
 type Phase = "waiting" | "live" | "ended";
+
+/** How long after opening from an Admit button the patient is let in on arrival, without a second click. */
+const ADMIT_ON_OPEN_MS = 15_000;
+
+/**
+ * The doctor has clicked or typed on this page (a click on an Admit button counts, the page being
+ * the same). Without that the browser may keep the patient's sound muted, so Admit stays a click.
+ */
+const hasBeenActive = () =>
+  (navigator as { userActivation?: { hasBeenActive: boolean } }).userActivation?.hasBeenActive ?? true;
 
 const initialPhase: Record<ConsultStatus, Phase> = {
   scheduled: "waiting",
@@ -108,6 +119,7 @@ function releasePreview(ref: RefObject<LocalVideoTrack | null>) {
  * camera or mic, so the doctor sees the patient arrive in the app's waiting room the moment
  * they do. Admit starts the consult and shares the doctor's camera and mic, which pulls the
  * patient into the call. Ending closes the room for both. It can fill the screen and shrink back.
+ * Opened from an Admit button elsewhere (`admitOnOpen`), it admits the patient by itself.
  */
 export function ConsultStage({
   consultId,
@@ -118,6 +130,7 @@ export function ConsultStage({
   recordShared,
   time,
   videoReady,
+  admitOnOpen = false,
 }: {
   consultId: string;
   /** ISO time the call started, while it is in progress. */
@@ -129,6 +142,8 @@ export function ConsultStage({
   time: string;
   /** Twilio Video's keys are set on this deployment. */
   videoReady: boolean;
+  /** Opened from Admit on Today or Schedule: let the patient in as soon as they are seen here. */
+  admitOnOpen?: boolean;
 }) {
   const [phase, setPhase] = useState<Phase>(initialPhase[status]);
   const [seconds, setSeconds] = useState(() => secondsSince(startedAt));
@@ -167,6 +182,8 @@ export function ConsultStage({
   const remoteVideoBox = useRef<HTMLDivElement>(null);
   const remoteAudioBox = useRef<HTMLDivElement>(null);
   const selfBox = useRef<HTMLDivElement>(null);
+  /** Until when the Admit pressed before opening this page stands, in ms: 0 once used, or never pressed. */
+  const admitUntil = useRef(0);
 
   function expand() {
     setExpanded(true);
@@ -422,6 +439,27 @@ export function ConsultStage({
     }
   }
 
+  // Opened from an Admit button: the click stands for a short while, and the address loses
+  // `?admit=1`, so a reload or going back to this page never admits again.
+  useEffect(() => {
+    if (!admitOnOpen) return;
+    admitUntil.current = Date.now() + ADMIT_ON_OPEN_MS;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("admit");
+    window.history.replaceState(window.history.state, "", url);
+  }, [admitOnOpen]);
+
+  // ...and the patient is let in the moment this page is in the room and sees them waiting. Only
+  // then: a patient who has left meanwhile is never admitted later by surprise.
+  const canAdmit = phase === "waiting" && connection.state === "connected" && remote.present;
+  useEffect(() => {
+    if (!canAdmit || Date.now() > admitUntil.current) return;
+    admitUntil.current = 0;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the one click the doctor made, carried over
+    if (hasBeenActive()) void admit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once, when the patient is first seen
+  }, [canAdmit]);
+
   function rejoin() {
     setConnection({ state: "connecting" });
     setMicOn(true);
@@ -457,21 +495,30 @@ export function ConsultStage({
 
   if (phase === "ended") {
     return (
-      <section className="rounded-3xl border border-line bg-card p-8 text-center shadow-card">
-        <span className="mx-auto inline-flex size-14 items-center justify-center rounded-2xl bg-success-soft text-success">
-          <CircleCheck aria-hidden className="size-7" />
+      <section className="rounded-3xl border border-line bg-card px-6 py-8 text-center shadow-card sm:py-10">
+        <span aria-hidden className="mx-auto inline-flex size-19 items-center justify-center rounded-full bg-success-soft">
+          <span className="inline-flex size-13.5 items-center justify-center rounded-full bg-card text-success shadow-card">
+            <CircleCheck className="size-6" />
+          </span>
         </span>
-        <h2 className="mt-4 font-display text-2xl font-bold text-ink">Consult ended</h2>
-        <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-body">
+        <h2 className="mt-4 font-display text-[1.375rem] font-bold tracking-[-0.01em] text-ink">Consult ended</h2>
+        <p className="mx-auto mt-1.5 max-w-md text-sm leading-relaxed text-body">
           {seconds > 0 ? `You spoke with ${firstName} for ${clock(seconds)}. ` : ""}
           Sign the prescription so medicines and follow-ups reach {firstName}’s reminders. Tests you
           order are booked at a pod near them, and results come back to you.
         </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <Link href="/prescriptions" className="rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-white hover:bg-danger">
-            Go to prescriptions
-          </Link>
-          <Link href="/" className="rounded-full border border-line px-5 py-2.5 text-sm font-bold text-ink hover:bg-selected">
+        <div className="mt-6 flex flex-wrap justify-center gap-2">
+          {/* The prescription panel is on this page while the record is open. */}
+          {recordShared ? (
+            <a href={PRESCRIPTION_HASH} className="btn btn-primary">
+              Write the prescription
+            </a>
+          ) : (
+            <Link href="/prescriptions" className="btn btn-primary">
+              Go to prescriptions
+            </Link>
+          )}
+          <Link href="/" className="btn btn-secondary">
             Back to Today
           </Link>
         </div>
@@ -510,8 +557,8 @@ export function ConsultStage({
     <section
       ref={stageRef}
       aria-label="Video consult"
-      className={`flex flex-col items-center justify-center overflow-hidden bg-linear-to-br from-ink-mid to-ink text-white ${
-        expanded ? "fixed inset-0 z-50 h-dvh w-full" : "relative aspect-video min-h-80 w-full rounded-3xl"
+      className={`hero-bg flex flex-col items-center justify-center overflow-hidden text-white ${
+        expanded ? "fixed inset-0 z-50 h-dvh w-full" : "relative aspect-video min-h-96 w-full rounded-3xl shadow-lifted"
       }`}
     >
       <div
@@ -526,26 +573,26 @@ export function ConsultStage({
       >
         <div className="flex flex-wrap items-center gap-2">
           {recordShared ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-success-soft px-3 py-1.5 text-xs font-bold text-success">
-              <LockOpen aria-hidden className="size-3.5" />
+            <span className="glass inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold backdrop-blur">
+              <LockOpen aria-hidden className="size-3.5 text-live" />
               {firstName}’s record shared by OTP
             </span>
           ) : (
-            <span className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold">Record not shared yet</span>
+            <span className="glass rounded-full px-2.5 py-1 text-xs font-semibold backdrop-blur">Record not shared yet</span>
           )}
           {live && connected && remote.present && !remote.audioOn ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-black/40 px-3 py-1.5 text-xs font-bold">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-black/40 px-2.5 py-1 text-xs font-semibold">
               <MicOff aria-hidden className="size-3.5" />
               Muted
             </span>
           ) : null}
           {connected && reconnecting ? (
-            <span role="status" className="inline-flex items-center gap-1.5 rounded-full bg-warning-soft px-3 py-1.5 text-xs font-bold text-warning">
+            <span role="status" className="inline-flex items-center gap-1.5 rounded-full bg-warning-soft px-2.5 py-1 text-xs font-semibold text-warning">
               <WifiOff aria-hidden className="size-3.5" />
               Reconnecting…
             </span>
           ) : connected && weakConnection ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-warning-soft px-3 py-1.5 text-xs font-bold text-warning">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-warning-soft px-2.5 py-1 text-xs font-semibold text-warning">
               <SignalLow aria-hidden className="size-3.5" />
               Weak connection
             </span>
@@ -553,7 +600,8 @@ export function ConsultStage({
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {live ? (
-            <span className="rounded-full bg-black/30 px-3 py-1.5 text-sm font-bold tabular-nums" aria-label="Call time">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-black/30 px-2.5 py-1 text-xs font-bold tabular-nums" aria-label="Call time" suppressHydrationWarning>
+              <span aria-hidden className="size-1.5 rounded-full bg-[#ff6b5e]" />
               {clock(seconds)}
             </span>
           ) : null}
@@ -562,7 +610,7 @@ export function ConsultStage({
             onClick={expanded ? shrink : expand}
             aria-label={expanded ? "Exit full screen" : "Full screen"}
             title={expanded ? "Exit full screen" : "Full screen"}
-            className="inline-flex size-9 items-center justify-center rounded-full bg-black/30 hover:bg-black/50"
+            className="btn btn-glass btn-icon size-9 min-h-9"
           >
             {expanded ? <Minimize2 aria-hidden className="size-4" /> : <Maximize2 aria-hidden className="size-4" />}
           </button>
@@ -573,23 +621,23 @@ export function ConsultStage({
         <div className="relative z-10 flex flex-col items-center px-6 text-center">
           <span className="relative inline-flex size-28 items-center justify-center">
             {inWaitingRoom ? <span aria-hidden className="absolute inset-0 animate-ping rounded-full bg-brand-mid/40" /> : null}
-            <span className="relative inline-flex size-28 items-center justify-center rounded-full bg-brand-mid font-display text-4xl font-bold">
+            <span className="relative inline-flex size-28 items-center justify-center rounded-full bg-white/10 font-display text-4xl font-bold tracking-[-0.02em] ring-1 ring-white/15">
               {patientInitials}
             </span>
           </span>
-          <p className="mt-4 font-display text-2xl font-bold">
+          <p className="mt-4 font-display text-xl font-bold tracking-[-0.01em]">
             {inWaitingRoom ? `${patientName} is in the waiting room` : patientName}
           </p>
-          <p role="status" className="mt-1 max-w-md text-sm text-white/75">
+          <p role="status" className="mt-1 max-w-md text-[13px] text-white/70">
             {message}
           </p>
-          {!live && !inWaitingRoom && connected ? <p className="mt-1 text-sm text-white/60">Scheduled for {time}.</p> : null}
-          {problem ? <p className="mt-2 max-w-md text-sm font-semibold text-brand-light">{problem}</p> : null}
+          {!live && !inWaitingRoom && connected ? <p className="mt-1 text-[13px] text-white/50">Scheduled for {time}.</p> : null}
+          {problem ? <p className="mt-2 max-w-md text-[13px] font-medium text-brand-light">{problem}</p> : null}
           {action ? (
             <button
               type="button"
               onClick={action.onClick}
-              className="mt-4 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-bold text-ink hover:bg-white/85"
+              className="btn btn-light btn-sm mt-4"
             >
               <RotateCw aria-hidden className="size-4" />
               {action.label}
@@ -600,7 +648,7 @@ export function ConsultStage({
               type="button"
               onClick={admit}
               disabled={admitting}
-              className="mt-6 inline-flex items-center gap-2 rounded-full bg-brand px-8 py-3.5 text-base font-bold shadow-floating hover:bg-danger disabled:opacity-70"
+              className="btn btn-primary btn-lg mt-6 px-8 shadow-floating"
             >
               <UserCheck aria-hidden className="size-5" />
               {admitting ? "Admitting…" : "Admit"}
@@ -612,7 +660,7 @@ export function ConsultStage({
       {videoReady ? (
         <div
           aria-label={live ? "Your video" : "Your camera preview, not shared"}
-          className={`absolute right-4 z-10 h-20 w-16 overflow-hidden rounded-xl border border-white/40 bg-ink-mid sm:top-auto [&>div>video]:size-full [&>div>video]:-scale-x-100 [&>div>video]:object-cover ${
+          className={`absolute right-4 z-10 h-20 w-16 overflow-hidden rounded-2xl border border-white/25 bg-ink-mid shadow-floating sm:top-auto [&>div>video]:size-full [&>div>video]:-scale-x-100 [&>div>video]:object-cover ${
             expanded
               ? "top-[calc(4rem+env(safe-area-inset-top))] sm:bottom-[calc(6rem+env(safe-area-inset-bottom))] sm:h-36 sm:w-28"
               : "top-16 sm:bottom-20 sm:h-24 sm:w-20"
@@ -637,7 +685,7 @@ export function ConsultStage({
             aria-label={micOn ? "Mute microphone" : "Unmute microphone"}
             onClick={toggleMic}
             disabled={!publishing}
-            className={`inline-flex size-12 items-center justify-center rounded-full disabled:opacity-50 ${micOn ? "bg-white/15 hover:bg-white/25" : "bg-white text-ink"}`}
+            className={`inline-flex size-12 items-center justify-center rounded-full ring-1 transition-colors disabled:opacity-50 ${micOn ? "bg-white/10 ring-white/15 hover:bg-white/20" : "bg-white text-ink ring-white"}`}
           >
             {micOn ? <Mic aria-hidden className="size-5" /> : <MicOff aria-hidden className="size-5" />}
           </button>
@@ -647,7 +695,7 @@ export function ConsultStage({
             aria-label={cameraOn ? "Turn camera off" : "Turn camera on"}
             onClick={toggleCamera}
             disabled={!publishing}
-            className={`inline-flex size-12 items-center justify-center rounded-full disabled:opacity-50 ${cameraOn ? "bg-white/15 hover:bg-white/25" : "bg-white text-ink"}`}
+            className={`inline-flex size-12 items-center justify-center rounded-full ring-1 transition-colors disabled:opacity-50 ${cameraOn ? "bg-white/10 ring-white/15 hover:bg-white/20" : "bg-white text-ink ring-white"}`}
           >
             {cameraOn ? <Video aria-hidden className="size-5" /> : <VideoOff aria-hidden className="size-5" />}
           </button>
@@ -655,7 +703,7 @@ export function ConsultStage({
             type="button"
             onClick={() => setConfirmingEnd(true)}
             disabled={pending}
-            className="inline-flex h-12 items-center gap-2 rounded-full bg-brand px-5 text-sm font-bold hover:bg-danger disabled:opacity-60"
+            className="inline-flex h-12 items-center gap-2 rounded-full bg-[#d93a1f] px-5 text-sm font-bold shadow-[0_8px_20px_rgba(217,58,31,0.4)] transition-colors hover:bg-[#bf2f17] disabled:opacity-60"
           >
             <PhoneOff aria-hidden className="size-5" />
             End consult

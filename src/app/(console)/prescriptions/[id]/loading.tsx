@@ -1,11 +1,19 @@
 import { Bone, ChipBone, SkeletonPage } from "@/components/skeletons";
+import { bleed } from "@/components/hero";
 
 /** One prescription: the letterhead page with the doctor, the patient and the items. */
 export default function PrescriptionLoading() {
   return (
     <SkeletonPage>
-      <Bone className="h-4 w-28" />
-      <div className="mx-auto mt-4 max-w-2xl rounded-2xl border border-line bg-card p-8 shadow-card">
+      <div className={`flex items-center px-4 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] sm:px-6 lg:hidden ${bleed}`}>
+        <Bone className="size-11 rounded-full bg-card shadow-card ring-1 ring-line-strong" />
+        <Bone className="mx-auto h-4.5 w-32" />
+        <span className="size-11" />
+      </div>
+      <div className="mx-auto max-w-2xl">
+        <Bone className="mb-3 hidden h-6 w-32 rounded-full lg:block" />
+      </div>
+      <div className="mx-auto mt-2 max-w-2xl rounded-xl border border-line bg-card p-5 shadow-card sm:p-10 lg:mt-1">
         <div className="flex flex-wrap items-start justify-between gap-4 border-b border-line pb-5">
           <div>
             <Bone className="h-6 w-44" />
@@ -19,18 +27,19 @@ export default function PrescriptionLoading() {
         </div>
         <div className="mt-5 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <Bone className="h-5 w-36" />
+            <Bone className="h-5.5 w-36" />
             <Bone className="mt-2 h-3.5 w-44" />
           </div>
-          <div className="flex flex-col items-end gap-1.5">
-            <ChipBone width="w-20" />
+          <div className="flex items-center gap-2 sm:flex-col sm:items-end sm:gap-1.5">
+            <ChipBone width="w-28" />
             <Bone className="h-3.5 w-24" />
           </div>
         </div>
+        <Bone className="mt-4 h-10 w-full rounded-2xl" />
         <div className="mt-5 divide-y divide-line border-t border-line">
           {Array.from({ length: 4 }, (_, i) => (
-            <div key={i} className="flex gap-3 py-3">
-              <Bone className="h-4 w-4 shrink-0" />
+            <div key={i} className="flex gap-3 py-3.5">
+              <Bone className="size-4 shrink-0" />
               <Bone className={`h-4 ${i % 2 ? "w-3/5" : "w-4/5"}`} />
             </div>
           ))}

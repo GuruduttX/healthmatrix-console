@@ -25,7 +25,7 @@ export function SectionHeader({
         aria-controls={controls}
         aria-label={open ? "Hide details" : "Show details"}
         onClick={onToggle}
-        className="rounded-full p-1 text-body hover:bg-selected hover:text-ink"
+        className="btn btn-ghost btn-sm btn-icon -my-1 -mr-1.5 text-muted"
       >
         <ChevronDown aria-hidden className={`size-4 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>

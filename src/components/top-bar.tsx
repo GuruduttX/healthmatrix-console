@@ -1,87 +1,71 @@
-import { Bell, History, LogOut, Search, UserRound, UserRoundPen } from "lucide-react";
-import Form from "next/form";
-import Image from "next/image";
+import { Bell, ChevronDown, History, LogOut, UserRound, UserRoundPen } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react";
 
-import { CheckNewButton } from "@/components/check-new-button";
 import { DoctorAvatar } from "@/components/doctor-avatar";
+import { PatientSearch, PatientSearchFallback } from "@/components/patient-search";
 import { SignOutForm } from "@/components/sign-out-form";
 import type { Doctor } from "@/lib/types";
 
-const menuItem = "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold text-ink hover:bg-selected";
+const menuItem =
+  "flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-[13px] font-semibold text-ink transition-colors hover:bg-surface";
 
+/**
+ * Wide screens: search, notifications and the account menu along the top. Phones put these in
+ * each screen's own header and the tab bar instead.
+ */
 export function TopBar({ doctor, unread }: { doctor: Doctor; unread: number }) {
   return (
-    <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-line bg-card/95 px-4 pb-2.5 pt-[calc(0.625rem+env(safe-area-inset-top))] backdrop-blur lg:py-3 print:hidden sm:px-6 lg:px-8">
-      {/* Hidden on the narrowest phones to leave room for search; Today is in the bottom tabs. */}
-      <Link href="/" className="hidden items-center gap-2 min-[360px]:flex lg:hidden" aria-label="HealthMatrix doctor console, home">
-        <Image src="/logo-mark.png" alt="" width={28} height={25} />
-      </Link>
+    <header className="sticky top-0 z-20 hidden h-16 items-center gap-3 bg-canvas/85 px-8 backdrop-blur-xl backdrop-saturate-150 lg:flex print:hidden">
+      <Suspense fallback={<PatientSearchFallback />}>
+        <PatientSearch />
+      </Suspense>
 
-      <Form action="/patients" role="search" className="relative min-w-0 flex-1 lg:max-w-xl">
-        <Search
-          aria-hidden
-          className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-body"
-        />
-        <input
-          type="search"
-          name="q"
-          aria-label="Search patients"
-          placeholder="Search patients"
-          className="w-full rounded-full border border-line bg-surface py-2.5 pl-10 pr-4 text-sm text-ink placeholder:text-body focus:border-brand focus:outline-none"
-        />
-      </Form>
-
-      <div className="ml-auto flex items-center gap-1 sm:gap-2">
-        {/* On wide screens this lives in the sidebar. */}
-        <span className="contents lg:hidden">
-          <CheckNewButton variant="icon" />
-        </span>
+      <div className="ml-auto flex items-center gap-2">
         <Link
           href="/notifications"
           aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
-          className="relative inline-flex size-10 items-center justify-center rounded-full text-ink hover:bg-selected"
+          className="btn btn-secondary btn-icon relative size-10 text-ink shadow-card"
         >
-          <Bell aria-hidden className="size-5" />
+          <Bell aria-hidden className="size-4.5" />
           {unread > 0 ? (
-            <span aria-hidden className="absolute right-2 top-2 size-2.5 rounded-full bg-brand ring-2 ring-card" />
+            <span aria-hidden className="absolute right-2.5 top-2.5 size-2 rounded-full bg-brand ring-2 ring-card" />
           ) : null}
         </Link>
 
         <details className="relative">
-          <summary className="flex cursor-pointer list-none items-center gap-3 rounded-full py-1 pl-2 pr-1 hover:bg-selected [&::-webkit-details-marker]:hidden">
-            <span className="hidden text-right leading-tight sm:block">
-              <span className="block text-sm font-semibold text-ink">{doctor.shortName}</span>
-              <span className="block text-xs text-body">{doctor.qualifications}</span>
-            </span>
-            <span className="relative">
-              <DoctorAvatar photoUrl={doctor.photoUrl} initials={doctor.initials} />
-              {doctor.missing.length ? (
-                <span aria-hidden className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-brand ring-2 ring-card lg:hidden" />
-              ) : null}
-            </span>
+          <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-full border border-line-strong bg-card p-1 pr-2.5 shadow-card transition-colors hover:bg-surface [&::-webkit-details-marker]:hidden">
+            <DoctorAvatar photoUrl={doctor.photoUrl} initials={doctor.initials} />
+            <ChevronDown aria-hidden className="size-3.5 text-muted" />
             <span className="sr-only">Account menu</span>
           </summary>
-          <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-line bg-card p-2 shadow-floating">
+          <div className="absolute right-0 z-30 mt-2 w-72 rounded-2xl border border-line bg-card p-2 shadow-floating">
+            <div className="mb-1 flex items-center gap-3 border-b border-line px-2.5 pb-3 pt-2">
+              <DoctorAvatar photoUrl={doctor.photoUrl} initials={doctor.initials} size="md" />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold text-ink">{doctor.name}</p>
+                <p className="truncate text-xs text-body">{[doctor.qualifications, doctor.specialty].filter(Boolean).join(" · ")}</p>
+              </div>
+            </div>
             <Link href="/profile" className={menuItem}>
-              <UserRound aria-hidden className="size-4 text-body" />
+              <UserRound aria-hidden className="size-4 text-muted" />
               Profile and settings
             </Link>
             <Link href="/profile/edit" className={menuItem}>
-              <UserRoundPen aria-hidden className="size-4 text-body" />
+              <UserRoundPen aria-hidden className="size-4 text-muted" />
               Edit profile
               {doctor.missing.length ? (
-                <span className="ml-auto rounded-full bg-brand-soft px-2 py-0.5 text-xs font-bold text-brand">
+                <span className="ml-auto rounded-full bg-brand-soft px-2 text-[11px] font-bold leading-5 text-brand">
                   {doctor.missing.length} to add
                 </span>
               ) : null}
             </Link>
             <Link href="/access-log" className={menuItem}>
-              <History aria-hidden className="size-4 text-body" />
+              <History aria-hidden className="size-4 text-muted" />
               Access log
             </Link>
             <SignOutForm className="mt-1 border-t border-line pt-1">
-              <button type="submit" className={`${menuItem} text-danger`}>
+              <button type="submit" className={`${menuItem} text-danger hover:bg-danger-soft`}>
                 <LogOut aria-hidden className="size-4" />
                 Sign out
               </button>

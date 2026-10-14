@@ -142,11 +142,11 @@ export function ClockField({
   const onGrid = mode === "hour" || minute % 5 === 0;
   const exactHand = mode === "minute" && !onGrid ? point(minute, 60) : hand;
 
-  const part = "rounded-lg px-2 py-1 font-display text-3xl font-bold tabular-nums";
+  const part = "rounded-lg px-2 py-0.5 font-display text-3xl font-semibold tabular-nums tracking-[-0.02em] transition-colors";
 
   return (
     <div ref={wrapper} className="relative">
-      <div className="flex items-center rounded-lg border border-line bg-surface focus-within:border-brand">
+      <div className="flex min-h-11 items-center rounded-lg border-[1.5px] border-line-strong bg-card transition-[border-color,box-shadow] focus-within:border-brand focus-within:shadow-[0_0_0_4px_rgba(221,67,1,0.12)] lg:min-h-9 lg:rounded-xl lg:border">
         <input
           id={id}
           aria-label={label}
@@ -171,14 +171,14 @@ export function ClockField({
           }}
           inputMode="text"
           autoComplete="off"
-          className="w-[5.25rem] min-w-0 bg-transparent py-1.5 pl-2.5 text-sm font-semibold text-ink focus:outline-none"
+          className="w-[5.25rem] min-w-0 self-stretch bg-transparent pl-3 text-sm font-medium tabular-nums text-ink outline-none"
         />
         <button
           type="button"
           tabIndex={-1}
           aria-hidden
           onClick={() => (open ? setOpen(false) : show())}
-          className="px-2 text-body hover:text-brand"
+          className="self-stretch pl-1 pr-2.5 text-muted transition-colors hover:text-ink"
         >
           <Clock className="size-4" />
         </button>
@@ -194,23 +194,23 @@ export function ClockField({
               wrapper.current?.querySelector("input")?.focus();
             }
           }}
-          className={`absolute top-full z-40 mt-2 w-72 rounded-2xl border border-line bg-card p-4 shadow-floating ${alignRight ? "right-0" : "left-0"}`}
+          className={`absolute top-full z-40 mt-1.5 w-72 rounded-3xl border border-line bg-card p-4 shadow-floating ${alignRight ? "right-0" : "left-0"}`}
         >
           <div className="flex items-center justify-center gap-1">
             <button
               type="button"
               onClick={() => setMode("hour")}
               aria-pressed={mode === "hour"}
-              className={`${part} ${mode === "hour" ? "bg-brand-soft text-brand" : "text-ink hover:bg-selected"}`}
+              className={`${part} ${mode === "hour" ? "bg-selected text-ink" : "text-muted hover:text-ink"}`}
             >
               {midnight ? "12" : String(hour).padStart(2, "0")}
             </button>
-            <span className="font-display text-3xl font-bold text-body">:</span>
+            <span className="font-display text-3xl font-bold text-muted">:</span>
             <button
               type="button"
               onClick={() => setMode("minute")}
               aria-pressed={mode === "minute"}
-              className={`${part} ${mode === "minute" ? "bg-brand-soft text-brand" : "text-ink hover:bg-selected"}`}
+              className={`${part} ${mode === "minute" ? "bg-selected text-ink" : "text-muted hover:text-ink"}`}
             >
               {String(minute).padStart(2, "0")}
             </button>
@@ -223,7 +223,7 @@ export function ClockField({
                     type="button"
                     aria-pressed={active}
                     onClick={() => onChange(join(hour, minute, half === "pm"))}
-                    className={`rounded-md px-2 py-0.5 text-xs font-bold uppercase ${active ? "bg-ink text-white" : "text-body hover:bg-selected"}`}
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-bold uppercase transition-colors ${active ? "bg-brand text-white" : "text-body hover:bg-selected hover:text-ink"}`}
                   >
                     {half}
                   </button>
@@ -257,7 +257,7 @@ export function ClockField({
             onKeyDown={step}
             className="mx-auto mt-3 block w-56 cursor-pointer touch-none select-none rounded-full focus-visible:outline-offset-4"
           >
-            <circle cx={CENTER} cy={CENTER} r={CENTER - 4} className="fill-surface" />
+            <circle cx={CENTER} cy={CENTER} r={CENTER - 4} className="fill-surface stroke-line" />
             <line
               x1={CENTER}
               y1={CENTER}
@@ -279,7 +279,7 @@ export function ClockField({
                   y={y}
                   textAnchor="middle"
                   dominantBaseline="central"
-                  className={`pointer-events-none text-[13px] font-semibold ${isSelected ? "fill-white" : "fill-ink"}`}
+                  className={`pointer-events-none text-[13px] font-medium tabular-nums ${isSelected ? "fill-white" : "fill-ink"}`}
                 >
                   {text}
                 </text>
@@ -287,7 +287,7 @@ export function ClockField({
             })}
           </svg>
 
-          <div className="mt-3 flex items-center justify-between gap-2">
+          <div className="mt-3 flex items-center justify-between gap-2 border-t border-line pt-3">
             {allowMidnight ? (
               <button
                 type="button"
@@ -295,18 +295,14 @@ export function ClockField({
                   onChange("24:00");
                   setOpen(false);
                 }}
-                className={`rounded-full px-3 py-1.5 text-xs font-bold ${midnight ? "bg-ink text-white" : "border border-line text-ink hover:bg-selected"}`}
+                className={`btn btn-sm ${midnight ? "btn-primary" : "btn-secondary"}`}
               >
                 Until midnight
               </button>
             ) : (
-              <span className="text-xs text-body">{mode === "hour" ? "Pick the hour" : "Pick the minutes"}</span>
+              <span className="text-xs text-muted">{mode === "hour" ? "Pick the hour" : "Pick the minutes"}</span>
             )}
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="rounded-full bg-brand px-4 py-1.5 text-xs font-bold text-white hover:bg-danger"
-            >
+            <button type="button" onClick={() => setOpen(false)} className="btn btn-primary btn-sm px-4">
               Done
             </button>
           </div>

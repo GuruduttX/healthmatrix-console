@@ -1,18 +1,23 @@
-import { ChevronRight, Plus } from "lucide-react";
-import type { Metadata } from "next";
+import { ChevronRight, FileSignature, Plus } from "lucide-react";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 
-import { Avatar, Chip } from "@/components/ui";
+import { Avatar, Chip, EmptyState, FilterTabs, PageHeader } from "@/components/ui";
 import { getPrescriptions } from "@/lib/console-data";
 import type { Prescription } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Prescriptions" };
 
-/** "Paracetamol 500 mg; ORS +1 vaccine", or "1 vaccine" when it is only vaccines. */
+/** Phones: the browser's bars take the dark header's colour. */
+export const viewport: Viewport = { themeColor: "#0b2129" };
+
+const count = (n: number, word: string) => (n ? `${n} ${word}${n === 1 ? "" : "s"}` : "");
+
+/** "Paracetamol 500 mg; ORS +2 lab tests +1 vaccine", or "1 vaccine" when it is only vaccines. */
 function rxSummary(rx: Prescription) {
-  const vaccines = rx.vaccineCount ? `${rx.vaccineCount} ${rx.vaccineCount === 1 ? "vaccine" : "vaccines"}` : "";
-  if (!rx.items.length) return vaccines;
-  return vaccines ? `${rx.items.join("; ")} +${vaccines}` : rx.items.join("; ");
+  const extras = [count(rx.tests.length, "lab test"), count(rx.vaccineCount, "vaccine")].filter(Boolean);
+  if (!rx.items.length) return extras.join(", ");
+  return [rx.items.join("; "), ...extras.map((extra) => `+${extra}`)].join(" ");
 }
 
 const filters = [
@@ -32,75 +37,61 @@ export default async function PrescriptionsPage(props: PageProps<"/prescriptions
         ? "You haven’t signed a prescription yet."
         : "No prescriptions yet. Start one from a patient’s record or with New prescription.";
 
+  const statusChip = (rx: Prescription) => (
+    <Chip tone={rx.status === "signed" ? "success" : "warning"}>{rx.status === "signed" ? "Signed" : "Draft"}</Chip>
+  );
+
   return (
     <>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink">Prescriptions</h1>
-          <p className="mt-2 max-w-2xl text-body">
-            Write a prescription for any patient whose record is open to you. Nothing reaches a
-            patient until you sign it.
-          </p>
-        </div>
-        <Link
-          href="/prescriptions/new"
-          className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand px-5 py-3 text-sm font-bold text-white hover:bg-danger sm:w-auto sm:py-2.5"
-        >
-          <Plus aria-hidden className="size-4" />
-          New prescription
-        </Link>
-      </div>
-
-      <nav aria-label="Filter by status" className="no-scrollbar -mx-4 mt-5 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0">
-        {filters.map((filter) => (
-          <Link
-            key={filter.value}
-            href={filter.value === "all" ? "/prescriptions" : `/prescriptions?status=${filter.value}`}
-            aria-current={active === filter.value ? "true" : undefined}
-            className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold ${
-              active === filter.value ? "bg-ink text-white" : "border border-line bg-card text-ink hover:bg-selected"
-            }`}
-          >
-            {filter.label}
+      <PageHeader
+        title="Prescriptions"
+        description="For any patient whose record is open to you. Nothing reaches a patient until you sign it."
+        actions={
+          <Link href="/prescriptions/new" className="btn btn-primary">
+            <Plus aria-hidden className="size-4.5" />
+            New prescription
           </Link>
-        ))}
-      </nav>
+        }
+      >
+        <FilterTabs
+          glass
+          label="Filter by status"
+          active={active}
+          items={filters.map((filter) => ({
+            value: filter.value,
+            label: filter.label,
+            href: filter.value === "all" ? "/prescriptions" : `/prescriptions?status=${filter.value}`,
+          }))}
+        />
+      </PageHeader>
 
-      <ul className="mt-5 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-card shadow-card md:hidden">
+      <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-card shadow-card empty:hidden md:hidden">
         {list.map((rx) => {
           const { patient } = rx;
           return (
             <li key={rx.id}>
-              <Link href={`/prescriptions/${rx.id}`} className="flex items-center gap-3 px-4 py-3.5">
+              <Link href={`/prescriptions/${rx.id}`} className="flex items-start gap-3 px-4 py-4 transition-colors active:bg-surface">
+                <Avatar initials={patient.initials} tone={patient.avatarTone} />
                 <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-2.5">
-                    <Avatar initials={patient.initials} tone={patient.avatarTone} size="sm" />
-                    <span className="min-w-0 flex-1 truncate font-semibold text-ink">{patient.name}</span>
-                    <Chip tone={rx.status === "signed" ? "success" : "warning"}>
-                      {rx.status === "signed" ? "Signed" : "Draft"}
-                    </Chip>
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="truncate text-[15px] font-bold text-ink">{patient.name}</span>
+                    {statusChip(rx)}
                   </span>
-                  <span className="mt-2.5 line-clamp-2 text-sm text-ink">{rxSummary(rx)}</span>
-                  <span className="mt-1.5 block text-xs text-body">
-                    {rx.date}. {rx.source}
+                  <span className="mt-1 line-clamp-2 text-[13px] leading-snug text-ink">{rxSummary(rx)}</span>
+                  <span className="mt-1 block text-xs text-muted">
+                    {rx.date} · {rx.source}
                   </span>
                 </span>
-                <ChevronRight aria-hidden className="size-4 shrink-0 text-body" />
+                <ChevronRight aria-hidden className="mt-3 size-4.5 shrink-0 text-muted" />
               </Link>
             </li>
           );
         })}
       </ul>
 
-      {list.length === 0 ? (
-        <p className="mt-5 rounded-2xl border border-line bg-card px-5 py-10 text-center text-body shadow-card md:hidden">
-          {empty}
-        </p>
-      ) : null}
-
-      <div className="mt-5 hidden overflow-x-auto rounded-2xl border border-line bg-card shadow-card md:block">
-        <table className="w-full min-w-[760px] text-left text-sm">
-          <thead className="border-b border-line text-xs font-semibold text-body">
+      <div className={`hidden overflow-x-auto rounded-xl border border-line bg-card shadow-card ${list.length ? "md:block" : ""}`}>
+        <table className="w-full min-w-190 text-left text-[13px]">
+          <thead className="whitespace-nowrap border-b border-line bg-surface text-xs font-bold text-body">
             <tr>
               <th scope="col" className="px-5 py-3">Patient</th>
               <th scope="col" className="px-3 py-3">Items</th>
@@ -116,25 +107,24 @@ export default async function PrescriptionsPage(props: PageProps<"/prescriptions
             {list.map((rx) => {
               const { patient } = rx;
               return (
-                <tr key={rx.id} className="hover:bg-surface">
+                <tr key={rx.id} className="transition-colors hover:bg-surface">
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
                       <Avatar initials={patient.initials} tone={patient.avatarTone} size="sm" />
-                      <span className="font-semibold text-ink">{patient.name}</span>
+                      <span className="whitespace-nowrap text-sm font-bold text-ink">{patient.name}</span>
                     </div>
                   </td>
-                  <td className="max-w-xs px-3 py-3.5 text-body">
+                  <td className="max-w-xs px-3 py-3.5 text-ink">
                     <span className="line-clamp-1">{rxSummary(rx)}</span>
                   </td>
                   <td className="px-3 py-3.5 text-body">{rx.source}</td>
-                  <td className="whitespace-nowrap px-3 py-3.5 text-body">{rx.date}</td>
-                  <td className="px-3 py-3.5">
-                    <Chip tone={rx.status === "signed" ? "success" : "warning"}>
-                      {rx.status === "signed" ? "Signed" : "Draft"}
-                    </Chip>
-                  </td>
+                  <td className="whitespace-nowrap px-3 py-3.5 tabular-nums text-body">{rx.date}</td>
+                  <td className="px-3 py-3.5">{statusChip(rx)}</td>
                   <td className="px-5 py-3.5 text-right">
-                    <Link href={`/prescriptions/${rx.id}`} className="whitespace-nowrap font-bold text-brand hover:underline">
+                    <Link
+                      href={`/prescriptions/${rx.id}`}
+                      className={`btn btn-sm ${rx.status === "signed" ? "btn-ghost" : "btn-soft"}`}
+                    >
                       {rx.status === "signed" ? "View" : "Review and sign"}
                     </Link>
                   </td>
@@ -143,8 +133,15 @@ export default async function PrescriptionsPage(props: PageProps<"/prescriptions
             })}
           </tbody>
         </table>
-        {list.length === 0 ? <p className="px-5 py-10 text-center text-body">{empty}</p> : null}
       </div>
+
+      {list.length === 0 ? (
+        <div className="rounded-xl border border-line bg-card shadow-card">
+          <EmptyState icon={FileSignature} title={active === "draft" ? "Nothing to sign" : "No prescriptions"}>
+            {empty}
+          </EmptyState>
+        </div>
+      ) : null}
     </>
   );
 }

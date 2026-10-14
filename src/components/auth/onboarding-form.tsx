@@ -67,14 +67,15 @@ function openingStep(errors: Errors, submitted: boolean): FormStep {
   return submitted ? 4 : 2;
 }
 
-const inputClass =
-  "w-full rounded-xl border border-line bg-card px-4 py-3 text-ink placeholder:text-body focus:border-brand focus:outline-none aria-invalid:border-danger";
+const inputClass = "field aria-invalid:border-danger";
 
-const optional = <span className="font-normal text-body">(optional)</span>;
+const labelClass = "text-[13px] font-semibold text-ink";
+
+const optional = <span className="font-normal text-muted">(optional)</span>;
 
 function FieldError({ id, message }: { id: string; message?: string }) {
   return message ? (
-    <p id={id} className="text-sm font-semibold text-danger">
+    <p id={id} className="text-xs font-semibold text-danger">
       {message}
     </p>
   ) : null;
@@ -82,22 +83,22 @@ function FieldError({ id, message }: { id: string; message?: string }) {
 
 function Progress({ current }: { current: FormStep }) {
   return (
-    <ol className="mt-6 grid grid-cols-4 gap-2" aria-label="Onboarding steps">
+    <ol className="mt-5 grid grid-cols-4 gap-1.5" aria-label="Onboarding steps">
       {steps.map((step) => {
         const done = step.number < current;
         const here = step.number === current;
         return (
           <li key={step.number} aria-current={here ? "step" : undefined}>
             <span
-              className={`block h-1.5 rounded-full ${done || here ? "bg-brand" : "bg-line"}`}
+              className={`block h-1.5 rounded-full ${done || here ? "bg-brand" : "bg-selected"}`}
               aria-hidden
             />
             <span
-              className={`mt-2 flex items-center gap-1 text-xs font-semibold ${
-                here ? "text-ink" : "text-body"
+              className={`mt-1.5 block text-[11px] leading-tight ${
+                here ? "font-semibold text-ink" : "font-medium text-muted"
               }`}
             >
-              {done ? <Check aria-hidden className="size-3.5 shrink-0 text-success" /> : null}
+              {done ? <Check aria-hidden className="mr-0.5 inline size-3 align-[-2px] text-brand" /> : null}
               <span className="hidden sm:inline">{step.title}</span>
               <span className="sm:hidden">{step.number}</span>
               {done ? <span className="sr-only">(done)</span> : null}
@@ -125,10 +126,10 @@ export function OnboardingForm({
 
   return (
     <>
-      <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink">
+      <h1 className="font-display text-[1.6875rem] font-bold leading-tight tracking-[-0.015em] text-ink">
         {isNew ? "Set up your doctor profile" : "Finish your doctor profile"}
       </h1>
-      <p className="mt-2 flex items-center gap-2 text-sm font-semibold text-success">
+      <p className="mt-1.5 flex items-center gap-1.5 text-[13px] font-semibold text-success">
         <BadgeCheck aria-hidden className="size-4 shrink-0" />
         {phone} verified
       </p>
@@ -210,8 +211,8 @@ function Steps({
   }
 
   const heading = (n: FormStep, title: string) => (
-    <h2 id={`step-${n}`} tabIndex={-1} className="text-lg font-bold text-ink focus:outline-none">
-      <span className="text-body">Step {n} of 4 · </span>
+    <h2 id={`step-${n}`} tabIndex={-1} className="font-display text-lg font-bold text-ink focus:outline-none">
+      <span className="font-sans text-sm font-semibold text-muted">Step {n} of 4 · </span>
       {title}
     </h2>
   );
@@ -226,13 +227,13 @@ function Steps({
         onSubmit={onSubmit}
         onKeyDown={onKeyDown}
         noValidate
-        className="mt-8"
+        className="mt-6"
       >
         {/* Every step stays in the form, hidden when not current, so one submit sends all. */}
-        <section hidden={step !== 2} className="flex flex-col gap-5">
+        <section hidden={step !== 2} className="flex flex-col gap-4">
           {heading(2, "Name and registration")}
-          <div className="flex flex-col gap-2">
-            <label htmlFor="name" className="text-sm font-semibold text-ink">Full name</label>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="name" className={labelClass}>Full name</label>
             <input
               id="name"
               name="name"
@@ -244,8 +245,8 @@ function Steps({
             />
             <FieldError id="name-error" message={errors.name} />
           </div>
-          <div className="flex flex-col gap-2">
-            <label htmlFor="registrationNumber" className="text-sm font-semibold text-ink">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="registrationNumber" className={labelClass}>
               Registration number
             </label>
             <input
@@ -259,8 +260,8 @@ function Steps({
             />
             <FieldError id="registrationNumber-error" message={errors.registrationNumber} />
           </div>
-          <div className="flex flex-col gap-2">
-            <label htmlFor="council" className="text-sm font-semibold text-ink">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="council" className={labelClass}>
               Medical council {optional}
             </label>
             <select
@@ -282,10 +283,10 @@ function Steps({
           </div>
         </section>
 
-        <section hidden={step !== 3} className="flex flex-col gap-5">
+        <section hidden={step !== 3} className="flex flex-col gap-4">
           {heading(3, "Qualifications and specialties")}
-          <div className="flex flex-col gap-2">
-            <label htmlFor="qualifications" className="text-sm font-semibold text-ink">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="qualifications" className={labelClass}>
               Qualifications {optional}
             </label>
             <input
@@ -299,8 +300,8 @@ function Steps({
             />
             <FieldError id="qualifications-error" message={errors.qualifications} />
           </div>
-          <div className="flex flex-col gap-2">
-            <label htmlFor="specialties" className="text-sm font-semibold text-ink">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="specialties" className={labelClass}>
               Specialties you consult in
             </label>
             <TagInput
@@ -312,17 +313,17 @@ function Steps({
               invalid={Boolean(errors.specialties)}
               describedBy="specialties-hint specialties-error"
             />
-            <p id="specialties-hint" className="text-xs text-body">
+            <p id="specialties-hint" className="text-xs text-muted">
               Pick from the suggestions, or type your own and press Enter.
             </p>
             <FieldError id="specialties-error" message={errors.specialties} />
           </div>
         </section>
 
-        <section hidden={step !== 4} className="flex flex-col gap-5">
+        <section hidden={step !== 4} className="flex flex-col gap-4">
           {heading(4, "Languages and location")}
-          <div className="flex flex-col gap-2">
-            <label htmlFor="languages" className="text-sm font-semibold text-ink">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="languages" className={labelClass}>
               Languages you consult in
             </label>
             <TagInput
@@ -334,14 +335,14 @@ function Steps({
               invalid={Boolean(errors.languages)}
               describedBy="languages-hint languages-error"
             />
-            <p id="languages-hint" className="text-xs text-body">
+            <p id="languages-hint" className="text-xs text-muted">
               Pick from the suggestions, or type your own and press Enter.
             </p>
             <FieldError id="languages-error" message={errors.languages} />
           </div>
-          <div className="grid gap-5 sm:grid-cols-2">
-            <div className="flex flex-col gap-2">
-              <label htmlFor="state" className="text-sm font-semibold text-ink">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="state" className={labelClass}>
                 State or union territory
               </label>
               <input
@@ -361,8 +362,8 @@ function Steps({
               </datalist>
               <FieldError id="state-error" message={errors.state} />
             </div>
-            <div className="flex flex-col gap-2">
-              <label htmlFor="city" className="text-sm font-semibold text-ink">City</label>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="city" className={labelClass}>City</label>
               <input
                 id="city"
                 name="city"
@@ -375,13 +376,13 @@ function Steps({
               <FieldError id="city-error" message={errors.city} />
             </div>
           </div>
-          <div className="flex flex-col gap-2">
-            <label className="flex items-start gap-3 text-sm leading-relaxed text-body">
+          <div className="flex flex-col gap-1.5">
+            <label className="flex cursor-pointer items-start gap-3 rounded-2xl border-[1.5px] border-line-strong bg-card px-4 py-3.5 text-[13px] leading-relaxed text-body transition-colors hover:bg-surface has-checked:border-brand has-checked:bg-brand-soft has-aria-invalid:border-danger">
               <input
                 type="checkbox"
                 name="consent"
                 defaultChecked={values.consent}
-                className="mt-1 size-4 accent-brand"
+                className="mt-0.5 size-4.5 shrink-0 accent-brand"
                 {...invalid("consent")}
               />
               I am a registered medical practitioner and will consult under the Telemedicine
@@ -391,14 +392,10 @@ function Steps({
           </div>
         </section>
 
-        <div className="mt-8 flex items-center gap-3">
+        <div className="mt-6 flex items-center gap-2 pt-1">
           {step > 2 ? (
-            <button
-              type="button"
-              onClick={previous}
-              className="inline-flex items-center gap-1 rounded-full border border-line bg-card px-5 py-3 text-sm font-bold text-ink hover:bg-selected"
-            >
-              <ChevronLeft aria-hidden className="size-4" />
+            <button type="button" onClick={previous} className="btn btn-secondary btn-lg pl-2.5">
+              <ChevronLeft aria-hidden className="size-4 text-muted" />
               Previous
             </button>
           ) : null}
@@ -408,7 +405,7 @@ function Steps({
               key="next"
               type="button"
               onClick={next}
-              className="ml-auto inline-flex items-center gap-1 rounded-full bg-brand px-6 py-3 text-sm font-bold text-white hover:bg-danger"
+              className="btn btn-primary btn-lg ml-auto flex-1"
             >
               Next
               <ChevronRight aria-hidden className="size-4" />
@@ -418,7 +415,7 @@ function Steps({
               key="submit"
               type="submit"
               disabled={pending}
-              className="ml-auto rounded-full bg-brand px-6 py-3 text-sm font-bold text-white hover:bg-danger disabled:opacity-60"
+              className="btn btn-primary btn-lg ml-auto flex-1"
             >
               {pending ? "Saving…" : "Open the console"}
             </button>

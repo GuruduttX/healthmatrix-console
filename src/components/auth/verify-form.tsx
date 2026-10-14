@@ -25,16 +25,16 @@ export function VerifyForm({ resendAt, devCode }: { resendAt: number; devCode?: 
   return (
     <>
       {devCode ? (
-        <p className="mt-5 rounded-xl border border-dashed border-line bg-surface px-4 py-3 text-sm text-body">
+        <p className="mt-4 rounded-2xl bg-warning-soft px-3.5 py-3 text-[13px] font-medium text-warning">
           No SMS provider is connected yet. Your code:{" "}
-          <span className="font-bold tracking-widest text-ink">{devCode}</span>
+          <span className="font-semibold tabular-nums tracking-[0.2em] text-ink">{devCode}</span>
         </p>
       ) : null}
 
       <FormMessage error={state.error ?? resent.error} notice={state.error ? undefined : resent.notice} />
 
-      <form action={verify} className="mt-8 flex flex-col gap-2">
-        <label htmlFor="otp" className="text-sm font-semibold text-ink">
+      <form action={verify} className="mt-6 flex flex-col gap-1.5">
+        <label htmlFor="otp" className="text-[13px] font-bold text-body">
           One-time password
         </label>
         <input
@@ -47,23 +47,22 @@ export function VerifyForm({ resendAt, devCode }: { resendAt: number; devCode?: 
           maxLength={6}
           required
           autoFocus
-          className="rounded-xl border border-line bg-card px-4 py-3 text-center text-2xl font-bold tracking-[0.4em] text-ink focus:border-brand focus:outline-none"
+          // The spacing after the last digit would pull the code left of centre; the indent evens it out.
+          className="field h-15 rounded-2xl indent-[0.5em] text-center font-display text-[1.625rem]! font-bold tabular-nums tracking-[0.5em]"
         />
-        <button
-          type="submit"
-          disabled={verifying}
-          className="mt-4 rounded-full bg-brand px-6 py-3 text-sm font-bold text-white hover:bg-danger disabled:opacity-60"
-        >
+        <button type="submit" disabled={verifying} className="btn btn-primary btn-lg mt-5 w-full">
           {verifying ? "Checking…" : "Continue"}
         </button>
       </form>
 
-      <form action={resend} className="mt-6 text-sm text-body">
+      <form action={resend} className="mt-5 text-[13px] text-body">
         No code after a minute?{" "}
         {wait > 0 ? (
-          <span>You can ask again in {wait}s.</span>
+          <span className="text-muted">
+            You can ask again in <span className="tabular-nums">{wait}s</span>.
+          </span>
         ) : (
-          <button type="submit" disabled={resending} className="font-bold text-brand hover:underline disabled:opacity-60">
+          <button type="submit" disabled={resending} className="font-bold text-brand hover:text-brand-strong disabled:opacity-60">
             {resending ? "Sending…" : "Send it again"}
           </button>
         )}

@@ -19,10 +19,26 @@ const prescriptionSchema = new Schema(
     sourceFile: { url: String, mimeType: String },
 
     /**
-     * One line each: a medicine, a test or advice. Empty when the prescription is only vaccines,
-     * which live in `vaccinations`; the console checks there is at least one of the two.
+     * One line each: a medicine, a test or advice. Empty when the prescription is only vaccines
+     * (which live in `vaccinations`) or lab tests; the console checks there is at least one thing.
      */
     items: [{ type: String, trim: true }],
+
+    /**
+     * Lab tests picked from Mobilab's catalog (`src/lib/lab-tests.ts`), for the patient to book at
+     * a pod: a health check (`profile`) or a single test, with the codes a booking sends.
+     */
+    tests: [
+      {
+        _id: false,
+        kind: { type: String, enum: ["profile", "test"], required: true },
+        /** A test's code ("HBA1C"), or a health check's code, or `profile-<id>` when it has none. */
+        code: { type: String, required: true },
+        name: { type: String, required: true, trim: true },
+        /** The test codes it covers: its own for a single test, all of a health check's. */
+        tests: { type: [String], default: undefined },
+      },
+    ],
 
     signedAt: Date,
     /** The timeline entry created in the member's locker on signing. */

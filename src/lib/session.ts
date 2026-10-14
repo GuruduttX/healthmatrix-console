@@ -9,3 +9,6 @@ export const DEV_OTP_COOKIE = "hm_otp_dev";
 
 /** Whether the code was asked for to sign in or to register, so the code screen knows where to go. */
 export const OTP_INTENT_COOKIE = "hm_otp_intent";
+
+/** Whether the doctor folded the wide-screen sidebar down to its icons: "collapsed" or "open". */
+export const SIDEBAR_COOKIE = "hm_sidebar";

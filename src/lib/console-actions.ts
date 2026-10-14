@@ -9,6 +9,7 @@ import {
   AccessGrantModel,
   AccessLogModel,
   ConsultModel,
+  ConsultRequestModel,
   DoctorModel,
   EmergencyProfileModel,
   HealthRecordModel,
@@ -23,9 +24,12 @@ import { OTP_MAX_ATTEMPTS, OTP_RESEND_MS, requireDoctor } from "./auth";
 import { ACCESS_OTP_TTL_MS, ACCESS_TTL_MS, DEFAULT_SETTINGS, offRestOfToday, type SettingGroup } from "./console-data";
 import { formatWhen } from "./format";
 import { connectDB } from "./db";
+import { labTestsField, type LabCatalog, type LabTestInput } from "./lab-tests";
+import { labCatalog, mobilabReady } from "./mobilab";
 import { cancelOtp, checkOtp, OtpDeliveryError, sendOtp, type SentOtp } from "./otp-sender";
 import { allergyClash, allergyTerms } from "./patient-text";
 import {
+  consultBusy,
   consultFits,
   istDateKey,
   istInstant,
@@ -231,6 +235,8 @@ export type SavePrescriptionInput = {
   consultId?: string;
   items: string[];
   vaccines?: VaccineInput[];
+  /** Lab tests from Mobilab's catalog, for the patient to book at a pod. */
+  tests?: LabTestInput[];
   sign: boolean;
 };
 
@@ -252,7 +258,10 @@ export async function savePrescription(input: SavePrescriptionInput): Promise<Sa
     return { error: which ? `${which}: ${issue.message}` : issue.message };
   }
   const vaccines = parsedVaccines.data;
-  if (items.length === 0 && vaccines.length === 0) {
+  const parsedTests = labTestsField.safeParse(input.tests ?? []);
+  if (!parsedTests.success) return { error: parsedTests.error.issues[0].message };
+  const tests = parsedTests.data;
+  if (items.length === 0 && vaccines.length === 0 && tests.length === 0) {
     return { error: "Add at least one medicine, test, piece of advice or vaccine." };
   }
 
@@ -281,6 +290,7 @@ export async function savePrescription(input: SavePrescriptionInput): Promise<Sa
 
   if (prescription) {
     prescription.items = items;
+    prescription.set("tests", tests);
     if (consult && !prescription.consult) prescription.consult = consult._id;
   } else {
     prescription = new PrescriptionModel({
@@ -289,6 +299,7 @@ export async function savePrescription(input: SavePrescriptionInput): Promise<Sa
       consult: consult?._id,
       source: "typed",
       items,
+      tests,
     });
   }
 
@@ -497,6 +508,134 @@ export async function cancelConsult(consultId: string, reason?: string): Promise
   await closeRoom(consultId);
   refresh();
   return {};
+}
+
+// ---------------------------------------------------------------------------
+// Consult requests: a patient asking for a time that isn't one of the open slots
+
+/**
+ * Why an approval was refused, in words for the doctor. Thrown inside the transaction to undo it.
+ * `gone`: the request can't be answered any more, so it leaves the list.
+ */
+class RequestRefused extends Error {
+  constructor(
+    message: string,
+    readonly gone = false,
+  ) {
+    super(message);
+  }
+}
+
+/** An answer to a request. `gone`: it can't be answered any more and has left the list. */
+export type RequestAnswer = { error?: string; gone?: boolean };
+
+const CLASH = "You already have a consult at this time.";
+
+/** Why a request is no longer waiting, once a change conditional on `pending` matched nothing. */
+async function notPendingReason(id: Types.ObjectId, doctorId: Types.ObjectId) {
+  const request = await ConsultRequestModel.findOne({ _id: id, doctor: doctorId }, { status: 1 }).lean();
+  if (!request) return "This request no longer exists.";
+  if (request.status === "withdrawn") return "The patient withdrew this request.";
+  return "This request was already answered.";
+}
+
+/**
+ * Books the time a patient asked for. Same lock as the app's booking route: both bump the
+ * doctor's `bookingVersion` in a transaction, so an approval and an app booking for this doctor
+ * take turns and can't overlap. The doctor's hours and time off aren't checked: approving a time
+ * outside them is their choice.
+ */
+export async function approveConsultRequest(requestId: string): Promise<RequestAnswer> {
+  const doctor = await signedInDoctor();
+  const id = objectId(requestId);
+  if (!id) return { error: "This request no longer exists.", gone: true };
+
+  try {
+    await ConsultModel.db.transaction(async (session) => {
+      await DoctorModel.updateOne({ _id: doctor._id }, { $inc: { bookingVersion: 1 } }, { session });
+
+      const request = await ConsultRequestModel.findOne({ _id: id, doctor: doctor._id, status: "pending" }, null, { session });
+      if (!request) throw new RequestRefused(await notPendingReason(id, doctor._id), true);
+      const now = new Date();
+      if (request.requestedAt <= now) throw new RequestRefused("This time has already passed.", true);
+
+      const start = request.requestedAt.getTime();
+      const end = start + request.durationMinutes * 60_000;
+      const consults = await ConsultModel.find({
+        doctor: doctor._id,
+        status: { $in: ["scheduled", "in_progress"] },
+        scheduledAt: { $gte: new Date(now.getTime() - 2 * 60 * 60 * 1000) },
+      }).session(session);
+      const clash = consults.some((c) => {
+        const held = consultBusy(c, now);
+        return held !== null && start < held.end && held.start < end;
+      });
+      if (clash) throw new RequestRefused(CLASH);
+
+      const [consult] = await ConsultModel.create(
+        [
+          {
+            member: request.member,
+            doctor: doctor._id,
+            specialty: request.specialty,
+            scheduledAt: request.requestedAt,
+            durationMinutes: request.durationMinutes,
+            mode: "video",
+            reason: request.reason,
+          },
+        ],
+        { session },
+      );
+      await ConsultRequestModel.updateOne(
+        { _id: request._id, status: "pending" },
+        { $set: { status: "approved", respondedAt: new Date(), consult: consult!._id } },
+        { session },
+      );
+    });
+  } catch (error) {
+    if (error instanceof RequestRefused) {
+      if (error.gone) refresh();
+      return { error: error.message, gone: error.gone };
+    }
+    // The unique index on a doctor's booked starts: an exact duplicate got there first.
+    if ((error as { code?: number }).code === 11000) return { error: CLASH };
+    console.error(`[requests] Couldn't approve request ${requestId}`, error);
+    return { error: "Couldn’t book this just now. Try again." };
+  }
+  refresh();
+  return {};
+}
+
+/** Turns a request down. The note, if any, is shown to the patient word for word. */
+export async function declineConsultRequest(requestId: string, note?: string): Promise<RequestAnswer> {
+  const doctor = await signedInDoctor();
+  const id = objectId(requestId);
+  if (!id) return { error: "This request no longer exists.", gone: true };
+  const text = typeof note === "string" ? note.trim().replace(/\s+/g, " ") : "";
+  if (text.length > 200) return { error: "Keep the note under 200 characters." };
+
+  const result = await ConsultRequestModel.updateOne(
+    { _id: id, doctor: doctor._id, status: "pending" },
+    { $set: { status: "declined", respondedAt: new Date(), ...(text ? { declineReason: text } : {}) } },
+  );
+  refresh();
+  if (!result.modifiedCount) return { error: await notPendingReason(id, doctor._id), gone: true };
+  return {};
+}
+
+// ---------------------------------------------------------------------------
+// Lab tests for prescriptions
+
+/** Mobilab's tests and health checks for the "Add tests" dialog, or why they can't be listed. */
+export async function loadLabCatalog(): Promise<{ catalog?: LabCatalog; error?: string }> {
+  await signedInDoctor();
+  if (!mobilabReady()) return { error: "The lab isn’t connected here, so its tests can’t be listed." };
+  try {
+    return { catalog: await labCatalog() };
+  } catch (error) {
+    console.error("[mobilab] Couldn't load the lab catalog:", String(error));
+    return { error: "Couldn’t load the lab’s tests just now. Try again." };
+  }
 }
 
 // ---------------------------------------------------------------------------

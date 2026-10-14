@@ -1,8 +1,10 @@
 "use client";
 
-import { CalendarX, X } from "lucide-react";
+import { CalendarX } from "lucide-react";
 import { useEffect, useId, useRef, useState, useTransition, type FormEvent } from "react";
 
+import { DialogBody, DialogError, DialogFooter, DialogHeader, dialogClass } from "@/components/dialog-parts";
+import { useToast } from "@/components/toast";
 import { cancelConsult } from "@/lib/console-actions";
 
 /** Cancels one booked consult, with a reason the patient sees in the app. */
@@ -13,7 +15,7 @@ export function CancelConsultButton({ consultId, patientName, when }: { consultI
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-sm font-semibold text-danger hover:underline"
+        className="rounded text-xs font-semibold text-muted transition-colors hover:text-danger"
       >
         Cancel
       </button>
@@ -38,6 +40,7 @@ function CancelDialog({
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string>();
   const [pending, startTransition] = useTransition();
+  const toast = useToast();
 
   useEffect(() => {
     const dialog = ref.current;
@@ -49,35 +52,22 @@ function CancelDialog({
     setError(undefined);
     startTransition(async () => {
       const result = await cancelConsult(consultId, reason);
-      if (result.error) setError(result.error);
-      else onClose();
+      if (result.error) return setError(result.error);
+      onClose();
+      toast(`Cancelled. ${patientName} has been told in the app.`);
     });
   }
 
   return (
-    <dialog
-      ref={ref}
-      onClose={onClose}
-      aria-labelledby={`${id}-title`}
-      className="m-auto w-[calc(100%-2rem)] max-w-md rounded-3xl bg-card p-0 text-ink shadow-floating backdrop:bg-ink/50"
-    >
+    <dialog ref={ref} onClose={onClose} aria-labelledby={`${id}-title`} className={dialogClass}>
       <form onSubmit={submit}>
-        <header className="flex items-center gap-3 border-b border-line px-5 py-4">
-          <span className="inline-flex size-9 items-center justify-center rounded-xl bg-danger-soft text-danger">
-            <CalendarX aria-hidden className="size-5" />
-          </span>
-          <h2 id={`${id}-title`} className="flex-1 font-display text-lg font-bold">
-            Cancel this consult?
-          </h2>
-          <button type="button" onClick={onClose} aria-label="Close" className="rounded-full p-2 text-body hover:bg-selected">
-            <X aria-hidden className="size-5" />
-          </button>
-        </header>
-        <div className="px-5 py-4">
-          <p className="text-sm text-body">
-            {patientName}, {when}. They see “Cancelled by doctor” in the app and can book another slot.
+        <DialogHeader titleId={`${id}-title`} title="Cancel this consult?" icon={CalendarX} tone="danger" onClose={onClose} />
+        <DialogBody>
+          <p>
+            <span className="font-semibold text-ink">{patientName}</span>, {when}. They see “Cancelled by doctor” in the
+            app and can book another slot.
           </p>
-          <label className="mt-4 flex flex-col gap-1 text-sm font-semibold text-ink">
+          <label className="mt-4 flex flex-col gap-1.5 text-[13px] font-semibold text-ink">
             Reason the patient sees (optional)
             <textarea
               value={reason}
@@ -85,27 +75,19 @@ function CancelDialog({
               maxLength={200}
               rows={3}
               placeholder="e.g. I’m called to an emergency. Please book another time."
-              className="rounded-xl border border-line bg-surface px-3 py-2 text-sm font-normal text-ink placeholder:text-body focus:border-brand focus:outline-none"
+              className="field font-normal"
             />
           </label>
-          {error ? (
-            <p role="alert" className="mt-3 rounded-xl bg-danger-soft p-3 text-sm font-semibold text-danger">
-              {error}
-            </p>
-          ) : null}
-        </div>
-        <footer className="flex flex-wrap justify-end gap-2 border-t border-line px-5 py-4">
-          <button type="button" onClick={onClose} className="rounded-full border border-line px-4 py-2 text-sm font-bold text-ink hover:bg-selected">
+          {error ? <DialogError>{error}</DialogError> : null}
+        </DialogBody>
+        <DialogFooter>
+          <button type="button" onClick={onClose} className="btn btn-secondary">
             Keep it
           </button>
-          <button
-            type="submit"
-            disabled={pending}
-            className="rounded-full bg-brand px-4 py-2 text-sm font-bold text-white hover:bg-danger disabled:opacity-60"
-          >
+          <button type="submit" disabled={pending} className="btn btn-danger">
             {pending ? "Cancelling…" : "Cancel consult"}
           </button>
-        </footer>
+        </DialogFooter>
       </form>
     </dialog>
   );

@@ -1,5 +1,6 @@
 /** Domain types for the doctor console. Mirrors the models in `healthmatrix-app/server`. */
 
+import type { LabTestInput } from "./lab-tests";
 import type { VaccineInput } from "./vaccines";
 
 export type PlanId = "essential" | "plus" | "family" | "senior_care" | "community";
@@ -77,6 +78,9 @@ export type Consult = {
   /** "Today", "Tomorrow" or "Mon 12 Oct". */
   day: string;
   time: string;
+  /** ISO start and end of the slot, for counting down to it. */
+  startsAt: string;
+  endsAt: string;
   mode: "Video" | "Video from pod";
   reason: string;
   status: ConsultStatus;
@@ -86,11 +90,32 @@ export type Consult = {
   patientWaiting?: boolean;
 };
 
+/** A patient asking for a consult at a time that isn't one of the open slots. Pending, not expired. */
+export type ConsultRequest = {
+  id: string;
+  patient: Patient;
+  /** "38, female" when known. */
+  about?: string;
+  /** "Today, 3:25 pm" or "Wed 14 Oct, 3:25 pm". */
+  when: string;
+  /** "in 2 h", only when the time asked for is today. */
+  inHowLong?: string;
+  reason?: string;
+  /** "12 min ago" */
+  askedAgo: string;
+  /** Why the time may not suit the doctor: outside their hours, or a clash with a booking. */
+  warning?: string;
+  /** Not attended: the time passed with no reply. It can't be answered any more. */
+  missed?: boolean;
+};
+
 export type TimelineEntry = {
   id: string;
   date: string;
   title: string;
   type: "pod_screening" | "lab_report" | "prescription" | "vaccination" | "note";
+  /** What it holds at a glance: a prescription's first lines, "Metformin 500 mg, HbA1c test + 2 more". */
+  preview?: string;
 };
 
 export type DetailValue = {
@@ -101,6 +126,8 @@ export type DetailValue = {
   label: string;
   /** Where the value sits on its range bar, from 0 to 1. */
   position?: number;
+  /** The health check it was booked under, e.g. "Lipid Profile". */
+  group?: string;
 };
 
 export type RecordDetail = {
@@ -111,6 +138,33 @@ export type RecordDetail = {
   explains?: string;
   /** How many attached pages or files there are. */
   files: number;
+  /** The pathologist's remarks on a pod screening. */
+  remarks?: string;
+  /** Made-up values from Mobilab's test mode, never a real reading. */
+  isSample?: boolean;
+  /** Booked test codes the lab sent no usable value for, e.g. "ABO-Type". */
+  missing?: string[];
+  /** A pod screening's PDF report can be opened from Mobilab. */
+  report?: boolean;
+  /** A prescription's lab tests, "Liver Function Test, 5 tests". */
+  tests?: string[];
+};
+
+/** A pod booking the member made in the app, as the doctor sees it. */
+export type LabBooking = {
+  id: string;
+  /** Our reference, "HM-7K4QX9PA"; the member reads it out at the pod. */
+  reference: string;
+  /** "Lipid Profile, Diabetic Profile" or "3 tests". */
+  title: string;
+  /** "9 tests at Doomsday Clinic, booked 14 Oct 2026" */
+  subtitle: string;
+  stage: { label: string; tone: Tone };
+  /** Why the report isn't there yet, or that the lab couldn't be reached. */
+  note?: string;
+  /** The pod screening record once results are filed: the values and the PDF open from it. */
+  recordId?: string;
+  isSample: boolean;
 };
 
 export type ChartBand = { from: number; to: number; tone: "success" | "warning"; label: string };
@@ -125,8 +179,6 @@ export type ChartSpec = {
   refLines?: number[];
   caption?: string;
 };
-
-export type LabResult = { name: string; value: string; flag: ResultFlag; label: string };
 
 export type DoseStatus = "given" | "due" | "overdue" | "cancelled";
 
@@ -144,15 +196,18 @@ export type VaccineView = {
 };
 
 /** The draft this doctor is working on for a patient, if any, with its vaccines as the dialog edits them. */
-export type DraftRef = { id: string; items: string[]; vaccines: VaccineInput[] };
+export type DraftRef = { id: string; items: string[]; vaccines: VaccineInput[]; tests: LabTestInput[] };
 
 export type PatientRecord = {
   /** Ekaay's summary lines, empty until Ekaay has written one. */
   summary: string[];
   medicines: string[];
+  /** The prescriptions given to the patient, newest first. Lab results live on the lab tests card. */
   timeline: TimelineEntry[];
   charts: ChartSpec[];
-  results: LabResult[];
+  /** Pod bookings, newest first; `labConnected` is false when Mobilab isn't set up. */
+  labBookings: LabBooking[];
+  labConnected: boolean;
   draft: DraftRef | null;
 };
 
@@ -173,6 +228,8 @@ export type Prescription = {
   patient: Patient;
   /** Vaccines on it, shown as "+1 vaccine" in lists. */
   vaccineCount: number;
+  /** Lab tests picked from Mobilab's catalog. */
+  tests: LabTestInput[];
   date: string;
   status: "draft" | "signed";
   source: string;

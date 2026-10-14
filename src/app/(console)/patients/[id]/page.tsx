@@ -1,7 +1,8 @@
 import { FileSignature, MessageSquareText } from "lucide-react";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
 
+import { JumpNav } from "@/components/jump-nav";
 import { PatientHeader } from "@/components/patient-header";
 import { AccessGate } from "@/components/record/access-gate";
 import { AskRecord } from "@/components/record/ask-record";
@@ -15,6 +16,24 @@ export async function generateMetadata(props: PageProps<"/patients/[id]">): Prom
   const { id } = await props.params;
   return { title: (await getPatient(id))?.patient.name ?? "Patient" };
 }
+
+/** Phones: the browser's bars take the dark header's colour. */
+export const viewport: Viewport = { themeColor: "#0b2129" };
+
+/** The parts of the record a doctor jumps between on a phone, in the order they come. */
+const sections = [
+  { id: "summary", label: "Summary" },
+  { id: "medicines", label: "Medicines" },
+  { id: "vaccines", label: "Vaccines" },
+  { id: "timeline", label: "Timeline" },
+  { id: "lab", label: "Lab tests" },
+  { id: "trends", label: "Trends" },
+  { id: "prescription", label: "Prescription" },
+  { id: "ask", label: "Ask the record" },
+];
+
+/** Room above a card when a jump link scrolls to it. */
+const anchor = "scroll-mt-[calc(env(safe-area-inset-top)+7.5rem)] lg:scroll-mt-24";
 
 export default async function PatientPage(props: PageProps<"/patients/[id]">) {
   const doctor = await getCurrentDoctor();
@@ -30,32 +49,49 @@ export default async function PatientPage(props: PageProps<"/patients/[id]">) {
     <>
       <PatientHeader patient={patient} consult={found.todayConsult} back={{ href: "/patients", label: "Patients" }} />
 
-      <div className="mt-6">
+      <div className="mt-5 lg:mt-6">
         <AccessGate patient={patient} nominee={found.nominee}>
           {record ? (
-            <div className="grid items-start gap-5 lg:grid-cols-2 xl:grid-cols-3">
-              <PatientRecordCards patient={patient} record={record} vaccines={vaccines} />
+            <>
+              <JumpNav
+                label={`Parts of ${patient.firstName}’s record`}
+                // Only the cards this patient has.
+                items={sections.filter(
+                  (s) =>
+                    (s.id !== "vaccines" || vaccines.length > 0) &&
+                    (s.id !== "lab" || record.labBookings.length > 0) &&
+                    (s.id !== "trends" || record.charts.length > 0),
+                )}
+              />
+              <div className="grid items-start gap-5 lg:grid-cols-2 xl:grid-cols-3">
+                <PatientRecordCards patient={patient} record={record} vaccines={vaccines} />
 
-            <div className="flex min-w-0 flex-col gap-5 lg:col-span-2 lg:grid lg:grid-cols-2 lg:items-start xl:col-span-1 xl:flex xl:items-stretch">
-              <Card>
-                <CardTitle icon={MessageSquareText}>Ask the record</CardTitle>
-                <AskRecord />
-              </Card>
+                <div className="flex min-w-0 flex-col gap-5 lg:col-span-2 lg:grid lg:grid-cols-2 lg:items-start xl:col-span-1 xl:flex xl:items-stretch">
+                  <Card id="prescription" className={anchor}>
+                    <CardTitle icon={FileSignature} tile>
+                      Prescription
+                    </CardTitle>
+                    <PrescriptionDraft
+                      prescriptionId={record.draft?.id}
+                      memberId={patient.id}
+                      items={record.draft?.items ?? []}
+                      vaccines={record.draft?.vaccines}
+                      tests={record.draft?.tests}
+                      patientName={patient.firstName}
+                      doctorName={doctor.shortName}
+                      allergyTerms={found.allergyTerms}
+                    />
+                  </Card>
 
-              <Card>
-                <CardTitle icon={FileSignature}>Prescription</CardTitle>
-                <PrescriptionDraft
-                  prescriptionId={record.draft?.id}
-                  memberId={patient.id}
-                  items={record.draft?.items ?? []}
-                  vaccines={record.draft?.vaccines}
-                  patientName={patient.firstName}
-                  doctorName={doctor.shortName}
-                  allergyTerms={found.allergyTerms}
-                />
-              </Card>
-            </div>
-          </div>
+                  <Card id="ask" className={anchor}>
+                    <CardTitle icon={MessageSquareText} tile tone="neutral">
+                      Ask the record
+                    </CardTitle>
+                    <AskRecord />
+                  </Card>
+                </div>
+              </div>
+            </>
           ) : null}
         </AccessGate>
       </div>

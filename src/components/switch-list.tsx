@@ -36,13 +36,13 @@ export function SwitchList({ group, items }: { group: SettingGroup; items: Switc
         return (
           <li key={item.id} className="flex items-center gap-4 py-3.5">
             <div className="min-w-0 flex-1">
-              <p id={`${item.id}-label`} className="text-sm font-semibold text-ink">
+              <p id={`${item.id}-label`} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-bold text-ink">
                 {item.label}
                 {item.soon ? (
-                  <span className="ml-2 rounded-full bg-selected px-2 py-0.5 text-xs font-bold text-body">Coming soon</span>
+                  <span className="rounded-full bg-selected px-2 py-px text-[11px] font-bold leading-4 text-ink-mid">Coming soon</span>
                 ) : null}
               </p>
-              <p className="text-xs text-body">{item.hint}</p>
+              <p className="mt-0.5 text-[13px] leading-snug text-body">{item.hint}</p>
             </div>
             <button
               type="button"
@@ -50,11 +50,11 @@ export function SwitchList({ group, items }: { group: SettingGroup; items: Switc
               aria-checked={on}
               aria-labelledby={`${item.id}-label`}
               onClick={() => toggle(item.id, !on)}
-              className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${on ? "bg-success" : "bg-muted"}`}
+              className={`relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 before:absolute before:-inset-2 ${on ? "bg-success" : "bg-line-strong"}`}
             >
               <span
                 aria-hidden
-                className={`absolute top-1 size-5 rounded-full bg-white transition-[left] ${on ? "left-6" : "left-1"}`}
+                className={`absolute top-0.5 size-6 rounded-full bg-white shadow-[0_2px_4px_rgba(14,42,51,0.24)] transition-[left] duration-200 ${on ? "left-5.5" : "left-0.5"}`}
               />
             </button>
           </li>

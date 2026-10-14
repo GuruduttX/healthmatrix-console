@@ -65,6 +65,14 @@ const doctorSchema = new Schema(
       updatedAt: Date,
     },
 
+    /**
+     * Bumped inside the transaction that books a consult, in the app's booking route and when the
+     * doctor approves a request here. It holds nothing: two bookings for one doctor at once both
+     * write it, so one waits and then sees the other's consult. It must stay in this schema, or
+     * strict mode drops the `$inc` and there is no lock.
+     */
+    bookingVersion: Number,
+
     /** Console settings. Missing on doctors saved before they existed; read with defaults. */
     settings: {
       /** Not used by the app yet: there is no instant GP consult or pod call to switch. */

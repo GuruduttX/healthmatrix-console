@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useActionState } from "react";
 
@@ -20,17 +21,17 @@ export function LoginForm({ intent }: { intent: AuthIntent }) {
     <>
       <FormMessage error={state.error} />
       {switchLink ? (
-        <Link href={switchLink.href} className="mt-3 inline-block text-sm font-bold text-brand hover:underline">
+        <Link href={switchLink.href} className="mt-2.5 inline-block text-[13px] font-bold text-brand hover:text-brand-strong">
           {switchLink.label} →
         </Link>
       ) : null}
-      <form action={action} className="mt-8 flex flex-col gap-2">
+      <form action={action} className="mt-6 flex flex-col gap-1.5">
         <input type="hidden" name="intent" value={intent} />
-        <label htmlFor="phone" className="text-sm font-semibold text-ink">
+        <label htmlFor="phone" className="text-[13px] font-bold text-body">
           Mobile number
         </label>
-        <div className="flex items-center rounded-xl border border-line bg-card focus-within:border-brand">
-          <span className="border-r border-line px-4 py-3 text-sm font-semibold text-body">+91</span>
+        <div className="flex min-h-13 items-center gap-1 overflow-hidden rounded-2xl border-[1.5px] border-line-strong bg-card pl-4 transition-[border-color,box-shadow] focus-within:border-brand focus-within:shadow-[0_0_0_4px_rgba(221,67,1,0.12)]">
+          <span className="text-base font-semibold tabular-nums text-body">+91</span>
           <input
             id="phone"
             name="phone"
@@ -42,15 +43,12 @@ export function LoginForm({ intent }: { intent: AuthIntent }) {
             maxLength={10}
             required
             placeholder="10-digit mobile number"
-            className="min-w-0 flex-1 rounded-r-xl bg-transparent px-4 py-3 text-ink placeholder:text-body focus:outline-none"
+            className="min-w-0 flex-1 self-stretch bg-transparent px-2 text-base font-semibold tabular-nums tracking-wide text-ink placeholder:font-normal placeholder:tracking-normal placeholder:text-muted outline-none"
           />
         </div>
-        <button
-          type="submit"
-          disabled={pending}
-          className="mt-4 rounded-full bg-brand px-6 py-3 text-sm font-bold text-white hover:bg-danger disabled:opacity-60"
-        >
+        <button type="submit" disabled={pending} className="btn btn-primary btn-lg mt-5 w-full">
           {pending ? "Sending…" : intent === "register" ? "Send OTP to register" : "Send OTP"}
+          {pending ? null : <ArrowRight aria-hidden className="size-4.5" />}
         </button>
       </form>
     </>

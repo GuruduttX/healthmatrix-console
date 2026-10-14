@@ -1,14 +1,16 @@
 "use client";
 
-import { CircleCheck, History, Pencil, Plus, ShieldCheck, Syringe, TriangleAlert, X } from "lucide-react";
+import { CircleCheck, FlaskConical, History, Pencil, Plus, ShieldCheck, Syringe, TriangleAlert, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useDraftOwner } from "@/components/record/draft-owner";
+import { LabTestDialog } from "@/components/record/lab-test-dialog";
 import { VaccineDialog, type VaccineFormMemory } from "@/components/record/vaccine-dialog";
 import { Chip } from "@/components/ui";
 import { savePrescription } from "@/lib/console-actions";
+import type { LabTestInput } from "@/lib/lab-tests";
 import { allergyClash } from "@/lib/patient-text";
 import {
   readLocalRx,
@@ -35,6 +37,7 @@ export function PrescriptionDraft({
   consultId,
   items: initialItems,
   vaccines: initialVaccines = [],
+  tests: initialTests = [],
   patientName,
   doctorName,
   allergyTerms = [],
@@ -45,6 +48,8 @@ export function PrescriptionDraft({
   consultId?: string;
   items: string[];
   vaccines?: VaccineInput[];
+  /** Lab tests from Mobilab's catalog. */
+  tests?: LabTestInput[];
   patientName: string;
   doctorName: string;
   /** Words that clash with the patient's recorded allergies. */
@@ -53,9 +58,13 @@ export function PrescriptionDraft({
 }) {
   const [items, setItems] = useState(initialItems.length ? initialItems : [""]);
   const [vaccines, setVaccines] = useState(initialVaccines);
+  const [tests, setTests] = useState(initialTests);
   /** The vaccine open in the dialog: an index to edit, "new" to add, null when closed. */
   const [dialog, setDialog] = useState<number | "new" | null>(null);
-  const [editing, setEditing] = useState(startEditing || (initialItems.length === 0 && initialVaccines.length === 0));
+  const [choosingTests, setChoosingTests] = useState(false);
+  const [editing, setEditing] = useState(
+    startEditing || (initialItems.length === 0 && initialVaccines.length === 0 && initialTests.length === 0),
+  );
   const [prescriptionId, setPrescriptionId] = useState(savedId);
   const [signedId, setSignedId] = useState<string>();
   const [saved, setSaved] = useState(Boolean(savedId));
@@ -72,11 +81,12 @@ export function PrescriptionDraft({
   // shows the same thing. Runs after hydration because the server can't see localStorage.
   useEffect(() => {
     const local = owner ? readLocalRx(owner, memberId) : null;
-    if (local && !sameRx(local, { items: initialItems, vaccines: initialVaccines })) {
+    if (local && !sameRx(local, { items: initialItems, vaccines: initialVaccines, tests: initialTests })) {
       const id = savedId ?? local.prescriptionId;
       /* eslint-disable react-hooks/set-state-in-effect -- restoring from storage after hydration */
       setItems(local.items.length ? local.items : [""]);
       setVaccines(local.vaccines);
+      setTests(local.tests ?? []);
       setPrescriptionId(id);
       setSaved(local.saved && Boolean(id));
       setEditing(true);
@@ -92,19 +102,20 @@ export function PrescriptionDraft({
   // server sent; once signed, it is gone for good.
   useEffect(() => {
     if (!checked || !owner || signedId) return;
-    const blank = items.every((item) => !item.trim()) && vaccines.length === 0;
-    if (blank || sameRx({ items, vaccines }, { items: initialItems, vaccines: initialVaccines })) {
+    const blank = items.every((item) => !item.trim()) && vaccines.length === 0 && tests.length === 0;
+    if (blank || sameRx({ items, vaccines, tests }, { items: initialItems, vaccines: initialVaccines, tests: initialTests })) {
       removeLocalRx(owner, memberId);
     } else {
-      writeLocalRx(owner, memberId, { items, vaccines, prescriptionId, saved });
+      writeLocalRx(owner, memberId, { items, vaccines, tests, prescriptionId, saved });
     }
-  }, [checked, owner, memberId, items, vaccines, prescriptionId, saved, signedId, initialItems, initialVaccines]);
+  }, [checked, owner, memberId, items, vaccines, tests, prescriptionId, saved, signedId, initialItems, initialVaccines, initialTests]);
 
   /** Drops the restored copy and goes back to what the server has. */
   function discardRestored() {
     setAskDiscard(false);
     setItems(initialItems.length ? initialItems : [""]);
     setVaccines(initialVaccines);
+    setTests(initialTests);
     setPrescriptionId(savedId);
     setSaved(Boolean(savedId));
     setRestored(null);
@@ -114,7 +125,7 @@ export function PrescriptionDraft({
 
   const filled = items.map((item) => item.trim()).filter(Boolean);
   const conflict = allergyClash([...filled, ...vaccines.map((v) => [v.name, v.brand].filter(Boolean).join(" "))], allergyTerms);
-  const empty = filled.length === 0 && vaccines.length === 0;
+  const empty = filled.length === 0 && vaccines.length === 0 && tests.length === 0;
 
   function update(next: string[]) {
     setItems(next);
@@ -143,10 +154,21 @@ export function PrescriptionDraft({
     setSaved(false);
   }
 
+  function saveTests(next: LabTestInput[]) {
+    setTests(next);
+    setChoosingTests(false);
+    setSaved(false);
+  }
+
+  function removeTest(index: number) {
+    setTests((list) => list.filter((_, i) => i !== index));
+    setSaved(false);
+  }
+
   function save(sign: boolean) {
     setError(undefined);
     startTransition(async () => {
-      const result = await savePrescription({ prescriptionId, memberId, consultId, items: filled, vaccines, sign });
+      const result = await savePrescription({ prescriptionId, memberId, consultId, items: filled, vaccines, tests, sign });
       if (result.error) {
         setError(result.error);
         return;
@@ -169,23 +191,24 @@ export function PrescriptionDraft({
       <div className="mt-4">
         <ol className="divide-y divide-line">
           {items.map((item, i) => (
-            <li key={i} className="flex gap-3 py-2.5 text-sm text-ink">
-              <span className="w-4 shrink-0 font-bold text-brand">{i + 1}</span>
+            <li key={i} className="flex gap-3 py-2.5 text-[13px] text-ink">
+              <span className="w-4 shrink-0 font-semibold tabular-nums text-muted">{i + 1}</span>
               {item}
             </li>
           ))}
         </ol>
+        <TestList tests={tests} />
         <VaccineList vaccines={vaccines} />
-        <div className="mt-4 rounded-xl bg-success-soft p-3.5 text-sm text-success">
-          <p className="flex items-center gap-2 font-bold">
-            <CircleCheck aria-hidden className="size-4" />
+        <div className="mt-4 rounded-2xl bg-success-soft p-4 text-[13px] text-ink">
+          <p className="flex items-center gap-2 font-semibold">
+            <CircleCheck aria-hidden className="size-4 text-success" />
             Signed by {doctorName}
           </p>
           <p className="mt-1 text-ink">
             It is now on {patientName}’s timeline.
             {vaccines.length > 0 ? " Each vaccine dose is in their app reminders." : ""}
           </p>
-          <Link href={`/prescriptions/${signedId}`} className="mt-2 inline-block font-semibold text-ink underline">
+          <Link href={`/prescriptions/${signedId}`} className="btn btn-secondary btn-sm mt-3">
             View or print
           </Link>
         </div>
@@ -196,16 +219,16 @@ export function PrescriptionDraft({
   return (
     <div className="mt-4">
       {restored ? (
-        <div role="status" className="mb-3 flex items-center gap-3 rounded-xl bg-brand-soft p-3 text-sm">
-          <History aria-hidden className="size-4 shrink-0 text-brand" />
+        <div role="status" className="mb-3 flex items-center gap-3 rounded-2xl bg-surface py-2 pl-3.5 pr-1.5 text-[13px]">
+          <History aria-hidden className="size-4 shrink-0 text-muted" />
           <p className="min-w-0 flex-1 text-ink">
-            <span className="font-bold">Picked up where you left off.</span>{" "}
+            <span className="font-semibold">Picked up where you left off.</span>{" "}
             <span className="text-body">Last edited {lastEdited(restored.at)}.</span>
           </p>
           <button
             type="button"
             onClick={() => setAskDiscard(true)}
-            className="shrink-0 rounded-full px-3 py-1.5 text-xs font-bold text-danger hover:bg-white/60"
+            className="btn btn-danger-ghost btn-sm shrink-0"
           >
             Discard
           </button>
@@ -225,8 +248,8 @@ export function PrescriptionDraft({
       <ol className="divide-y divide-line">
         {/* Blank lines only matter while editing; a vaccine-only draft shows no empty line. */}
         {(editing ? items : filled).map((item, i) => (
-          <li key={i} className="flex items-center gap-3 py-2.5 text-sm text-ink">
-            <span className="w-4 shrink-0 font-bold text-brand">{i + 1}</span>
+          <li key={i} className="flex items-center gap-3 py-2 text-[13px] text-ink">
+            <span className="w-4 shrink-0 font-semibold tabular-nums text-muted">{i + 1}</span>
             {editing ? (
               <>
                 <input
@@ -235,13 +258,13 @@ export function PrescriptionDraft({
                   aria-label={`Item ${i + 1}`}
                   placeholder="Medicine, test or advice"
                   maxLength={300}
-                  className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm placeholder:text-body focus:border-brand focus:outline-none"
+                  className="field min-w-0 flex-1"
                 />
                 <button
                   type="button"
                   aria-label={`Remove item ${i + 1}`}
                   onClick={() => update(items.length > 1 ? items.filter((_, j) => j !== i) : [""])}
-                  className="rounded-full p-1.5 text-body hover:bg-selected"
+                  className="btn btn-ghost btn-sm btn-icon text-muted"
                 >
                   <X aria-hidden className="size-4" />
                 </button>
@@ -253,28 +276,41 @@ export function PrescriptionDraft({
         ))}
       </ol>
 
-      <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1">
+      <div className="mt-2 flex flex-wrap gap-1">
         {editing ? (
           <button
             type="button"
             onClick={() => update([...items, ""])}
-            className="inline-flex items-center gap-1.5 py-1 text-sm font-semibold text-brand"
+            className="btn btn-ghost btn-sm -ml-2.5 text-ink"
           >
-            <Plus aria-hidden className="size-4" />
+            <Plus aria-hidden className="size-4 text-muted" />
             Add an item
           </button>
         ) : null}
         <button
           type="button"
-          onClick={() => setDialog("new")}
-          className="inline-flex items-center gap-1.5 py-1 text-sm font-semibold text-brand"
+          onClick={() => setChoosingTests(true)}
+          className="btn btn-ghost btn-sm text-ink"
         >
-          <Syringe aria-hidden className="size-4" />
+          <FlaskConical aria-hidden className="size-4 text-muted" />
+          {tests.length ? "Edit tests" : "Add tests"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setDialog("new")}
+          className="btn btn-ghost btn-sm text-ink"
+        >
+          <Syringe aria-hidden className="size-4 text-muted" />
           Add a vaccine
         </button>
       </div>
 
+      <TestList tests={tests} onRemove={removeTest} />
       <VaccineList vaccines={vaccines} onEdit={(i) => setDialog(i)} onRemove={removeVaccine} />
+
+      {choosingTests ? (
+        <LabTestDialog selected={tests} onSave={saveTests} onClose={() => setChoosingTests(false)} />
+      ) : null}
 
       {dialog !== null ? (
         <VaccineDialog
@@ -288,8 +324,8 @@ export function PrescriptionDraft({
       ) : null}
 
       {conflict ? (
-        <p role="alert" className="mt-3 rounded-xl bg-danger-soft p-3 text-sm text-danger">
-          <span className="flex items-center gap-2 font-bold">
+        <p role="alert" className="mt-3 rounded-2xl bg-danger-soft p-3.5 text-[13px] text-danger">
+          <span className="flex items-center gap-2 font-semibold">
             <TriangleAlert aria-hidden className="size-4 shrink-0" />
             Allergy conflict
           </span>
@@ -300,35 +336,31 @@ export function PrescriptionDraft({
         </p>
       ) : null}
       {error ? (
-        <p role="alert" className="mt-3 rounded-xl bg-danger-soft p-3 text-sm font-semibold text-danger">
+        <p role="alert" className="mt-3 rounded-2xl bg-danger-soft px-3.5 py-2.5 text-[13px] font-semibold text-danger">
           {error}
         </p>
       ) : null}
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
+      <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-4">
         {!conflict && !empty ? (
           <Chip tone="success" icon={ShieldCheck}>
             No allergy conflicts
           </Chip>
         ) : null}
         {saved && prescriptionId ? (
-          <span className="text-xs text-body">Draft saved</span>
+          <span className="text-xs text-muted">Draft saved</span>
         ) : owner && checked && !empty ? (
-          <span className="text-xs text-body">Kept on this device</span>
+          <span className="text-xs text-muted">Kept on this device</span>
         ) : null}
         <div className="ml-auto flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setEditing((e) => !e)}
-            className="rounded-full border border-line px-4 py-2 text-sm font-bold text-ink hover:bg-selected"
-          >
+          <button type="button" onClick={() => setEditing((e) => !e)} className="btn btn-ghost">
             {editing ? "Done" : "Edit"}
           </button>
           <button
             type="button"
             onClick={() => save(false)}
             disabled={pending || empty || saved}
-            className="rounded-full border border-line px-4 py-2 text-sm font-bold text-ink hover:bg-selected disabled:cursor-not-allowed disabled:opacity-50"
+            className="btn btn-secondary"
           >
             Save draft
           </button>
@@ -336,13 +368,13 @@ export function PrescriptionDraft({
             type="button"
             onClick={() => save(true)}
             disabled={pending || empty || Boolean(conflict)}
-            className="rounded-full bg-brand px-5 py-2 text-sm font-bold text-white hover:bg-danger disabled:cursor-not-allowed disabled:opacity-50"
+            className="btn btn-primary px-5"
           >
             {pending ? "Saving…" : "Sign"}
           </button>
         </div>
       </div>
-      <p className="mt-2 text-xs text-body">Nothing reaches {patientName} until you sign. Signing can’t be undone.</p>
+      <p className="mt-2.5 text-xs text-muted">Nothing reaches {patientName} until you sign. Signing can’t be undone.</p>
     </div>
   );
 }
@@ -355,6 +387,43 @@ function lastEdited(at: number) {
   if (days === 0) return `${time} today`;
   if (days === 1) return `yesterday, ${time}`;
   return `${when.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}, ${time}`;
+}
+
+/** Lab tests on the prescription, as one card; with `onRemove` each can be taken off. */
+function TestList({ tests, onRemove }: { tests: LabTestInput[]; onRemove?: (index: number) => void }) {
+  if (tests.length === 0) return null;
+  return (
+    <section className="mt-3 rounded-2xl bg-surface p-3.5">
+      <h3 className="flex items-center gap-2 text-[13px] font-semibold text-ink">
+        <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-brand">
+          <FlaskConical aria-hidden className="size-3.5" />
+        </span>
+        Lab tests
+      </h3>
+      <ul className="mt-2 divide-y divide-line">
+        {tests.map((test, i) => (
+          <li key={`${test.kind}-${test.code}`} className="flex items-start gap-3 py-2 text-[13px]">
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-ink">{test.name}</p>
+              <p className="text-xs text-body">
+                {test.kind === "profile" ? `Health check, ${test.tests.length} tests` : "Single test"}
+              </p>
+            </div>
+            {onRemove ? (
+              <button
+                type="button"
+                onClick={() => onRemove(i)}
+                aria-label={`Remove ${test.name}`}
+                className="btn btn-ghost btn-sm btn-icon -my-1 text-muted"
+              >
+                <X aria-hidden className="size-4" />
+              </button>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
 }
 
 /** Vaccines on the prescription; with handlers they can be edited and removed. */
@@ -371,12 +440,12 @@ function VaccineList({
   return (
     <ul className="mt-3 flex flex-col gap-2">
       {vaccines.map((v, i) => (
-        <li key={i} className="flex items-start gap-3 rounded-xl border border-line bg-surface p-3">
-          <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-brand">
+        <li key={i} className="flex items-start gap-3 rounded-2xl bg-surface p-3.5">
+          <span className="mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-brand">
             <Syringe aria-hidden className="size-4" />
           </span>
-          <div className="min-w-0 flex-1 text-sm">
-            <p className="font-bold text-ink">
+          <div className="min-w-0 flex-1 text-[13px]">
+            <p className="font-semibold text-ink">
               {v.name}
               {v.brand ? <span className="font-medium text-body"> ({v.brand})</span> : null}
             </p>
@@ -392,7 +461,7 @@ function VaccineList({
                 type="button"
                 onClick={() => onEdit(i)}
                 aria-label={`Edit ${v.name}`}
-                className="rounded-full p-2 text-body hover:bg-selected"
+                className="btn btn-ghost btn-sm btn-icon text-muted"
               >
                 <Pencil aria-hidden className="size-4" />
               </button>
@@ -400,7 +469,7 @@ function VaccineList({
                 type="button"
                 onClick={() => onRemove(i)}
                 aria-label={`Remove ${v.name}`}
-                className="rounded-full p-2 text-body hover:bg-selected"
+                className="btn btn-ghost btn-sm btn-icon text-muted"
               >
                 <X aria-hidden className="size-4" />
               </button>

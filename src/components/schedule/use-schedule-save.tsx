@@ -1,8 +1,9 @@
 "use client";
 
-import { CalendarX, CircleCheck, TriangleAlert, X } from "lucide-react";
+import { CalendarX, CircleCheck, TriangleAlert } from "lucide-react";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 
+import { DialogBody, DialogFooter, DialogHeader, dialogClass } from "@/components/dialog-parts";
 import type { Clash, ClashChoice, ScheduleResult } from "@/lib/console-actions";
 
 type Action = (choice?: ClashChoice) => Promise<ScheduleResult>;
@@ -46,13 +47,13 @@ export function useScheduleSave() {
 export function SaveMessage({ result, savedText }: { result?: ScheduleResult; savedText: string }) {
   if (result?.errors?.length) {
     return (
-      <div role="alert" className="mt-3 rounded-xl bg-danger-soft p-3 text-sm text-danger">
-        <p className="flex items-center gap-2 font-bold">
-          <TriangleAlert aria-hidden className="size-4 shrink-0" />
+      <div role="alert" className="mt-3 rounded-2xl bg-danger-soft px-3.5 py-3 text-[13px] text-danger">
+        <p className="flex items-start gap-2 font-semibold">
+          <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
           {result.errors.length === 1 ? result.errors[0] : "Please fix these first"}
         </p>
         {result.errors.length > 1 ? (
-          <ul className="mt-1.5 list-disc pl-6 text-ink">
+          <ul className="mt-1 list-disc pl-6 text-ink marker:text-danger/60">
             {result.errors.map((error) => (
               <li key={error}>{error}</li>
             ))}
@@ -63,7 +64,7 @@ export function SaveMessage({ result, savedText }: { result?: ScheduleResult; sa
   }
   if (result?.saved) {
     return (
-      <p role="status" className="mt-3 flex items-start gap-2 rounded-xl bg-success-soft p-3 text-sm font-semibold text-success">
+      <p role="status" className="mt-3 flex items-start gap-2 rounded-2xl bg-success-soft px-3.5 py-3 text-[13px] font-semibold text-success">
         <CircleCheck aria-hidden className="mt-0.5 size-4 shrink-0" />
         <span>
           {savedText}
@@ -97,53 +98,36 @@ function ClashDialog({
   const many = clashes.length > 1;
 
   return (
-    <dialog
-      ref={ref}
-      onClose={onClose}
-      aria-labelledby={`${id}-title`}
-      className="m-auto w-[calc(100%-2rem)] max-w-lg rounded-3xl bg-card p-0 text-ink shadow-floating backdrop:bg-ink/50"
-    >
-      <header className="flex items-center gap-3 border-b border-line px-5 py-4">
-        <span className="inline-flex size-9 items-center justify-center rounded-xl bg-warning-soft text-warning">
-          <CalendarX aria-hidden className="size-5" />
-        </span>
-        <h2 id={`${id}-title`} className="flex-1 font-display text-lg font-bold">
-          {clashes.length} {many ? "bookings fall" : "booking falls"} outside your new hours
-        </h2>
-        <button type="button" onClick={onClose} aria-label="Close" className="rounded-full p-2 text-body hover:bg-selected">
-          <X aria-hidden className="size-5" />
-        </button>
-      </header>
-      <div className="px-5 py-4">
-        <ul className="max-h-60 divide-y divide-line overflow-y-auto rounded-xl border border-line">
+    <dialog ref={ref} onClose={onClose} aria-labelledby={`${id}-title`} className={dialogClass}>
+      <DialogHeader
+        titleId={`${id}-title`}
+        title={`${clashes.length} ${many ? "bookings fall" : "booking falls"} outside your new hours`}
+        icon={CalendarX}
+        tone="danger"
+        onClose={onClose}
+      />
+      <DialogBody>
+        <ul className="max-h-60 divide-y divide-line overflow-y-auto rounded-2xl border border-line">
           {clashes.map((clash) => (
-            <li key={clash.id} className="flex flex-wrap justify-between gap-x-4 gap-y-0.5 px-4 py-2.5 text-sm">
-              <span className="font-semibold text-ink">{clash.name}</span>
-              <span className="text-body">{clash.when}</span>
+            <li key={clash.id} className="flex flex-wrap justify-between gap-x-4 gap-y-0.5 px-3.5 py-2.5 text-[13px]">
+              <span className="font-bold text-ink">{clash.name}</span>
+              <span className="tabular-nums text-body">{clash.when}</span>
             </li>
           ))}
         </ul>
-        <p className="mt-3 text-sm leading-relaxed text-body">
+        <p className="mt-3">
           Keep {many ? "them" : "it"} if you’ll still take {many ? "these consults" : "this consult"}. If you cancel,{" "}
           {many ? "each patient sees" : "the patient sees"} “Cancelled by doctor” in the app and can book another slot.
         </p>
-      </div>
-      <footer className="flex flex-wrap justify-end gap-2 border-t border-line px-5 py-4">
-        <button
-          type="button"
-          onClick={() => onChoose("keep")}
-          className="rounded-full border border-line px-4 py-2 text-sm font-bold text-ink hover:bg-selected"
-        >
+      </DialogBody>
+      <DialogFooter>
+        <button type="button" onClick={() => onChoose("keep")} className="btn btn-secondary">
           Keep {many ? "bookings" : "booking"}
         </button>
-        <button
-          type="button"
-          onClick={() => onChoose("cancel")}
-          className="rounded-full bg-brand px-4 py-2 text-sm font-bold text-white hover:bg-danger"
-        >
+        <button type="button" onClick={() => onChoose("cancel")} className="btn btn-danger whitespace-normal py-2 leading-tight">
           Cancel {many ? "them" : "it"} and tell {many ? "patients" : "the patient"}
         </button>
-      </footer>
+      </DialogFooter>
     </dialog>
   );
 }

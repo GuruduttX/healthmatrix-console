@@ -17,3 +17,4 @@ export const timelineTypeNames: Record<TimelineEntry["type"], string> = {
   vaccination: "Vaccination",
   note: "Clinical note",
 };
+

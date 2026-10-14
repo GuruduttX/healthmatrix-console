@@ -6,16 +6,17 @@ import {
   AccessLogModel,
   BookingModel,
   ConsultModel,
+  ConsultRequestModel,
   EMERGENCY_FIELDS,
   EmergencyProfileModel,
   HealthRecordModel,
   MemberModel,
-  PodModel,
   PrescriptionModel,
   ReminderModel,
   TestOrderModel,
   VaccinationModel,
   type AccessGrant,
+  type Booking,
   type Doctor,
   type EmergencyProfile,
   type HealthRecord,
@@ -34,10 +35,17 @@ import {
   formatTime,
   formatWhen,
   istDayStart,
+  timeAgo,
   timeLeft,
 } from "./format";
-import { allergyTerms } from "./patient-text";
+import { missingTests } from "./lab-results";
+import { describeLabTest, type LabTestInput } from "./lab-tests";
+import { getMobilabReportUrl, mobilabReady } from "./mobilab";
+import { ageAndSex, allergyTerms } from "./patient-text";
+import { stageOf, syncMemberBookings } from "./pod-bookings";
 import {
+  consultBusy,
+  consultFits,
   istDateKey,
   istInstant,
   resolveSchedule,
@@ -56,8 +64,9 @@ import type {
   BloodGroup,
   ChartSpec,
   Consult,
+  ConsultRequest,
   DetailValue,
-  LabResult,
+  LabBooking,
   Nominee,
   Notification,
   Patient,
@@ -90,6 +99,7 @@ type MemberDoc = Doc<Member>;
 type ProfileDoc = Doc<EmergencyProfile>;
 type GrantDoc = Doc<AccessGrant>;
 type RecordDoc = Doc<HealthRecord>;
+type BookingDoc = Doc<Booking>;
 
 /** How long a patient's OTP keeps the record open. */
 export const ACCESS_TTL_MS = 24 * 60 * 60 * 1000;
@@ -323,10 +333,20 @@ export const getPatient = cache(async (id: string) => {
   };
 });
 
+/**
+ * Opening the same thing again within this long counts as the same view. Screens re-read
+ * themselves every 30 seconds (`LiveUpdates`), which must not flood the patient's log.
+ */
+const VIEW_REPEAT_MS = 10 * 60 * 1000;
+
 /** Notes a view on the active grant, so the patient can see what was opened and when. */
 async function logView(grantId: Id | undefined, what: string) {
   if (!grantId) return;
-  await AccessGrantModel.updateOne({ _id: grantId, status: "active" }, { $push: { views: { at: new Date(), what } } });
+  const since = new Date(Date.now() - VIEW_REPEAT_MS);
+  await AccessGrantModel.updateOne(
+    { _id: grantId, status: "active", views: { $not: { $elemMatch: { what, at: { $gte: since } } } } },
+    { $push: { views: { at: new Date(), what } } },
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -420,19 +440,41 @@ function buildCharts(records: RecordDoc[]): ChartSpec[] {
     });
 }
 
-/** The newest value of each test, newest record first. */
-function latestResults(records: RecordDoc[]): LabResult[] {
-  const seen = new Set<string>();
-  const results: LabResult[] = [];
-  for (const record of records) {
-    for (const v of record.values ?? []) {
-      const key = codeOf(v);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      results.push({ name: v.name, value: valueText(v), ...flagOf(v) });
-    }
-  }
-  return results.slice(0, 10);
+/** A prescription's first lines at a glance: "Metformin 500 mg, HbA1c test + 2 more". */
+function previewOf(items: string[]) {
+  const lines = clean(items);
+  if (!lines.length) return undefined;
+  const more = lines.length > 2 ? ` + ${lines.length - 2} more` : "";
+  return lines.slice(0, 2).join(", ") + more;
+}
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+/**
+ * A pod booking for the lab card. One with a filed record is ready whatever Mobilab last said;
+ * `unchecked` holds the bookings Mobilab couldn't be asked about just now.
+ */
+function toLabBooking(booking: BookingDoc, sampleRecords: Set<string>, unchecked: Set<string>): LabBooking {
+  const id = String(booking._id);
+  const recordId = booking.result ? String(booking.result) : undefined;
+  const stage = stageOf(recordId ? "report_generated" : booking.mobilab?.status);
+  const tests = booking.tests?.length ?? 0;
+  const note = unchecked.has(id)
+    ? "Couldn’t reach the lab just now, so this is the last status it gave."
+    : stage.ready && !recordId
+      ? "The report is out, but its results couldn’t be loaded yet. Try again in a minute."
+      : stage.note;
+
+  return {
+    id,
+    reference: booking.mobilab?.bookingId ?? "",
+    title: booking.profiles?.length ? booking.profiles.join(", ") : plural(tests, "test"),
+    subtitle: `${plural(tests, "test")} at ${booking.pod?.name ?? "a pod"}, booked ${formatDate(booking.createdAt)}`,
+    stage: { label: stage.label, tone: stage.tone },
+    note,
+    recordId,
+    isSample: Boolean(recordId && sampleRecords.has(recordId)),
+  };
 }
 
 /**
@@ -445,8 +487,18 @@ export const getPatientRecord = cache(async (id: string): Promise<PatientRecord 
   const doctorId = await currentDoctorId();
   const member = new Types.ObjectId(id);
 
-  const [records, draft, consult] = await Promise.all([
+  // Pod bookings first, so results Mobilab has just finished are filed before the record is read.
+  const born = await MemberModel.findById(member).select("dateOfBirth").lean();
+  const unchecked = await syncMemberBookings({ _id: member, dateOfBirth: born?.dateOfBirth });
+
+  const [records, bookings, signed, draft, consult] = await Promise.all([
     HealthRecordModel.find({ member }).sort({ recordedAt: -1 }).limit(200).lean<RecordDoc[]>(),
+    BookingModel.find({ member, "mobilab.bookingId": { $exists: true } })
+      .sort({ createdAt: -1 })
+      .limit(20)
+      .lean<BookingDoc[]>(),
+    // What each signed prescription on the timeline holds, by any doctor.
+    PrescriptionModel.find({ member, status: "signed", healthRecord: { $exists: true } }).select("healthRecord items tests").lean(),
     PrescriptionModel.findOne({ doctor: doctorId, member, status: "draft" }).sort({ updatedAt: -1 }).lean(),
     ConsultModel.findOne({ doctor: doctorId, member, ekaaySummary: { $nin: [null, ""] } })
       .sort({ scheduledAt: -1 })
@@ -454,15 +506,29 @@ export const getPatientRecord = cache(async (id: string): Promise<PatientRecord 
       .lean(),
   ]);
   await logView(found.grantId, "Full record");
+  const sampleRecords = new Set(records.filter((r) => r.isSample).map((r) => String(r._id)));
+  const itemsOf = new Map(
+    signed.map((p) => [String(p.healthRecord), [...(p.items ?? []), ...labTestsOf(p.tests).map((t) => t.name)]]),
+  );
 
   return {
     summary: clean(consult?.ekaaySummary?.split(/\n+/).map((line) => line.replace(/^[-•*]\s*/, ""))),
     medicines: found.medicines,
-    timeline: records.map(
-      (r): TimelineEntry => ({ id: String(r._id), date: formatDate(r.recordedAt), title: r.title, type: r.type }),
-    ),
+    // Prescriptions only: lab results show on the lab tests card, vaccines on their own card.
+    timeline: records
+      .filter((r) => r.type === "prescription")
+      .map(
+        (r): TimelineEntry => ({
+          id: String(r._id),
+          date: formatDate(r.recordedAt),
+          title: r.title,
+          type: r.type,
+          preview: previewOf(itemsOf.get(String(r._id)) ?? []),
+        }),
+      ),
     charts: buildCharts(records),
-    results: latestResults(records),
+    labBookings: bookings.map((b) => toLabBooking(b, sampleRecords, unchecked)),
+    labConnected: mobilabReady(),
     draft: await draftRef(draft),
   };
 });
@@ -480,15 +546,19 @@ export async function getRecordDetail(memberId: string, recordId: string) {
 
   const prescription =
     record.type === "prescription"
-      ? await PrescriptionModel.findOne({ healthRecord: record._id }).select("items").lean()
+      ? await PrescriptionModel.findOne({ healthRecord: record._id }).select("items tests").lean()
       : null;
   const vaccines = prescription ? await vaccinesFor([prescription._id]) : [];
+  // A pod screening's booking: which tests were booked, for the ones that came back without a value.
+  const booking = record.booking ? await BookingModel.findById(record.booking).select("tests").lean() : null;
+  const missing = booking ? missingTests(booking.tests ?? [], record.values ?? []) : [];
   const values: DetailValue[] | undefined = record.values?.length
     ? record.values.map((v) => ({
         name: v.name,
         value: valueText(v),
         range: rangeText(v),
         position: positionOf(v),
+        group: v.group ?? undefined,
         ...flagOf(v),
       }))
     : undefined;
@@ -497,12 +567,48 @@ export async function getRecordDetail(memberId: string, recordId: string) {
     source: [SOURCE_NAMES[record.source] ?? "Added to the timeline", record.provider].filter(Boolean).join(", ") + ".",
     values,
     items: prescription?.items?.length ? prescription.items : undefined,
+    tests: prescription?.tests?.length ? labTestsOf(prescription.tests).map(describeLabTest) : undefined,
     vaccines: vaccines.length ? vaccines : undefined,
     explains: record.ekaayNote?.trim() || undefined,
     files: record.files?.length ?? 0,
+    remarks: record.remarks?.trim() || undefined,
+    isSample: record.isSample || undefined,
+    missing: missing.length ? missing : undefined,
+    report: Boolean(record.booking),
   };
   const entry: TimelineEntry = { id: recordId, date: formatDate(record.recordedAt), title: record.title, type: record.type };
   return { found, entry, detail };
+}
+
+/**
+ * A fresh link to a pod screening's PDF report, only while the record is open; opening it is
+ * logged on the grant. `null` when there is no such report to ask for. Mobilab's links last
+ * about an hour, so they are never stored.
+ */
+export async function getScreeningReport(
+  memberId: string,
+  recordId: string,
+): Promise<{ url: string } | { problem: "not-ready" | "unavailable" } | null> {
+  const found = await getPatient(memberId);
+  const recordObjectId = asId(recordId);
+  if (!found || !recordObjectId || found.patient.access.status !== "active") return null;
+
+  const record = await HealthRecordModel.findOne({ _id: recordObjectId, member: memberId, type: "pod_screening" })
+    .select("booking title")
+    .lean();
+  const booking = record?.booking ? await BookingModel.findById(record.booking).select("mobilab.bookingId").lean() : null;
+  const reference = booking?.mobilab?.bookingId;
+  if (!record || !reference) return null;
+
+  try {
+    const url = await getMobilabReportUrl(reference);
+    if (!url) return { problem: "not-ready" };
+    await logView(found.grantId, `${record.title}, PDF report`);
+    return { url };
+  } catch (error) {
+    console.error(`[pod-bookings] report for ${reference} failed:`, String(error));
+    return { problem: "unavailable" };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -529,10 +635,10 @@ function toVaccineInput(v: VaccinationDoc): VaccineInput {
 }
 
 /** A draft prescription with its vaccines, ready to edit. */
-async function draftRef(draft: { _id: Id; items?: string[] | null } | null): Promise<DraftRef | null> {
+async function draftRef(draft: { _id: Id; items?: string[] | null; tests?: SavedLabTest[] | null } | null): Promise<DraftRef | null> {
   if (!draft) return null;
   const vaccines = await VaccinationModel.find({ prescription: draft._id }).sort({ createdAt: 1 }).lean<VaccinationDoc[]>();
-  return { id: String(draft._id), items: draft.items ?? [], vaccines: vaccines.map(toVaccineInput) };
+  return { id: String(draft._id), items: draft.items ?? [], vaccines: vaccines.map(toVaccineInput), tests: labTestsOf(draft.tests) };
 }
 
 /**
@@ -639,6 +745,8 @@ async function toConsults(doctorId: Id, docs: ConsultDoc[], { withWaiting = fals
         patient: entry.patient,
         day: dayLabel(c.scheduledAt, now),
         time: formatTime(c.scheduledAt),
+        startsAt: c.scheduledAt.toISOString(),
+        endsAt: new Date(c.scheduledAt.getTime() + (c.durationMinutes ?? 30) * MINUTE_MS).toISOString(),
         mode: c.mode === "video_from_pod" ? "Video from pod" : "Video",
         reason: c.reason?.trim() || "No reason given",
         status: c.status as Consult["status"],
@@ -649,15 +757,15 @@ async function toConsults(doctorId: Id, docs: ConsultDoc[], { withWaiting = fals
   });
 }
 
-/** Today's consults, in time order. */
-export async function getTodayConsults() {
+/** Today's consults, in time order. Once per request: the tab title counts who is waiting too. */
+export const getTodayConsults = cache(async () => {
   const doctorId = await currentDoctorId();
   const docs = await findConsults({ doctor: doctorId, scheduledAt: { $gte: istDayStart(), $lt: istDayStart(new Date(), 1) } });
   return toConsults(doctorId, docs, { withWaiting: true });
-}
+});
 
-/** Today and the next two weeks, plus anything still in progress from before. */
-export async function getSchedule() {
+/** Today and the next two weeks, plus anything still in progress from before. Once per request. */
+export const getSchedule = cache(async () => {
   const doctorId = await currentDoctorId();
   const docs = await findConsults({
     doctor: doctorId,
@@ -667,6 +775,12 @@ export async function getSchedule() {
     ],
   });
   return toConsults(doctorId, docs, { withWaiting: true });
+});
+
+/** "(1 waiting) Today": the tab title says when a patient is in the waiting room. */
+export function waitingTitle(screen: string, consults: Consult[]) {
+  const waiting = consults.filter((c) => c.patientWaiting).length;
+  return waiting ? `(${waiting} waiting) ${screen}` : screen;
 }
 
 /** One of this doctor's consults, with the record when it is open. */
@@ -698,9 +812,145 @@ export async function getConsult(id: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Consult requests: a patient asking for a time that isn't one of the open slots
+
+type RequestDoc = Awaited<ReturnType<typeof findOpenRequests>>[number];
+type SignedInDoctor = Awaited<ReturnType<typeof requireDoctor>>;
+
+/** How far back a booked or running consult can still hold time now. */
+const BUSY_LOOKBACK_MS = 2 * 60 * 60 * 1000;
+
+/** Requests still waiting for an answer whose time hasn't passed, soonest first. */
+function findOpenRequests(doctorId: Id, now: Date, before?: Date) {
+  return ConsultRequestModel.find({
+    doctor: doctorId,
+    status: "pending",
+    requestedAt: before ? { $gt: now, $lt: before } : { $gt: now },
+  })
+    .sort({ requestedAt: 1 })
+    .lean();
+}
+
+/** How long a request the doctor never answered stays on their list, marked not attended. */
+const MISSED_SHOWN_MS = 24 * 60 * 60 * 1000;
+
+/** Requests whose time passed with no reply, in the last day, most recent first. */
+function findMissedRequests(doctorId: Id, now: Date) {
+  return ConsultRequestModel.find({
+    doctor: doctorId,
+    status: "pending",
+    requestedAt: { $lte: now, $gt: new Date(now.getTime() - MISSED_SHOWN_MS) },
+  })
+    .sort({ requestedAt: -1 })
+    .lean();
+}
+
+/** Each request with what the doctor needs to answer it: who, when, and whether it suits them. */
+async function toRequests(doctor: SignedInDoctor, docs: RequestDoc[], now: Date): Promise<ConsultRequest[]> {
+  if (docs.length === 0) return [];
+  const schedule = resolveSchedule(doctor.schedule as SavedSchedule);
+  const booked = await ConsultModel.find({
+    doctor: doctor._id,
+    status: { $in: ["scheduled", "in_progress"] },
+    scheduledAt: { $gte: new Date(now.getTime() - BUSY_LOOKBACK_MS) },
+  })
+    .select("member status scheduledAt durationMinutes startedAt")
+    .lean();
+  const [patients, bookedMembers] = await Promise.all([
+    loadPatients(doctor._id, docs.map((r) => r.member)),
+    MemberModel.find({ _id: { $in: booked.map((c) => c.member) } })
+      .select("name")
+      .lean(),
+  ]);
+  const nameOf = new Map(bookedMembers.map((m) => [String(m._id), toRef(m).name]));
+
+  return docs.flatMap((r): ConsultRequest[] => {
+    const entry = patients.get(String(r.member));
+    if (!entry) return [];
+    if (r.requestedAt <= now) {
+      // Its time passed with no reply: shown as not attended, with nothing left to decide.
+      return [
+        {
+          id: String(r._id),
+          patient: entry.patient,
+          about: ageAndSex(entry.patient) || undefined,
+          when: `${dayLabel(r.requestedAt, now)}, ${formatTime(r.requestedAt)}`,
+          reason: r.reason?.trim() || undefined,
+          askedAgo: timeAgo(r.createdAt, now),
+          missed: true,
+        },
+      ];
+    }
+    const start = r.requestedAt.getTime();
+    const end = start + r.durationMinutes * MINUTE_MS;
+    const clash = booked.find((c) => {
+      const held = consultBusy(c, now);
+      return held !== null && start < held.end && held.start < end;
+    });
+    const fits = consultFits(schedule, { scheduledAt: r.requestedAt, durationMinutes: r.durationMinutes });
+    const day = dayLabel(r.requestedAt, now);
+    return [
+      {
+        id: String(r._id),
+        patient: entry.patient,
+        about: ageAndSex(entry.patient) || undefined,
+        when: `${day}, ${formatTime(r.requestedAt)}`,
+        inHowLong: day === "Today" ? timeLeft(r.requestedAt, now) : undefined,
+        reason: r.reason?.trim() || undefined,
+        askedAgo: timeAgo(r.createdAt, now),
+        warning: clash
+          ? `Clashes with ${nameOf.get(String(clash.member)) ?? "another patient"} at ${formatTime(clash.scheduledAt)}`
+          : fits
+            ? undefined
+            : "Outside your hours",
+      },
+    ];
+  });
+}
+
+/**
+ * Requests waiting for an answer, soonest first, then those whose time passed in the last day
+ * with no reply (`missed`), so the doctor sees what went unattended; the app tells the patient
+ * it got no reply. `withinWindow`: only waiting times inside the doctor's booking window, for
+ * Schedule.
+ */
+export async function getConsultRequests({ withinWindow = false } = {}) {
+  const doctor = await requireDoctor();
+  await connectDB();
+  const now = new Date();
+  const before = withinWindow
+    ? istDayStart(now, resolveSchedule(doctor.schedule as SavedSchedule).bookingWindowDays)
+    : undefined;
+  const [open, missed] = await Promise.all([
+    findOpenRequests(doctor._id, now, before),
+    findMissedRequests(doctor._id, now),
+  ]);
+  return toRequests(doctor, [...open, ...missed], now);
+}
+
+/** How many requests wait for an answer, for the badges on Today and Schedule. */
+export async function getOpenRequestCount() {
+  const doctor = await requireDoctor();
+  await connectDB();
+  return ConsultRequestModel.countDocuments({ doctor: doctor._id, status: "pending", requestedAt: { $gt: new Date() } });
+}
+
+// ---------------------------------------------------------------------------
 // Prescriptions
 
 const SOURCE_LABELS: Record<string, string> = { voice_note: "Voice note", photo: "Photo of a note", typed: "Typed" };
+
+type SavedLabTest = { kind: string; code: string; name: string; tests?: string[] | null };
+
+/** A prescription's lab tests as saved, in the shape the screens and the draft use. */
+function labTestsOf(tests: SavedLabTest[] | null | undefined): LabTestInput[] {
+  return (tests ?? []).map((t) => ({
+    kind: t.kind === "profile" ? "profile" : "test",
+    code: t.code,
+    name: t.name,
+    tests: t.tests?.length ? [...t.tests] : [t.code],
+  }));
+}
 
 export async function getPrescriptions(status: string) {
   const doctorId = await currentDoctorId();
@@ -726,6 +976,7 @@ export async function getPrescriptions(status: string) {
         source: SOURCE_LABELS[d.source] ?? "Typed",
         items: d.items ?? [],
         vaccineCount: vaccineCount.get(String(d._id)) ?? 0,
+        tests: labTestsOf(d.tests),
       },
     ];
   });
@@ -749,6 +1000,7 @@ export async function getPrescription(id: string) {
       source: SOURCE_LABELS[doc.source] ?? "Typed",
       items: doc.items ?? [],
       vaccineCount: vaccines.length,
+      tests: labTestsOf(doc.tests),
     } satisfies Prescription,
     vaccines,
     draft: doc.status === "draft" ? await draftRef(doc) : null,
@@ -786,16 +1038,13 @@ export async function getPrescriptionPatients() {
 async function wherePerOrder(orders: { booking?: Id | null; provider?: string | null }[]) {
   const bookingIds = orders.map((o) => o.booking).filter((id): id is Id => Boolean(id));
   const bookings = bookingIds.length
-    ? await BookingModel.find({ _id: { $in: bookingIds } }).select("pod slotAt").lean()
+    ? await BookingModel.find({ _id: { $in: bookingIds } }).select("pod createdAt").lean<BookingDoc[]>()
     : [];
-  const pods = bookings.length
-    ? await PodModel.find({ _id: { $in: bookings.map((b) => b.pod) } }).select("name").lean()
-    : [];
-  const podName = new Map(pods.map((p) => [String(p._id), p.name]));
+  // Pod bookings are walk-in (no time slot) and keep the pod's name as it was when booked.
   const bookingText = new Map(
     bookings.map((b) => [
       String(b._id),
-      [podName.get(String(b.pod)) && `${podName.get(String(b.pod))} pod`, formatWhen(b.slotAt)].filter(Boolean).join(", "),
+      [b.pod?.name && `${b.pod.name} pod`, `booked ${formatDate(b.createdAt)}`].filter(Boolean).join(", "),
     ]),
   );
   return (order: { booking?: Id | null; provider?: string | null }) =>
@@ -930,6 +1179,13 @@ export async function getAttentionFlags(): Promise<AttentionFlag[]> {
 
 const NOTIFICATION_DAYS = 14;
 
+/** What became of a request that no longer waits for an answer, for its notification. */
+const REQUEST_OUTCOME: Record<string, string> = {
+  approved: "You approved it, and it’s on your schedule.",
+  declined: "You declined it.",
+  withdrawn: "They withdrew it.",
+};
+
 /** A consult this close to its start shows as starting soon. */
 const STARTING_SOON_MS = 10 * 60 * 1000;
 
@@ -946,7 +1202,7 @@ export async function getNotifications() {
   const seenAt = doctor.settings?.notificationsSeenAt ?? new Date(0);
   const { alerts } = resolveSettings(doctor.settings);
 
-  const [logs, results, booked, cancelled, starting] = await Promise.all([
+  const [logs, results, booked, cancelled, starting, asked, withdrawn] = await Promise.all([
     alerts.otp
       ? AccessLogModel.find({ doctor: doctor._id, updatedAt: { $gte: since } }).sort({ updatedAt: -1 }).limit(50).lean()
       : [],
@@ -964,8 +1220,17 @@ export async function getNotifications() {
           .lean()
       : [],
     alerts.starting ? findStartingSoon(doctor._id, now) : [],
+    alerts.bookings
+      ? ConsultRequestModel.find({ doctor: doctor._id, createdAt: { $gte: since } }).sort({ createdAt: -1 }).limit(50).lean()
+      : [],
+    alerts.bookings
+      ? ConsultRequestModel.find({ doctor: doctor._id, status: "withdrawn", respondedAt: { $gte: since } })
+          .sort({ respondedAt: -1 })
+          .limit(50)
+          .lean()
+      : [],
   ]);
-  const memberIds = [...logs, ...results, ...booked, ...cancelled, ...starting].map((r) => r.member);
+  const memberIds = [...logs, ...results, ...booked, ...cancelled, ...starting, ...asked, ...withdrawn].map((r) => r.member);
   const members = await MemberModel.find({ _id: { $in: memberIds } })
     .select("name")
     .lean();
@@ -1041,6 +1306,36 @@ export async function getNotifications() {
       title: `${patient.name} cancelled their consult`,
       body: `It was for ${formatWhen(consult.scheduledAt, now)}. The slot is free again.`,
       href: "/schedule",
+      tone: "neutral",
+    });
+  }
+  for (const request of asked) {
+    const patient = memberOf.get(String(request.member));
+    if (!patient) continue;
+    const open = request.status === "pending" && request.requestedAt > now;
+    const missed = request.status === "pending" && !open;
+    items.push({
+      id: `${request._id}-asked`,
+      at: request.createdAt,
+      title: `${patient.name} asked for ${formatWhen(request.requestedAt, now)}`,
+      body: open
+        ? [request.reason?.trim(), "Approve or decline it on Today."].filter(Boolean).join(". ")
+        : missed
+          ? `Not attended: the time passed before you replied. ${patient.firstName} was told.`
+          : (REQUEST_OUTCOME[request.status ?? ""] ?? "It was answered."),
+      href: "/",
+      tone: open ? "brand" : missed ? "warning" : "neutral",
+    });
+  }
+  for (const request of withdrawn) {
+    const patient = memberOf.get(String(request.member));
+    if (!patient || !request.respondedAt) continue;
+    items.push({
+      id: `${request._id}-withdrawn`,
+      at: request.respondedAt,
+      title: `${patient.name} withdrew their request`,
+      body: `It was for ${formatWhen(request.requestedAt, now)}.`,
+      href: "/",
       tone: "neutral",
     });
   }

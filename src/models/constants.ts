@@ -148,7 +148,8 @@ export const RECORD_TYPES = ["pod_screening", "lab_report", "prescription", "vac
 /** How a record entered the locker. */
 export const RECORD_SOURCES = ["pod", "upload", "whatsapp", "abha", "consult"] as const;
 
-export const BOOKING_STATUSES = ["booked", "completed", "cancelled", "no_show"] as const;
+/** Our side of a pod booking; Mobilab's own lifecycle is `Booking.mobilab.status`. */
+export const BOOKING_STATUSES = ["booked", "completed", "cancelled"] as const;
 
 export const POD_TIERS = ["arc_one", "arc_plus", "arc_pro", "arc_max"] as const;
 
