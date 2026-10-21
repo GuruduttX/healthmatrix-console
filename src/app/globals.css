@@ -408,7 +408,10 @@ dialog .segmented {
  * peach and sky blue. These are its values; keep the two in step.
  */
 :root {
-  /* A pane's body: nearly clear, so the light behind it shows through. */
+  /* Cards use a milkier fill and stronger frost for readable content. */
+  --glass-panel-fill: rgba(255, 255, 255, 0.58);
+  --glass-panel-blur: blur(36px) saturate(150%);
+  /* Clear fill for decorative glass. */
   --glass-fill: rgba(255, 255, 255, 0.16);
   /* Small glass on a pane or the page: rounds, pills, second buttons. */
   --glass-fill-soft: rgba(255, 255, 255, 0.4);
@@ -437,16 +440,16 @@ dialog .segmented {
 }
 
 /*
- * A pane of glass on the page: cards and panels. A clear body that takes the tint of the light
- * behind it (blurred), a faint peach and blue within, gloss across the top left, and a rim.
+ * Cards and panels: a milky white body with stronger frost to soften the background,
+ * a faint peach and blue within, gloss across the top left, and a rim.
  */
 @utility glass-panel {
   position: relative;
-  background-color: var(--glass-fill);
+  background-color: var(--glass-panel-fill);
   background-image: var(--glass-sheen), var(--glass-tint);
   box-shadow: var(--glass-glow), var(--glass-shadow);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-panel-blur);
+  -webkit-backdrop-filter: var(--glass-panel-blur);
   &::before {
     content: "";
     position: absolute;
@@ -784,25 +787,39 @@ dialog.sheet[open]::backdrop {
   }
 }
 
-/*
- * The page behind the glass, as the app's `Aurora`: warm white (the html's own colour) with four
- * round glows, peach and sky blue in turn as they zig-zag down the screen, white between them and
- * at the edges. Fixed, so panes slide over the glows as the page scrolls and take their tint. Each
- * is strongest at its centre and fades out before its edge, so it reads as a disc of light with no
- * edge. The lowest one is listed first: it paints on top.
- */
+/* Independent background and logo controls. The watermark SVG keeps the symbol’s brand colors. */
+:root {
+  --background-logo-opacity: 0.18;
+  --background-logo-width: 48vw;
+  --background-logo-position: center;
+}
+
+@media (max-width: 639px) {
+  :root {
+    --background-logo-width: 76vw;
+  }
+}
+
+/* Fixed application background, visible through the glass panels as the page scrolls. */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background:
-    radial-gradient(circle 42vw at 24% 99%, rgba(217, 233, 244, 0.62) 0%, rgba(217, 233, 244, 0.384) 45%, rgba(217, 233, 244, 0.099) 80%, rgba(217, 233, 244, 0) 100%),
-    radial-gradient(circle 42vw at 74% 73%, rgba(246, 224, 204, 0.221) 0%, rgba(246, 224, 204, 0.137) 45%, rgba(246, 224, 204, 0.035) 80%, rgba(246, 224, 204, 0) 100%),
-    radial-gradient(circle 48vw at 28% 45%, rgba(217, 233, 244, 0.78) 0%, rgba(217, 233, 244, 0.484) 45%, rgba(217, 233, 244, 0.125) 80%, rgba(217, 233, 244, 0) 100%),
-    radial-gradient(circle 44vw at 70% 16%, rgba(246, 224, 204, 0.252) 0%, rgba(246, 224, 204, 0.157) 45%, rgba(246, 224, 204, 0.041) 80%, rgba(246, 224, 204, 0) 100%);
+  background: url("/plainBg.webp") center / cover no-repeat;
   animation: orbs-in 1.1s ease-out both;
+}
+
+/* Decorative watermark: opacity applies only to the logo, leaving the background untouched. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: url("/hm-logo-background.svg") var(--background-logo-position) / var(--background-logo-width) auto no-repeat;
+  opacity: var(--background-logo-opacity);
 }
 
 @keyframes orbs-in {
@@ -813,7 +830,8 @@ body::before {
 }
 
 @media print {
-  body::before {
+  body::before,
+  body::after {
     display: none;
   }
 }

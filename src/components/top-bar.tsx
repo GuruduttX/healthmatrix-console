@@ -16,7 +16,7 @@ const menuItem =
  */
 export function TopBar({ doctor, unread }: { doctor: Doctor; unread: number }) {
   return (
-    <header className="sticky top-0 z-20 hidden h-16 items-center gap-3 bg-canvas/50 px-8 shadow-[0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-[20px] backdrop-saturate-170 lg:flex print:hidden">
+    <header className="sticky top-0 z-20 hidden h-16 items-center gap-3 bg-canvas/10 px-8 backdrop-blur-[8px] lg:flex print:hidden">
       <Suspense fallback={<PatientSearchFallback />}>
         <PatientSearch />
       </Suspense>
