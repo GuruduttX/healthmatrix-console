@@ -1,5 +1,3 @@
-import type { NextConfig } from "next";
-
 /**
  * Lets phones and tablets on the same network open the dev server by its local address
  * (e.g. http://192.168.1.3:3000). Without this, Next blocks its own scripts for any host but
@@ -17,7 +15,8 @@ const cloudinaryPhotos = new URL(
   `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME ?? "_"}/image/upload/**`,
 );
 
-const nextConfig: NextConfig = {
+/** @type {import("next").NextConfig} */
+const nextConfig = {
   allowedDevOrigins: privateNetworkHosts,
   images: { remotePatterns: [cloudinaryPhotos] },
   // libheif's WebAssembly build, for iPhone HEIC photos; loaded at run time, not bundled.

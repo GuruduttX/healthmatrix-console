@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 /**
  * Public pages opened by scanning a member's emergency QR. No console chrome,
- * no sign-in, never indexed. See `proxy.ts` and the headers in `next.config.ts`.
+ * no sign-in, never indexed. See `proxy.ts` and the headers in `next.config.mjs`.
  * The lit page shows through (no fill of its own), and the browser's bars take
  * the root layout's warm white, as the app's responder preview has no red header.
  */
