@@ -11,7 +11,7 @@ export const dialogClass =
 
 const iconTones = {
   danger: "bg-danger-soft text-danger",
-  brand: "bg-brand-soft text-brand",
+  brand: "bg-brand-soft text-brand-deep",
   neutral: "bg-selected text-ink-mid",
 };
 
@@ -34,11 +34,11 @@ export function DialogHeader({
       <span aria-hidden className="mx-auto mb-3 block h-1 w-10 rounded-full bg-line-strong sm:hidden" />
       <div className="flex items-center gap-3">
         {Icon ? (
-          <span className={`inline-flex size-10 shrink-0 items-center justify-center rounded-xl ${iconTones[tone]}`}>
+          <span className={`inline-flex size-10 shrink-0 items-center justify-center rounded-full ${iconTones[tone]}`}>
             <Icon aria-hidden className="size-5" />
           </span>
         ) : null}
-        <h2 id={titleId} className="flex-1 font-display text-lg font-bold leading-snug tracking-[-0.01em]">
+        <h2 id={titleId} className="flex-1 font-display text-lg font-semibold leading-snug tracking-[-0.01em]">
           {title}
         </h2>
         <button type="button" onClick={onClose} aria-label="Close" className="btn btn-ghost btn-sm btn-icon -mr-1.5 bg-surface">

@@ -78,7 +78,7 @@ const doctorSchema = new Schema(
       /** Not used by the app yet: there is no instant GP consult or pod call to switch. */
       availability: { gpNow: Boolean, podCalls: Boolean },
       alerts: { otp: Boolean, results: Boolean, starting: Boolean, bookings: Boolean, ekaay: Boolean },
-      /** Notifications from before this are shown as read. */
+      /** When the doctor last had Notifications open: anything newer lights the bell. */
       notificationsSeenAt: Date,
     },
   },

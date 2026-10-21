@@ -38,17 +38,15 @@ export function ConsultRow({ consult }: { consult: Consult }) {
   const href = `/consults/${consult.id}${waiting ? "?admit=1" : ""}`;
 
   return (
-    <li className={`relative flex gap-3 px-4 py-3.5 sm:items-center sm:gap-4 sm:px-5 ${urgent ? "bg-brand-soft/70" : ""}`}>
+    <li className={`relative flex gap-3 px-4 py-3.5 sm:items-center sm:gap-4 sm:px-5 ${urgent ? "bg-brand-soft" : ""}`}>
       {urgent ? <span aria-hidden className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-brand" /> : null}
 
       <Link
         href={href}
         aria-label={`${consult.time}, ${action} consult with ${patient.name}`}
-        className={`flex w-13 shrink-0 flex-col items-center self-start rounded-xl border py-1.5 text-center shadow-[0_1px_2px_rgba(14,42,51,0.05)] sm:self-center ${
-          urgent ? "border-brand/25 bg-card" : "border-line bg-card"
-        }`}
+        className="glass-flat flex w-13 shrink-0 flex-col items-center self-start rounded-xl py-1.5 text-center sm:self-center"
       >
-        <span className={`font-display text-[15px] font-bold leading-5 tabular-nums ${done ? "text-muted" : "text-ink"}`}>{clock}</span>
+        <span className={`font-display text-[15px] font-semibold leading-5 tabular-nums ${done ? "text-muted" : "text-ink"}`}>{clock}</span>
         <span className="text-[10px] font-bold uppercase leading-3 tracking-[0.06em] text-muted">{half}</span>
       </Link>
 
@@ -79,7 +77,7 @@ export function ConsultRow({ consult }: { consult: Consult }) {
           ) : null}
           {/* Phones: a quiet way in for rows that aren't waiting on the doctor. */}
           {urgent ? null : (
-            <Link href={href} className="ml-auto inline-flex items-center gap-0.5 text-[13px] font-bold text-brand sm:hidden">
+            <Link href={href} className="ml-auto inline-flex items-center gap-0.5 text-[13px] font-bold text-brand-deep sm:hidden">
               {action}
               <ChevronRight aria-hidden className="size-4" />
             </Link>

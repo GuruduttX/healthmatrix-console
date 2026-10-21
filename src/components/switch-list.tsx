@@ -14,6 +14,17 @@ export type SwitchItem = {
   soon?: boolean;
 };
 
+/**
+ * An on/off switch's track, as the app's: the blue teal of "on" when on, a see-through grey when
+ * off, so it takes the glass's tint and still reads. `before:` widens what a finger can hit.
+ */
+export const switchTrack = (on: boolean) =>
+  `relative h-7 w-12 shrink-0 rounded-full shadow-[inset_0_1px_2px_rgba(30,50,70,0.1)] transition-colors duration-200 before:absolute before:-inset-2 ${on ? "bg-success" : "bg-line-strong"}`;
+
+/** Its white knob, with a light, cool lift. */
+export const switchKnob = (on: boolean) =>
+  `absolute top-0.5 size-6 rounded-full bg-white shadow-[0_1px_2px_rgba(30,50,70,0.12),0_2px_6px_rgba(30,50,70,0.16)] transition-[left] duration-200 ${on ? "left-5.5" : "left-0.5"}`;
+
 /** A list of on/off settings, each saved to the doctor's profile as it is flipped. */
 export function SwitchList({ group, items }: { group: SettingGroup; items: SwitchItem[] }) {
   const [state, setOptimistic] = useOptimistic(
@@ -50,12 +61,9 @@ export function SwitchList({ group, items }: { group: SettingGroup; items: Switc
               aria-checked={on}
               aria-labelledby={`${item.id}-label`}
               onClick={() => toggle(item.id, !on)}
-              className={`relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 before:absolute before:-inset-2 ${on ? "bg-success" : "bg-line-strong"}`}
+              className={switchTrack(on)}
             >
-              <span
-                aria-hidden
-                className={`absolute top-0.5 size-6 rounded-full bg-white shadow-[0_2px_4px_rgba(14,42,51,0.24)] transition-[left] duration-200 ${on ? "left-5.5" : "left-0.5"}`}
-              />
+              <span aria-hidden className={switchKnob(on)} />
             </button>
           </li>
         );

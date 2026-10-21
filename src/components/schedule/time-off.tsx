@@ -78,7 +78,7 @@ export function TimeOff({
       </button>
 
       <div id={bodyId} hidden={!open}>
-        <form onSubmit={submit} className="mt-3 flex flex-col gap-3.5 rounded-2xl bg-surface p-3.5 sm:p-4">
+        <form onSubmit={submit} className="glass-flat mt-3 flex flex-col gap-3.5 rounded-2xl p-3.5 sm:p-4">
           <div role="radiogroup" aria-label="Time off for" className="segmented">
             {(
               [
@@ -115,19 +115,19 @@ export function TimeOff({
                     setFrom(e.target.value);
                     if (to < e.target.value) setTo(e.target.value);
                   }}
-                  className="field font-normal"
+                  className="field"
                 />
               </label>
               <label className={labelClass}>
                 To (included)
-                <input type="date" required min={from || today} value={to} onChange={(e) => setTo(e.target.value)} className="field font-normal" />
+                <input type="date" required min={from || today} value={to} onChange={(e) => setTo(e.target.value)} className="field" />
               </label>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3">
               <label className={`col-span-2 ${labelClass}`}>
                 Day
-                <input type="date" required min={today} value={date} onChange={(e) => setDate(e.target.value)} className="field font-normal" />
+                <input type="date" required min={today} value={date} onChange={(e) => setDate(e.target.value)} className="field" />
               </label>
               <div className="col-span-2 flex flex-wrap items-center gap-2 text-[13px] font-semibold text-ink">
                 <span className="-mb-0.5 w-full">Away</span>
@@ -147,7 +147,7 @@ export function TimeOff({
               onChange={(e) => setNote(e.target.value)}
               maxLength={80}
               placeholder="e.g. Conference"
-              className="field font-normal"
+              className="field"
             />
           </label>
           <p className="-mt-2 text-xs text-muted">Patients don’t see this note.</p>
@@ -160,7 +160,7 @@ export function TimeOff({
         {open ? <SaveMessage result={result} savedText={savedText} /> : null}
 
         {entries.length > 0 ? (
-          <ul className="mt-4 divide-y divide-line overflow-hidden rounded-2xl border border-line">
+          <ul className="glass-flat mt-4 divide-y divide-line overflow-hidden rounded-2xl">
             {entries.map((entry) => (
               <li key={entry.id} className="flex items-center gap-3 py-2.5 pl-3.5 pr-2">
                 <div className="min-w-0 flex-1">

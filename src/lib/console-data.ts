@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { isValidObjectId, Types } from "mongoose";
 import { cache } from "react";
 
@@ -38,6 +40,8 @@ import {
   timeAgo,
   timeLeft,
 } from "./format";
+import type { AskSource } from "./ask";
+import { ekaayReady, summariseRecord } from "./ekaay";
 import { missingTests } from "./lab-results";
 import { describeLabTest, type LabTestInput } from "./lab-tests";
 import { getMobilabReportUrl, mobilabReady } from "./mobilab";
@@ -90,7 +94,9 @@ import type {
  *
  * Privacy rule: before a patient shares their record by OTP, a doctor sees only what the
  * patient's public emergency view shows (name, and the alerts they chose to make visible).
- * Medicines, history and results are read only while an access grant is active.
+ * Medicines, history and results are read only while an access grant is active. One exception:
+ * Results lists every pod booking by the doctor's patients, with a one-line summary of what came
+ * back, whether or not the record is open; the values themselves still need the grant.
  */
 
 type Id = Types.ObjectId;
@@ -704,6 +710,240 @@ export async function getVaccineSchedule(memberId: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Ekaay's answers
+
+const RECORD_TYPE_NAMES: Record<string, string> = {
+  pod_screening: "Pod screening",
+  lab_report: "Lab report",
+  prescription: "Prescription",
+  vaccination: "Vaccination",
+};
+
+/**
+ * Room for the record in one question, about 25,000 tokens. Past it, older entries shrink to a
+ * line each; the entry the doctor has open is always given in full.
+ */
+const ASK_RECORD_CHARS = 100_000;
+
+/** "LDL cholesterol: 162 mg/dL. High. Normal: under 100." */
+function valueLine(v: RecordValue) {
+  const { label } = flagOf(v);
+  const range = rangeText(v);
+  return `- ${v.name}: ${valueText(v)}. ${label}.${range ? ` ${range}.` : ""}`;
+}
+
+/** A vaccine and where each dose stands: "Dose 2 of 3, due 12 Nov 2026, overdue". */
+function vaccineLines(vaccine: VaccineView) {
+  return [
+    `- ${vaccine.name}${vaccine.brand ? ` (${vaccine.brand})` : ""}: ${vaccine.doseText}, ${vaccine.scheduleText}.${vaccine.instructions ? ` ${vaccine.instructions}` : ""}`,
+    ...vaccine.doses.map(
+      (d) => `  - Dose ${d.number} of ${d.total}, due ${d.dueOn}: ${d.status === "given" ? `given${d.givenOn ? ` on ${d.givenOn}` : ""}` : d.status}`,
+    ),
+  ];
+}
+
+type FoundPatient = NonNullable<Awaited<ReturnType<typeof getPatient>>>;
+
+/**
+ * The patient's whole record as plain text for Ekaay, with the entries it can cite. Names, phone
+ * numbers and IDs stay out: Ekaay needs the medicine, not who the patient is. `withDraft` adds this
+ * doctor's unsigned prescription. `hasData` is false when there is nothing to read beyond age, sex
+ * and blood group.
+ */
+async function recordContext(found: FoundPatient, memberId: string, { focusId, withDraft = true }: { focusId?: string; withDraft?: boolean } = {}) {
+  const doctorId = await currentDoctorId();
+  const member = new Types.ObjectId(memberId);
+  const { patient } = found;
+
+  const [records, signed, vaccinations, pending, consults, draft] = await Promise.all([
+    HealthRecordModel.find({ member }).sort({ recordedAt: -1 }).limit(200).lean<RecordDoc[]>(),
+    PrescriptionModel.find({ member, status: "signed", healthRecord: { $exists: true } }).select("healthRecord items tests").lean(),
+    VaccinationModel.find({ member, status: { $ne: "draft" } }).sort({ createdAt: 1 }).lean<VaccinationDoc[]>(),
+    // Tests booked at a pod whose results haven't been filed yet.
+    BookingModel.find({ member, status: { $ne: "cancelled" }, result: { $exists: false } })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .lean<BookingDoc[]>(),
+    ConsultModel.find({ doctor: doctorId, member }).sort({ scheduledAt: -1 }).limit(10).select("scheduledAt status reason ekaaySummary").lean(),
+    withDraft ? PrescriptionModel.findOne({ doctor: doctorId, member, status: "draft" }).sort({ updatedAt: -1 }).lean() : null,
+  ]);
+  const recordBookings = await BookingModel.find({ _id: { $in: records.flatMap((r) => (r.booking ? [r.booking] : [])) } })
+    .select("tests")
+    .lean();
+  const [vaccines, draftVaccines] = await Promise.all([
+    toVaccineViews(vaccinations),
+    draft ? vaccinesFor([draft._id]) : Promise.resolve([]),
+  ]);
+
+  const prescriptionOf = new Map(signed.map((p) => [String(p.healthRecord), p]));
+  const bookedTests = new Map(recordBookings.map((b) => [String(b._id), b.tests ?? []]));
+  // Numbered oldest first, so the tags in earlier answers still point right once a new entry is filed.
+  const refOf = new Map(records.map((r, i) => [String(r._id), `R${records.length - i}`]));
+  const sources: AskSource[] = records.map((r) => ({
+    ref: refOf.get(String(r._id))!,
+    id: String(r._id),
+    title: r.title,
+    date: formatDate(r.recordedAt),
+  }));
+
+  function recordHeading(r: RecordDoc) {
+    const source = [SOURCE_NAMES[r.source] ?? "Added to the timeline", r.provider].filter(Boolean).join(", ");
+    return `[${refOf.get(String(r._id))}] ${formatDate(r.recordedAt)}. ${RECORD_TYPE_NAMES[r.type] ?? r.type}: ${r.title}. ${source}.`;
+  }
+
+  function recordText(r: RecordDoc) {
+    const lines = [recordHeading(r)];
+    if (r.isSample) lines.push("SAMPLE: made-up values from the lab's test mode, not a real reading.");
+    const values = r.values ?? [];
+    const groups = [...new Set(values.map((v) => v.group ?? ""))];
+    for (const group of groups) {
+      if (group) lines.push(`${group}:`);
+      lines.push(...values.filter((v) => (v.group ?? "") === group).map(valueLine));
+    }
+    const missing = r.booking ? missingTests(bookedTests.get(String(r.booking)) ?? [], values) : [];
+    if (missing.length) lines.push(`No result from the lab for: ${missing.join(", ")}.`);
+    const prescription = prescriptionOf.get(String(r._id));
+    if (prescription?.items?.length) lines.push("Prescribed:", ...clean(prescription.items).map((item) => `- ${item}`));
+    if (prescription?.tests?.length) lines.push(`Lab tests ordered: ${labTestsOf(prescription.tests).map(describeLabTest).join("; ")}.`);
+    if (r.remarks?.trim()) lines.push(`Pathologist's remarks: ${r.remarks.trim()}`);
+    if (r.ekaayNote?.trim()) lines.push(`Ekaay's earlier note: ${r.ekaayNote.trim()}`);
+    if (r.files?.length) lines.push(`${plural(r.files.length, "scanned document")} on file; their pages can't be read here.`);
+    if (r.booking) lines.push("The lab's PDF report opens from this entry; its text isn't included here.");
+    return lines.join("\n");
+  }
+
+  const profile = [
+    "PATIENT",
+    `Age and sex: ${ageAndSex(patient) || "not given"}.`,
+    `Blood group: ${patient.bloodGroup ?? "not given"}.`,
+    `Allergies: ${patient.allergies.join(", ") || "none recorded"}.`,
+    `Conditions: ${patient.conditions.join(", ") || "none recorded"}.`,
+    `Regular medicines (from the patient's profile): ${found.medicines.join("; ") || "none recorded"}.`,
+  ].join("\n");
+
+  const focus = focusId ? records.find((r) => String(r._id) === focusId) : undefined;
+  let room = ASK_RECORD_CHARS;
+  const entries = records.map((r) => {
+    const full = recordText(r);
+    if (r === focus || full.length <= room) {
+      room -= full.length;
+      return full;
+    }
+    return `${recordHeading(r)} (Details left out for length.)`;
+  });
+
+  const sections = [
+    `Today is ${formatDate(new Date())}.`,
+    profile,
+    focus ? `THE DOCTOR HAS THIS ENTRY OPEN: [${refOf.get(String(focus._id))}] ${focus.title}, ${formatDate(focus.recordedAt)}.` : "",
+    `RECORD ENTRIES, newest first (${records.length})\n${entries.join("\n\n") || "None yet."}`,
+    vaccines.length ? `VACCINES PRESCRIBED\n${vaccines.flatMap(vaccineLines).join("\n")}` : "",
+    pending.length
+      ? `LAB TESTS BOOKED, RESULTS NOT FILED YET\n${pending
+          .map((b) => `- ${b.profiles?.length ? b.profiles.join(", ") : plural(b.tests?.length ?? 0, "test")}, booked ${formatDate(b.createdAt)}: ${stageOf(b.mobilab?.status).label}.`)
+          .join("\n")}`
+      : "",
+    draft && (draft.items?.length || draft.tests?.length || draftVaccines.length)
+      ? [
+          "YOUR DRAFT PRESCRIPTION (not signed, the patient hasn't seen it)",
+          ...clean(draft.items).map((item) => `- ${item}`),
+          draft.tests?.length ? `Lab tests: ${labTestsOf(draft.tests).map(describeLabTest).join("; ")}.` : "",
+          ...draftVaccines.flatMap(vaccineLines),
+        ]
+          .filter(Boolean)
+          .join("\n")
+      : "",
+    consults.length
+      ? `YOUR CONSULTS WITH THIS PATIENT\n${consults
+          .map((c) =>
+            [
+              `- ${formatDate(c.scheduledAt)}, ${c.status.replace("_", " ")}.`,
+              c.reason ? `Reason: ${c.reason}.` : "",
+              c.ekaaySummary?.trim() ? `Ekaay's summary: ${c.ekaaySummary.trim().replace(/\s*\n+\s*/g, " ")}` : "",
+            ]
+              .filter(Boolean)
+              .join(" "),
+          )
+          .join("\n")}`
+      : "",
+  ];
+
+  const hasData =
+    records.length > 0 ||
+    vaccines.length > 0 ||
+    patient.allergies.length > 0 ||
+    patient.conditions.length > 0 ||
+    found.medicines.length > 0;
+  return { context: sections.filter(Boolean).join("\n\n"), sources, hasData };
+}
+
+/**
+ * The record for Ekaay to answer a question from, only while the patient's OTP keeps it open;
+ * `null` otherwise. Each question is logged on the access grant, as a view is.
+ */
+export async function getAskContext(memberId: string, focusId?: string) {
+  const found = await getPatient(memberId);
+  if (!found || found.patient.access.status !== "active") return null;
+  const { context, sources } = await recordContext(found, memberId, { focusId });
+  await logView(found.grantId, "Asked Ekaay about the record");
+  return { context, sources };
+}
+
+/** How long a summary is reused while the record it was written from stays the same. */
+const SUMMARY_KEEP_MS = 6 * 60 * 60 * 1000;
+
+/**
+ * Summaries Ekaay has written, by a hash of the record text they came from, so a reload doesn't
+ * ask again and a new entry gets a new summary. In this server's memory only, never stored.
+ */
+const summaries = new Map<string, { lines: Promise<string[]>; at: number }>();
+
+export type RecordSummary =
+  | { status: "written"; lines: string[] }
+  /** Nothing in the record to summarise yet. */
+  | { status: "too_little" }
+  /** Ekaay couldn't write one just now; the reason goes to the server log. */
+  | { status: "failed" }
+  /** ANTHROPIC_API_KEY isn't set. */
+  | { status: "off" };
+
+/**
+ * Ekaay's summary of the whole record, for a patient with no consult summary, only while the
+ * patient's OTP keeps it open; `null` otherwise. The doctor's unsigned draft stays out of it.
+ * A newly written summary is logged on the access grant.
+ */
+export async function getRecordSummary(memberId: string): Promise<RecordSummary | null> {
+  if (!ekaayReady()) return { status: "off" };
+  const found = await getPatient(memberId);
+  if (!found || found.patient.access.status !== "active") return null;
+  const { context, hasData } = await recordContext(found, memberId, { withDraft: false });
+  if (!hasData) return { status: "too_little" };
+
+  const now = Date.now();
+  for (const [key, entry] of summaries) if (now - entry.at > SUMMARY_KEEP_MS) summaries.delete(key);
+  const key = createHash("sha256").update(context).digest("hex");
+  let entry = summaries.get(key);
+  if (!entry) {
+    entry = { lines: summariseRecord(context), at: now };
+    summaries.set(key, entry);
+    // A failed or empty one is asked for again next time.
+    entry.lines.then(
+      (lines) => lines.length || summaries.delete(key),
+      () => summaries.delete(key),
+    );
+    await logView(found.grantId, "Ekaay summarised the record");
+  }
+
+  try {
+    const lines = await entry.lines;
+    return lines.length ? { status: "written", lines } : { status: "failed" };
+  } catch (error) {
+    console.error(`[ekaay] summary of ${memberId} failed:`, String(error));
+    return { status: "failed" };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Consults
 
 type ConsultDoc = Awaited<ReturnType<typeof findConsults>>[number];
@@ -1033,54 +1273,175 @@ export async function getPrescriptionPatients() {
 }
 
 // ---------------------------------------------------------------------------
-// Test orders
+// Results
 
-async function wherePerOrder(orders: { booking?: Id | null; provider?: string | null }[]) {
-  const bookingIds = orders.map((o) => o.booking).filter((id): id is Id => Boolean(id));
-  const bookings = bookingIds.length
-    ? await BookingModel.find({ _id: { $in: bookingIds } }).select("pod createdAt").lean<BookingDoc[]>()
-    : [];
-  // Pod bookings are walk-in (no time slot) and keep the pod's name as it was when booked.
-  const bookingText = new Map(
-    bookings.map((b) => [
-      String(b._id),
-      [b.pod?.name && `${b.pod.name} pod`, `booked ${formatDate(b.createdAt)}`].filter(Boolean).join(", "),
-    ]),
-  );
-  return (order: { booking?: Id | null; provider?: string | null }) =>
-    (order.booking && bookingText.get(String(order.booking))) || order.provider?.trim() || "Not booked yet";
+/**
+ * Who counts as the doctor's patient for lab results: a consult that wasn't cancelled, or a record
+ * they opened to the doctor by OTP. An access request the patient never answered doesn't count.
+ */
+async function resultsPatientIds(doctorId: Id) {
+  const lists = await Promise.all([
+    ConsultModel.distinct("member", { doctor: doctorId, status: { $ne: "cancelled" } }),
+    AccessGrantModel.distinct("member", { doctor: doctorId, approvedAt: { $exists: true } }),
+  ]);
+  return [...new Map((lists.flat() as Id[]).map((id) => [String(id), id])).values()];
 }
 
-export async function getTestOrders(status: string) {
-  const doctorId = await currentDoctorId();
-  const statuses: TestOrderStatus[] = ["awaiting_booking", "booked", "result_back", "reviewed"];
-  const filter = statuses.includes(status as TestOrderStatus) ? { status: status as TestOrderStatus } : {};
-  const docs = await TestOrderModel.find({ doctor: doctorId, ...filter }).sort({ orderedAt: -1 }).limit(200).lean();
-  const [patients, where] = await Promise.all([loadPatients(doctorId, docs.map((d) => d.member)), wherePerOrder(docs)]);
+/** The same test for one member, for actions on a Results row. */
+export async function isResultsPatient(doctorId: Id, memberId: Id) {
+  const [consult, grant] = await Promise.all([
+    ConsultModel.exists({ doctor: doctorId, member: memberId, status: { $ne: "cancelled" } }),
+    AccessGrantModel.exists({ doctor: doctorId, member: memberId, approvedAt: { $exists: true } }),
+  ]);
+  return Boolean(consult || grant);
+}
 
-  return docs.flatMap((d): TestOrder[] => {
-    const entry = patients.get(String(d.member));
-    if (!entry) return [];
-    const result = d.result?.summary
-      ? {
-          value: d.result.summary,
-          flag: (d.result.flag === "watch" ? "borderline" : (d.result.flag ?? "pending")) as ResultFlag,
-          label: d.result.label || FLAG_LABELS[d.result.flag ?? ""] || "Result",
-          date: d.result.resultedAt ? formatDate(d.result.resultedAt) : "",
-        }
-      : undefined;
-    return [
-      {
-        id: String(d._id),
-        patient: toRef(entry.member),
-        test: d.test,
-        orderedOn: formatDate(d.orderedAt),
-        where: where(d),
-        status: d.status as TestOrderStatus,
-        result,
-      },
-    ];
-  });
+/** Every test code of a prescribed test or health check is in the booking. */
+const covers = (booking: Pick<BookingDoc, "tests">, codes: string[]) => codes.every((code) => booking.tests?.includes(code));
+
+const sameId = (a?: Id | null, b?: Id | null) => Boolean(a && b && String(a) === String(b));
+
+/**
+ * A filed pod screening in one line: the value when there is one, or how many of its values are
+ * out of range. The values themselves are on the record, which needs the patient's OTP.
+ */
+function resultHeadline(record: RecordDoc | undefined): NonNullable<TestOrder["result"]> {
+  const date = record ? formatDate(record.recordedAt) : "";
+  const values = record?.values ?? [];
+  if (values.length === 1) return { value: `${values[0].name} ${valueText(values[0])}`, ...flagOf(values[0]), date };
+  if (!values.length) return { value: "See the report", flag: "pending", label: "No values", date };
+
+  const flags = values.map((v) => flagOf(v).flag);
+  const count = (flag: ResultFlag) => flags.filter((f) => f === flag).length;
+  const [high, low, borderline, normal] = [count("high"), count("low"), count("borderline"), count("normal")];
+  const of = (n: number) => (n === values.length ? `All ${n}` : `${n} of ${values.length}`);
+  if (high || low) {
+    return { value: `${of(high + low)} out of range`, flag: high ? "high" : "low", label: !low ? "High" : !high ? "Low" : "Out of range", date };
+  }
+  if (borderline) return { value: `${of(borderline)} borderline`, flag: "borderline", label: "Borderline", date };
+  if (normal) return { value: `${of(normal)} in range`, flag: "normal", label: "Normal", date };
+  return { value: plural(values.length, "value"), flag: "pending", label: "No range", date };
+}
+
+type LabRow = TestOrder & { at: Date; resultAt?: Date };
+
+/**
+ * Every pod booking by the doctor's patients, whoever ordered it, and the tests the doctor
+ * prescribed that no booking covers yet; newest first. With `sync`, open bookings are first
+ * brought up to date from Mobilab, so results the webhook missed get filed.
+ *
+ * A booking counts as the doctor's order when it was booked from their prescription, or came
+ * after one whose tests it covers (the patient may book from the Pods tab instead).
+ */
+const loadLabRows = cache(async (doctorKey: string, sync: boolean): Promise<LabRow[]> => {
+  const doctorId = new Types.ObjectId(doctorKey);
+  const memberIds = await resultsPatientIds(doctorId);
+  if (!memberIds.length) return [];
+  const patients = await loadPatients(doctorId, memberIds);
+
+  if (sync) {
+    const open = new Set((await BookingModel.distinct("member", { member: { $in: memberIds }, status: "booked" })).map(String));
+    await Promise.all(
+      [...patients.values()].filter(({ member }) => open.has(String(member._id))).map(({ member }) => syncMemberBookings(member)),
+    );
+  }
+
+  const [bookings, signed, reviewed] = await Promise.all([
+    BookingModel.find({ member: { $in: memberIds } }).sort({ createdAt: -1 }).limit(500).lean<BookingDoc[]>(),
+    PrescriptionModel.find({ doctor: doctorId, member: { $in: memberIds }, status: "signed", "tests.0": { $exists: true } })
+      .sort({ signedAt: -1 })
+      .limit(200)
+      .select("member tests signedAt")
+      .lean(),
+    TestOrderModel.distinct("booking", { doctor: doctorId, status: "reviewed" }),
+  ]);
+  const records = await HealthRecordModel.find({ _id: { $in: bookings.flatMap((b) => (b.result ? [b.result] : [])) } })
+    .select("recordedAt values isSample createdAt")
+    .lean<RecordDoc[]>();
+
+  const recordOf = new Map(records.map((r) => [String(r._id), r]));
+  const reviewedIds = new Set(reviewed.map(String));
+  const prescriptions = signed.flatMap((p) => (p.signedAt ? [{ ...p, signedAt: p.signedAt, tests: labTestsOf(p.tests) }] : []));
+  // Bookings keep only the codes of tests booked one by one; the names come from the prescriptions and the values filed.
+  const nameOf = new Map<string, string>();
+  for (const p of prescriptions) for (const t of p.tests) if (t.kind === "test") nameOf.set(t.code, t.name);
+  for (const r of records) for (const v of r.values ?? []) if (v.code) nameOf.set(v.code, v.name);
+
+  const orderedFor = (b: BookingDoc) => {
+    const own = prescriptions.filter((p) => sameId(p.member, b.member));
+    return (
+      own.find((p) => sameId(p._id, b.prescription)) ??
+      own.find((p) => p.signedAt <= b.createdAt && p.tests.some((t) => covers(b, t.tests ?? [t.code])))
+    );
+  };
+
+  const rows: LabRow[] = [];
+  for (const b of bookings) {
+    const entry = patients.get(String(b.member));
+    if (!entry) continue;
+    const id = String(b._id);
+    const record = b.result ? recordOf.get(String(b.result)) : undefined;
+    const tests = b.tests ?? [];
+    const names = tests.map((code) => nameOf.get(code));
+    const status: TestOrderStatus = b.result
+      ? reviewedIds.has(id)
+        ? "reviewed"
+        : "result_back"
+      : b.status === "cancelled"
+        ? "cancelled"
+        : "booked";
+    const rx = orderedFor(b);
+    rows.push({
+      id,
+      at: b.createdAt,
+      resultAt: record?.createdAt,
+      patient: toRef(entry.member),
+      test: b.profiles?.length
+        ? b.profiles.join(", ")
+        : tests.length && names.every(Boolean)
+          ? names.join(", ")
+          : plural(tests.length, "test"),
+      orderedOn: rx ? formatDate(rx.signedAt) : undefined,
+      // Pod bookings are walk-in (no time slot) and keep the pod's name as it was when booked.
+      where: [b.pod?.name && `${b.pod.name} pod`, `booked ${formatDate(b.createdAt)}`].filter(Boolean).join(", "),
+      status,
+      progress: status === "booked" ? stageOf(b.mobilab?.status).label : undefined,
+      result: b.result ? resultHeadline(record) : undefined,
+      isSample: record?.isSample || undefined,
+    });
+  }
+
+  const live = bookings.filter((b) => b.status !== "cancelled");
+  for (const p of prescriptions) {
+    const entry = patients.get(String(p.member));
+    if (!entry) continue;
+    const waiting = p.tests.filter(
+      (t) =>
+        !live.some(
+          (b) => sameId(b.member, p.member) && (sameId(b.prescription, p._id) || b.createdAt >= p.signedAt) && covers(b, t.tests ?? [t.code]),
+        ),
+    );
+    if (!waiting.length) continue;
+    rows.push({
+      id: `rx-${p._id}`,
+      at: p.signedAt,
+      patient: toRef(entry.member),
+      test: waiting.map((t) => t.name).join(", "),
+      orderedOn: formatDate(p.signedAt),
+      where: "Not booked yet",
+      status: "awaiting_booking",
+    });
+  }
+
+  return rows.sort((a, b) => b.at.getTime() - a.at.getTime());
+});
+
+/** The Results page, filtered by status. `sync` asks Mobilab about open bookings first. */
+export async function getTestOrders(status: string, { sync = false } = {}): Promise<TestOrder[]> {
+  const doctorId = await currentDoctorId();
+  const statuses: TestOrderStatus[] = ["awaiting_booking", "booked", "result_back", "reviewed", "cancelled"];
+  const rows = await loadLabRows(String(doctorId), sync);
+  return (statuses.includes(status as TestOrderStatus) ? rows.filter((row) => row.status === status) : rows).slice(0, 200);
 }
 
 // ---------------------------------------------------------------------------
@@ -1125,12 +1486,12 @@ export async function getAccessLog(): Promise<AccessLogEntry[]> {
 export async function getTodayStats() {
   const doctorId = await currentDoctorId();
   const now = new Date();
-  const [recordsOpen, drafts, newResults] = await Promise.all([
+  const [recordsOpen, drafts, lab] = await Promise.all([
     AccessGrantModel.countDocuments({ doctor: doctorId, status: "active", expiresAt: { $gt: now } }),
     PrescriptionModel.countDocuments({ doctor: doctorId, status: "draft" }),
-    TestOrderModel.countDocuments({ doctor: doctorId, status: "result_back" }),
+    loadLabRows(String(doctorId), false),
   ]);
-  return { recordsOpen, drafts, newResults };
+  return { recordsOpen, drafts, newResults: lab.filter((row) => row.status === "result_back").length };
 }
 
 /** Out-of-range readings in the newest record of each patient whose record is open. */
@@ -1207,7 +1568,7 @@ export async function getNotifications() {
       ? AccessLogModel.find({ doctor: doctor._id, updatedAt: { $gte: since } }).sort({ updatedAt: -1 }).limit(50).lean()
       : [],
     alerts.results
-      ? TestOrderModel.find({ doctor: doctor._id, status: "result_back" }).sort({ updatedAt: -1 }).limit(50).lean()
+      ? loadLabRows(String(doctor._id), false).then((rows) => rows.filter((row) => row.status === "result_back").slice(0, 50))
       : [],
     alerts.bookings
       ? ConsultModel.find({ doctor: doctor._id, createdAt: { $gte: since } }).sort({ createdAt: -1 }).limit(50).lean()
@@ -1230,13 +1591,13 @@ export async function getNotifications() {
           .lean()
       : [],
   ]);
-  const memberIds = [...logs, ...results, ...booked, ...cancelled, ...starting, ...asked, ...withdrawn].map((r) => r.member);
+  const memberIds = [...logs, ...booked, ...cancelled, ...starting, ...asked, ...withdrawn].map((r) => r.member);
   const members = await MemberModel.find({ _id: { $in: memberIds } })
     .select("name")
     .lean();
   const memberOf = new Map(members.map((m) => [String(m._id), toRef(m)]));
 
-  const items: (Omit<Notification, "time" | "unread"> & { at: Date })[] = [];
+  const items: (Omit<Notification, "time" | "at"> & { at: Date })[] = [];
   for (const log of logs) {
     const patient = memberOf.get(String(log.member));
     if (!patient) continue;
@@ -1273,16 +1634,14 @@ export async function getNotifications() {
     }
   }
   for (const order of results) {
-    const patient = memberOf.get(String(order.member));
-    if (!patient) continue;
     const flag = order.result?.flag;
     items.push({
-      id: `${order._id}-result`,
-      at: order.result?.resultedAt ?? order.updatedAt,
-      title: `Result back: ${patient.name}`,
-      body: [order.test, order.result?.summary, order.result?.label].filter(Boolean).join(". ") + ".",
+      id: `${order.id}-result`,
+      at: order.resultAt ?? order.at,
+      title: `Result back: ${order.patient.name}`,
+      body: [order.test, order.result?.value, order.result?.label].filter(Boolean).join(". ") + ".",
       href: "/results?status=result_back",
-      tone: flag === "high" || flag === "low" ? "danger" : flag === "borderline" || flag === "watch" ? "warning" : "brand",
+      tone: flag === "high" || flag === "low" ? "danger" : flag === "borderline" ? "warning" : "brand",
     });
   }
   for (const consult of booked) {
@@ -1352,10 +1711,16 @@ export async function getNotifications() {
     });
   }
 
-  const list: Notification[] = items
-    .sort((a, b) => b.at.getTime() - a.at.getTime())
-    .map(({ at, ...item }) => ({ ...item, time: formatShortWhen(at, now), unread: at > seenAt }));
-  return { list, unread: list.filter((n) => n.unread).length };
+  items.sort((a, b) => b.at.getTime() - a.at.getTime());
+  const list: Notification[] = items.map(({ at, ...item }) => ({ ...item, time: formatShortWhen(at, now), at: at.toISOString() }));
+  return {
+    list,
+    /** What lights the bell: notices since the doctor last opened Notifications. */
+    unread: items.filter((n) => n.at > seenAt).length,
+    seenAt: seenAt.toISOString(),
+    /** When this list was read, so opening it marks as seen exactly what was shown. */
+    checkedAt: now.toISOString(),
+  };
 }
 
 function findStartingSoon(doctorId: Id, now: Date) {

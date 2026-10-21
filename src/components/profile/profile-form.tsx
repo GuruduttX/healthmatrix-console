@@ -101,58 +101,63 @@ export function ProfileForm({
         />
       </div>
 
-      {/* Phones: one column, photo first. Wide screens: the photo and progress stay beside the form. */}
+      {/*
+        Phones: one column, photo first, on the page. Wide screens: the photo and progress stay beside
+        the form on a pane of glass (inside the sticky box: the pane sets its own position).
+      */}
       <div className="mx-auto w-full max-w-2xl lg:mx-0 lg:grid lg:max-w-6xl lg:grid-cols-[17rem_minmax(0,1fr)] lg:items-start lg:gap-6">
-        <aside className="mt-2 lg:sticky lg:top-20 lg:mt-0 lg:rounded-xl lg:border lg:border-line lg:bg-card lg:p-5 lg:shadow-card">
-          {photo}
-          <div className="mt-2 hidden text-center lg:block">
-            <p className="font-display text-base font-bold tracking-[-0.01em] text-ink">{name}</p>
-            {specialty ? <p className="text-[13px] text-body">{specialty}</p> : null}
-          </div>
-
-          <div className="mx-auto mt-3 max-w-xs lg:mt-5 lg:max-w-none lg:border-t lg:border-line lg:pt-4">
-            <p className="mb-2 hidden items-center justify-between text-[13px] lg:flex">
-              <span className="font-semibold text-ink">Profile complete</span>
-              <span className="font-semibold tabular-nums text-ink">{progress}%</span>
-            </p>
-            <div aria-hidden className="h-2 overflow-hidden rounded-full bg-selected">
-              <div className="h-full rounded-full bg-linear-to-r from-brand-mid to-brand transition-[width]" style={{ width: `${progress}%` }} />
+        <aside className="mt-2 lg:sticky lg:top-20 lg:mt-0">
+          <div className="lg:glass-panel lg:rounded-2xl lg:p-5">
+            {photo}
+            <div className="mt-2 hidden text-center lg:block">
+              <p className="font-display text-base font-semibold tracking-[-0.01em] text-ink">{name}</p>
+              {specialty ? <p className="text-[13px] text-body">{specialty}</p> : null}
             </div>
-            {missing.length ? (
-              <ul className="-mx-2 mt-3 hidden flex-col lg:flex">
-                {missing.map((gap) => {
-                  const field = GAP_FIELDS[gap];
-                  const label = `Add ${GAP_LABELS[gap].toLowerCase()}`;
-                  return (
-                    <li key={gap}>
-                      {field ? (
-                        <button
-                          type="button"
-                          onClick={() => goTo(field)}
-                          className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] font-medium text-ink transition-colors hover:bg-selected"
-                        >
-                          <CircleDashed aria-hidden className="size-4 shrink-0 text-brand" />
-                          {label}
-                        </button>
-                      ) : (
-                        <span className="flex items-center gap-2.5 px-2 py-1.5 text-[13px] font-medium text-ink">
-                          <CircleDashed aria-hidden className="size-4 shrink-0 text-brand" />
-                          {label}
-                        </span>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : (
-              <p className="mt-3 hidden items-center gap-2 text-[13px] font-medium text-brand lg:flex">
-                <CircleCheck aria-hidden className="size-4" />
-                Everything patients look for is there.
+
+            <div className="mx-auto mt-3 max-w-xs lg:mt-5 lg:max-w-none lg:border-t lg:border-line lg:pt-4">
+              <p className="mb-2 hidden items-center justify-between text-[13px] lg:flex">
+                <span className="font-semibold text-ink">Profile complete</span>
+                <span className="font-semibold tabular-nums text-ink">{progress}%</span>
               </p>
-            )}
-            <p className="mt-3 hidden text-xs leading-relaxed text-muted lg:block">
-              A complete profile helps patients trust who they are sharing with.
-            </p>
+              <div aria-hidden className="h-2 overflow-hidden rounded-full bg-selected">
+                <div className="h-full rounded-full bg-linear-to-r from-brand-mid to-brand transition-[width]" style={{ width: `${progress}%` }} />
+              </div>
+              {missing.length ? (
+                <ul className="-mx-2 mt-3 hidden flex-col lg:flex">
+                  {missing.map((gap) => {
+                    const field = GAP_FIELDS[gap];
+                    const label = `Add ${GAP_LABELS[gap].toLowerCase()}`;
+                    return (
+                      <li key={gap}>
+                        {field ? (
+                          <button
+                            type="button"
+                            onClick={() => goTo(field)}
+                            className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] font-medium text-ink transition-colors hover:bg-selected"
+                          >
+                            <CircleDashed aria-hidden className="size-4 shrink-0 text-brand-deep" />
+                            {label}
+                          </button>
+                        ) : (
+                          <span className="flex items-center gap-2.5 px-2 py-1.5 text-[13px] font-medium text-ink">
+                            <CircleDashed aria-hidden className="size-4 shrink-0 text-brand-deep" />
+                            {label}
+                          </span>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <p className="mt-3 hidden items-center gap-2 text-[13px] font-medium text-brand-deep lg:flex">
+                  <CircleCheck aria-hidden className="size-4" />
+                  Everything patients look for is there.
+                </p>
+              )}
+              <p className="mt-3 hidden text-xs leading-relaxed text-muted lg:block">
+                A complete profile helps patients trust who they are sharing with.
+              </p>
+            </div>
           </div>
         </aside>
 
@@ -207,12 +212,12 @@ function Section({
   return (
     <section className={`mt-7 ${first ? "lg:mt-0" : "lg:mt-5"}`}>
       <div className="lg:hidden">
-        <h2 className="px-1 font-display text-[19px] font-bold leading-6 tracking-[-0.01em] text-ink">{title}</h2>
+        <h2 className="px-1 font-display text-[19px] font-semibold leading-6 tracking-[-0.01em] text-ink">{title}</h2>
         {hint ? <p className="mt-0.5 px-1 text-[13px] text-body">{hint}</p> : null}
       </div>
-      <div className="mt-3 rounded-xl border border-line bg-card shadow-card lg:mt-0">
+      <div className="glass-panel mt-3 rounded-2xl lg:mt-0">
         <div className="hidden border-b border-line px-5 py-3.5 lg:block">
-          <h2 className="font-display text-base font-bold text-ink">{title}</h2>
+          <h2 className="font-display text-base font-semibold text-ink">{title}</h2>
           {hint ? <p className="mt-0.5 text-[13px] text-body">{hint}</p> : null}
         </div>
         <div className="flex flex-col gap-4 p-4 sm:p-5">{children}</div>
@@ -474,9 +479,12 @@ function Fields({
         )}
       </Section>
 
-      {/* Phones: floats over the bottom like an app's action bar. Wide screens: sticks to the bottom of the form column. */}
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-card/90 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl backdrop-saturate-150 lg:sticky lg:bottom-4 lg:mt-5 lg:rounded-full lg:border lg:bg-card/95 lg:py-2.5 lg:pl-6 lg:pr-2.5 lg:shadow-floating print:hidden">
-        <div className="mx-auto flex max-w-2xl items-center gap-2 lg:max-w-none">
+      {/*
+        A frosted pill of glass, as the app's tab dock. Phones: it floats over the bottom where the
+        dock would be. Wide screens: it sticks to the bottom of the form column.
+      */}
+      <div className="glass-dock fixed inset-x-0 bottom-[max(env(safe-area-inset-bottom),0.75rem)] z-30 mx-auto w-[calc(100%-2rem)] max-w-2xl rounded-full p-1.5 sm:w-[calc(100%-3rem)] lg:sticky lg:bottom-4 lg:mt-5 lg:w-auto lg:max-w-none lg:py-2.5 lg:pl-6 lg:pr-2.5 print:hidden">
+        <div className="flex items-center gap-2">
           <p className="mr-auto hidden text-[13px] font-medium lg:block">
             {dirty ? (
               <span className="inline-flex items-center gap-1.5 text-warning">

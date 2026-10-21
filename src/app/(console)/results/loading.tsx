@@ -4,7 +4,7 @@ import { Bone, ChipBone, HeroBone, PhoneListBone, SkeletonPage, TableBone, TileB
 export default function ResultsLoading() {
   return (
     <SkeletonPage>
-      <HeroBone title="Results" lines={2} filters={["w-12", "w-30", "w-22", "w-34"]} />
+      <HeroBone title="Results" lines={2} filters={["w-12", "w-30", "w-22", "w-34", "w-24"]} />
       <PhoneListBone
         row={() => (
           <div className="flex items-start gap-3">

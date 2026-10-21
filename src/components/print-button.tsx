@@ -2,7 +2,7 @@
 
 import { Printer } from "lucide-react";
 
-/** Prints the page, or saves it as a PDF. `compact`: a round icon button for the phone bar. */
+/** Prints the page, or saves it as a PDF. `compact`: a round of glass for the phone bar, beside the back button. */
 export function PrintButton({ compact = false }: { compact?: boolean }) {
   if (compact) {
     return (
@@ -10,7 +10,7 @@ export function PrintButton({ compact = false }: { compact?: boolean }) {
         type="button"
         onClick={() => window.print()}
         aria-label="Print or save as PDF"
-        className="btn btn-secondary btn-icon size-11 min-h-11 shadow-card"
+        className="btn btn-icon btn-frost size-11 min-h-11"
       >
         <Printer aria-hidden className="size-4.5" />
       </button>

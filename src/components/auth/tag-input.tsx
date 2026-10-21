@@ -92,15 +92,16 @@ export function TagInput({
 
   return (
     <div className="relative">
+      {/* Drawn like a `field`: frosted glass, a warm outline, ringed in orange while typing. */}
       <div
-        className={`flex min-h-12 flex-wrap items-center gap-1.5 rounded-lg border-[1.5px] bg-card px-2 py-1.5 transition-[border-color,box-shadow] focus-within:border-brand focus-within:shadow-[0_0_0_4px_rgba(221,67,1,0.12)] lg:min-h-10 lg:rounded-xl lg:border ${
+        className={`flex min-h-12 flex-wrap items-center gap-1.5 rounded-[1rem] border-[1.5px] bg-white/62 px-2 py-1.5 shadow-(--glass-glow-small) transition-[border-color,box-shadow] focus-within:border-brand focus-within:shadow-[0_0_0_4px_rgba(221,67,1,0.12)] lg:min-h-10 lg:rounded-lg ${
           invalid ? "border-danger" : "border-line-strong"
         }`}
       >
         {values.map((value) => (
           <span
             key={value}
-            className="inline-flex items-center gap-0.5 rounded-full bg-brand-soft py-1 pl-3 pr-1 text-[13px] font-bold leading-5 text-brand"
+            className="inline-flex items-center gap-0.5 rounded-full bg-brand-soft py-1 pl-3 pr-1 text-[13px] font-bold leading-5 text-brand-deep"
           >
             {labelOf(value)}
             <button
@@ -108,7 +109,7 @@ export function TagInput({
               onClick={() => update(values.filter((v) => v !== value))}
               aria-label={`Remove ${labelOf(value)}`}
               // A bigger target than it looks, for fingers.
-              className="relative inline-flex size-5 items-center justify-center rounded-full text-brand/70 transition-colors after:absolute after:-inset-1.5 hover:bg-brand/15 hover:text-brand"
+              className="relative inline-flex size-5 items-center justify-center rounded-full text-brand-deep/70 transition-colors after:absolute after:-inset-1.5 hover:bg-brand/15 hover:text-brand-deep"
             >
               <X aria-hidden className="size-3" />
             </button>
@@ -138,6 +139,7 @@ export function TagInput({
         />
       </div>
 
+      {/* Solid white, as every menu: the fields under it must not show through. */}
       {showList ? (
         <ul
           id={listId}

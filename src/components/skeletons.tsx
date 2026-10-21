@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { bleed, heroFrame } from "@/components/hero";
+import { bleed } from "@/components/hero";
 
 /**
  * Loading outlines for console screens. Each route's `loading.tsx` builds the shape of the
@@ -8,64 +8,72 @@ import { bleed, heroFrame } from "@/components/hero";
  * page, so nothing jumps when the content arrives.
  */
 
-const tones = { grey: "bg-selected", dark: "bg-ink/15", brand: "bg-brand/25", glass: "bg-white/12" };
+const tones = { grey: "bg-selected", dark: "bg-ink/15", brand: "bg-brand/25", frost: "glass-small", glass: "bg-white/12" };
 
 /**
- * One placeholder. Sizes come from the caller; `tone` hints at a dark pill, a brand button or sits
- * on a dark header. A `rounded-*` from the caller replaces the default corners (two would clash).
+ * One placeholder: a see-through grey, so it sits on glass. Sizes come from the caller; `tone`
+ * hints at a dark pill, a brand button or (`frost`) a round glass button, or (`glass`) sits on the
+ * dark video call. A `rounded-*` from the caller replaces the default corners (two would clash);
+ * so would a fill, so a glass look is a tone, never a class passed in.
  */
 export function Bone({ className = "", tone = "grey" }: { className?: string; tone?: keyof typeof tones }) {
   const corners = /(^|\s)rounded-/.test(className) ? "" : "rounded-md";
-  return <div aria-hidden className={`${corners} ${tones[tone]} ${className}`} />;
+  return <div aria-hidden data-bone className={`${corners} ${tones[tone]} ${className}`} />;
 }
 
-/** The outer wrapper: pulses (unless motion is reduced) and tells screen readers it is loading. */
+/**
+ * The outer wrapper: tells screen readers it is loading. Its placeholders pulse (unless motion is
+ * reduced), not the whole page: glass can't see through an ancestor that is fading.
+ */
 export function SkeletonPage({ children }: { children: ReactNode }) {
   return (
-    <div role="status" className="motion-safe:animate-pulse">
+    <div role="status" className="skeleton-page">
       {children}
       <span className="sr-only">Loading…</span>
     </div>
   );
 }
 
-/** A card frame like `Card`, without contents. */
+/** A card frame like `Card`, a pane of glass, without contents. */
 export function SkeletonCard({
   children,
   className = "",
   flush = false,
-  highlight = false,
 }: {
   children?: ReactNode;
   className?: string;
   flush?: boolean;
-  /** Ekaay's frame. */
-  highlight?: boolean;
 }) {
   return (
-    <div
-      className={`min-w-0 rounded-xl shadow-card ${highlight ? "ekaay-frame" : "border border-line bg-card"} ${flush ? "overflow-hidden" : "p-4 sm:p-5"} ${className}`}
-    >
+    <div className={`min-w-0 rounded-2xl glass-panel ${flush ? "overflow-hidden" : "p-4 sm:p-5"} ${className}`}>
       {children}
     </div>
   );
 }
 
-/** A card title: the small tile and a short bar. */
+/** A card title: the small round tile and a short bar. */
 export function TitleBone({ width = "w-32" }: { width?: string }) {
   return (
     <div className="flex items-center gap-2.5">
-      <Bone className="size-8 rounded-[0.625rem]" />
+      <Bone className="size-8 rounded-full" />
       <Bone className={`h-4.5 ${width}`} />
     </div>
   );
 }
 
 /** A section's title above its card, as `Section` draws it. */
-export function SectionBone({ width = "w-36", children, className = "" }: { width?: string; children: ReactNode; className?: string }) {
+export function SectionBone({
+  width = "w-36",
+  children,
+  className = "",
+}: {
+  width?: string;
+  children: ReactNode;
+  className?: string;
+}) {
   return (
     <div className={`min-w-0 ${className}`}>
-      <div className="mb-3 flex min-h-7 items-center px-0.5">
+      <div className="mb-3 flex min-h-7 items-center gap-2.5 px-0.5">
         <Bone className={`h-5 ${width}`} />
       </div>
       {children}
@@ -74,8 +82,8 @@ export function SectionBone({ width = "w-36", children, className = "" }: { widt
 }
 
 /**
- * A tab's dark header, as `PageHeader` draws it without `back`: the real title (it never
- * changes), placeholder lines for the rest, and room for filter pills when `filters` is given.
+ * A tab's header, as `PageHeader` draws it without `back`: the real title (it never changes),
+ * placeholder lines for the rest, and room for filter pills when `filters` is given.
  */
 export function HeroBone({
   title,
@@ -83,43 +91,45 @@ export function HeroBone({
   filters,
   search = false,
   action = false,
+  refresh = false,
 }: {
   title: string;
   lines?: number;
   /** Widths of the filter pills under the title. */
   filters?: string[];
-  /** Phones: the white search box. */
+  /** Phones: the search box. */
   search?: boolean;
   /** A main action: under the title on phones, at its right on wide screens. */
   action?: boolean;
+  /** Phones: "check for updates" beside the bell, as `PageHeader` with `refresh`. */
+  refresh?: boolean;
 }) {
   return (
-    <div className="mb-6 lg:mb-7">
-      <div className={heroFrame()}>
-        <div className="relative flex items-start gap-3">
-          <p className="min-w-0 flex-1 pt-1 font-display text-[1.875rem] font-bold leading-9 tracking-[-0.01em] lg:pt-0 lg:text-[2rem] lg:leading-10">
-            {title}
-          </p>
-          {action ? <Bone tone="glass" className="hidden h-10 w-40 rounded-full lg:block" /> : null}
-          <Bone tone="glass" className="size-11 shrink-0 rounded-full lg:hidden" />
-        </div>
-        {lines > 0 ? (
-          <div className="mt-2.5 flex max-w-2xl flex-col gap-2">
-            {Array.from({ length: lines }, (_, i) => (
-              <Bone key={i} tone="glass" className={`h-3.5 ${i === lines - 1 ? "w-3/5" : "w-full"}`} />
-            ))}
-          </div>
-        ) : null}
-        {action ? <Bone tone="glass" className="mt-4 h-12 w-full rounded-full lg:hidden" /> : null}
-        {search ? <Bone className="mt-4 h-13 w-full rounded-[1.125rem] bg-white lg:hidden" /> : null}
-        {filters ? (
-          <div className="mt-3 flex gap-2 overflow-hidden lg:mt-4">
-            {filters.map((width, i) => (
-              <Bone key={i} tone="glass" className={`h-9.5 shrink-0 rounded-full lg:h-8.5 ${i === 0 ? "bg-white/90" : ""} ${width}`} />
-            ))}
-          </div>
-        ) : null}
+    <div className="mb-6 pt-[calc(env(safe-area-inset-top)+0.875rem)] lg:mb-7 lg:pt-5">
+      <div className="flex items-start gap-3">
+        <p className="min-w-0 flex-1 pt-1 font-display text-[1.75rem] font-semibold leading-8.5 tracking-[-0.02em] text-ink lg:pt-0 lg:text-[2.25rem] lg:leading-11">
+          {title}
+        </p>
+        {action ? <Bone tone="brand" className="hidden h-10 w-40 rounded-full lg:block" /> : null}
+        {refresh ? <Bone tone="frost" className="size-11 shrink-0 rounded-full lg:hidden" /> : null}
+        <Bone tone="frost" className="size-11 shrink-0 rounded-full lg:hidden" />
       </div>
+      {lines > 0 ? (
+        <div className="mt-2 flex max-w-2xl flex-col gap-2">
+          {Array.from({ length: lines }, (_, i) => (
+            <Bone key={i} className={`h-3.5 ${i === lines - 1 ? "w-3/5" : "w-full"}`} />
+          ))}
+        </div>
+      ) : null}
+      {action ? <Bone tone="brand" className="mt-4 h-12 w-full rounded-full lg:hidden" /> : null}
+      {search ? <Bone className="mt-4 h-13 w-full rounded-2xl lg:hidden" /> : null}
+      {filters ? (
+        <div className="mt-4 flex gap-2 overflow-hidden">
+          {filters.map((width, i) => (
+            <Bone key={i} tone={i === 0 ? "dark" : "grey"} className={`h-9.5 shrink-0 rounded-full lg:h-8.5 ${width}`} />
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -132,7 +142,7 @@ export function StackBone({ eyebrow = false, lines = 2, action = false }: { eyeb
   return (
     <>
       <div className={`flex items-center px-4 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] sm:px-6 lg:hidden ${bleed}`}>
-        <Bone className="size-11 rounded-full bg-card shadow-card ring-1 ring-line-strong" />
+        <Bone tone="frost" className="size-11 rounded-full" />
       </div>
       <div className="mb-5 mt-2 lg:mb-6 lg:mt-0">
         <Bone className="mb-3 hidden h-6 w-28 rounded-full lg:block" />
@@ -151,27 +161,25 @@ export function StackBone({ eyebrow = false, lines = 2, action = false }: { eyeb
   );
 }
 
-/** `PatientHeader`: the dark header with the avatar, name, details and alert pills. */
+/** `PatientHeader`: the glass card with the avatar, name, details and alert pills. */
 export function PatientHeroBone({ compact = false }: { compact?: boolean }) {
   return (
     <>
+      <div className={`flex items-center px-4 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] sm:px-6 lg:hidden ${bleed}`}>
+        <Bone tone="frost" className="size-11 rounded-full" />
+      </div>
       <Bone className="mb-3 hidden h-6 w-28 rounded-full lg:block" />
-      <div
-        className={`hero-bg relative overflow-hidden rounded-b-[2rem] px-4 pt-[calc(env(safe-area-inset-top)+0.5rem)] sm:px-6 lg:rounded-3xl lg:px-8 lg:pt-7 ${bleed} ${
-          compact ? "pb-5 lg:pb-6" : "pb-6 lg:pb-7"
-        }`}
-      >
-        <Bone tone="glass" className="mb-2 size-11 rounded-full lg:hidden" />
+      <div className={`glass-panel mt-2 rounded-2xl px-4 sm:px-6 lg:mt-0 lg:px-7 ${compact ? "py-4 lg:py-5" : "py-5 lg:py-6"}`}>
         <div
           className={`flex gap-x-5 gap-y-3 ${compact ? "items-start lg:items-center" : "flex-col items-center lg:flex-row"}`}
         >
-          <Bone tone="glass" className={`shrink-0 rounded-full ${compact ? "size-16" : "size-20"}`} />
+          <Bone className={`shrink-0 rounded-full ${compact ? "size-16" : "size-20"}`} />
           <div className={`flex min-w-0 flex-1 flex-col gap-2.5 ${compact ? "" : "items-center lg:items-start"}`}>
-            <Bone tone="glass" className={compact ? "h-6 w-40" : "h-7 w-48"} />
-            <Bone tone="glass" className="h-3.5 w-64 max-w-full" />
+            <Bone className={compact ? "h-6 w-40" : "h-7 w-48"} />
+            <Bone className="h-3.5 w-64 max-w-full" />
             <div className="flex gap-1.5">
-              <Bone tone="glass" className="h-6.5 w-32 rounded-full" />
-              <Bone tone="glass" className="h-6.5 w-24 rounded-full" />
+              <Bone className="h-6.5 w-32 rounded-full" />
+              <Bone className="h-6.5 w-24 rounded-full" />
             </div>
           </div>
         </div>
@@ -197,9 +205,9 @@ export function AvatarBone({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
   return <Bone className={`${sizes[size]} shrink-0 rounded-full`} />;
 }
 
-/** A square icon tile placeholder, sized like `IconTile` at `md`. */
+/** A round icon tile placeholder, sized like `IconTile` at `md`. */
 export function TileBone() {
-  return <Bone className="size-10 shrink-0 rounded-xl" />;
+  return <Bone className="size-10 shrink-0 rounded-full" />;
 }
 
 /**
@@ -208,7 +216,7 @@ export function TileBone() {
  */
 export function PhoneListBone({ rows = 6, row }: { rows?: number; row: (i: number) => ReactNode }) {
   return (
-    <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-card shadow-card md:hidden">
+    <ul className="glass-panel divide-y divide-line overflow-hidden rounded-2xl md:hidden">
       {Array.from({ length: rows }, (_, i) => (
         <li key={i} className="px-4 py-4">
           {row(i)}
@@ -221,8 +229,8 @@ export function PhoneListBone({ rows = 6, row }: { rows?: number; row: (i: numbe
 /** The table a list screen shows from `md` up: a header row, then avatar-led rows. */
 export function TableBone({ columns, rows = 7 }: { columns: string[]; rows?: number }) {
   return (
-    <div className="hidden overflow-hidden rounded-xl border border-line bg-card shadow-card md:block">
-      <div className="flex items-center gap-4 border-b border-line bg-surface px-5 py-3.5">
+    <div className="glass-panel hidden overflow-hidden rounded-2xl md:block">
+      <div className="flex items-center gap-4 border-b border-line px-5 py-3.5">
         {columns.map((width, i) => (
           <Bone key={i} className={`h-3 ${width}`} />
         ))}
@@ -286,9 +294,9 @@ export function PanelHeaderBone({ width = "w-32" }: { width?: string }) {
 }
 
 /** A card with a title and a few text lines. */
-export function TextCardBone({ lines = 3, title = "w-32", highlight = false }: { lines?: number; title?: string; highlight?: boolean }) {
+export function TextCardBone({ lines = 3, title = "w-32" }: { lines?: number; title?: string }) {
   return (
-    <SkeletonCard highlight={highlight}>
+    <SkeletonCard>
       <TitleBone width={title} />
       <div className="mt-4 flex flex-col gap-2.5">
         {Array.from({ length: lines }, (_, i) => (

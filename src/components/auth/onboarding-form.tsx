@@ -98,7 +98,7 @@ function Progress({ current }: { current: FormStep }) {
                 here ? "font-semibold text-ink" : "font-medium text-muted"
               }`}
             >
-              {done ? <Check aria-hidden className="mr-0.5 inline size-3 align-[-2px] text-brand" /> : null}
+              {done ? <Check aria-hidden className="mr-0.5 inline size-3 align-[-2px] text-brand-deep" /> : null}
               <span className="hidden sm:inline">{step.title}</span>
               <span className="sm:hidden">{step.number}</span>
               {done ? <span className="sr-only">(done)</span> : null}
@@ -126,7 +126,7 @@ export function OnboardingForm({
 
   return (
     <>
-      <h1 className="font-display text-[1.6875rem] font-bold leading-tight tracking-[-0.015em] text-ink">
+      <h1 className="font-display text-[1.6875rem] font-semibold leading-tight tracking-[-0.015em] text-ink">
         {isNew ? "Set up your doctor profile" : "Finish your doctor profile"}
       </h1>
       <p className="mt-1.5 flex items-center gap-1.5 text-[13px] font-semibold text-success">
@@ -211,7 +211,7 @@ function Steps({
   }
 
   const heading = (n: FormStep, title: string) => (
-    <h2 id={`step-${n}`} tabIndex={-1} className="font-display text-lg font-bold text-ink focus:outline-none">
+    <h2 id={`step-${n}`} tabIndex={-1} className="font-display text-lg font-semibold text-ink focus:outline-none">
       <span className="font-sans text-sm font-semibold text-muted">Step {n} of 4 · </span>
       {title}
     </h2>
@@ -377,7 +377,8 @@ function Steps({
             </div>
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="flex cursor-pointer items-start gap-3 rounded-2xl border-[1.5px] border-line-strong bg-card px-4 py-3.5 text-[13px] leading-relaxed text-body transition-colors hover:bg-surface has-checked:border-brand has-checked:bg-brand-soft has-aria-invalid:border-danger">
+            {/* Drawn like a `field`, tinted peach once ticked. */}
+            <label className="flex cursor-pointer items-start gap-3 rounded-[1rem] border-[1.5px] border-line-strong bg-white/62 px-4 py-3.5 text-[13px] leading-relaxed text-body shadow-(--glass-glow-small) transition-colors hover:bg-white/80 has-checked:border-brand has-checked:bg-brand-soft has-aria-invalid:border-danger">
               <input
                 type="checkbox"
                 name="consent"

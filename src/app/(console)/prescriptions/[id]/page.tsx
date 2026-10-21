@@ -15,6 +15,9 @@ import { ageAndSex } from "@/lib/patient-text";
 
 export const metadata: Metadata = { title: "Prescription" };
 
+/** On paper the sheet is plain black on white: the glass (fill, gloss, rim, shadow, blur) is for the screen only. */
+const plainInPrint = "print:bg-card print:bg-none print:p-0 print:shadow-none print:backdrop-filter-none print:before:hidden";
+
 export default async function PrescriptionPage(props: PageProps<"/prescriptions/[id]">) {
   const doctor = await getCurrentDoctor();
   const { id } = await props.params;
@@ -42,10 +45,10 @@ export default async function PrescriptionPage(props: PageProps<"/prescriptions/
         ) : null}
       </div>
 
-      <article className="mx-auto mt-2 max-w-2xl rounded-xl border border-line bg-card p-5 shadow-raised sm:p-10 lg:mt-1 print:border-0 print:p-0 print:shadow-none">
+      <article className={`glass-panel mx-auto mt-2 max-w-2xl rounded-2xl p-5 sm:p-10 lg:mt-1 ${plainInPrint}`}>
         <header className="flex flex-wrap items-start justify-between gap-4 border-b border-line pb-5">
           <div>
-            <p className="font-display text-lg font-bold tracking-[-0.01em] text-ink">{doctor.name}</p>
+            <p className="font-display text-lg font-semibold tracking-[-0.01em] text-ink">{doctor.name}</p>
             <p className="text-[13px] text-body">
               {[doctor.qualifications, doctor.specialty].filter(Boolean).join(". ")}.
             </p>
@@ -55,13 +58,13 @@ export default async function PrescriptionPage(props: PageProps<"/prescriptions/
           </div>
           <div className="flex items-center gap-2">
             <Image src="/logo-mark.png" alt="" width={28} height={25} />
-            <span className="font-display text-base font-bold tracking-[-0.01em] text-ink">HealthMatrix</span>
+            <span className="font-display text-base font-semibold tracking-[-0.01em] text-ink">HealthMatrix</span>
           </div>
         </header>
 
         <div className="mt-5 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 id="page-title" className="font-display text-lg font-bold text-ink">
+            <h1 id="page-title" className="font-display text-lg font-semibold text-ink">
               <Link href={`/patients/${patient.id}`} className="hover:underline">
                 {patient.name}
               </Link>
@@ -98,7 +101,7 @@ export default async function PrescriptionPage(props: PageProps<"/prescriptions/
             </ol>
             {rx.tests.length > 0 ? (
               <section className="mt-6">
-                <h2 className="mb-2 font-display text-base font-bold text-ink">Lab tests</h2>
+                <h2 className="mb-2 font-display text-base font-semibold text-ink">Lab tests</h2>
                 <ul className="divide-y divide-line border-t border-line">
                   {rx.tests.map((test) => (
                     <li key={`${test.kind}-${test.code}`} className="py-3 text-sm text-ink">
@@ -113,7 +116,7 @@ export default async function PrescriptionPage(props: PageProps<"/prescriptions/
             ) : null}
             {found.vaccines.length > 0 ? (
               <section className="mt-6">
-                <h2 className="mb-3 font-display text-base font-bold text-ink">Vaccines</h2>
+                <h2 className="mb-3 font-display text-base font-semibold text-ink">Vaccines</h2>
                 <VaccineSchedule vaccines={found.vaccines} />
               </section>
             ) : null}

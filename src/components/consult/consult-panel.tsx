@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { AskRecord } from "@/components/record/ask-record";
 import { PrescriptionDraft } from "@/components/record/prescription-draft";
@@ -13,24 +13,30 @@ type Tab = (typeof tabs)[number];
 export const PRESCRIPTION_HASH = "#prescription";
 
 /**
- * The record beside the video: Ekaay's summary, questions and the prescription draft. Once the
- * consult is over it opens on the prescription, the one thing left to do.
+ * The record beside the video, on a pane of glass: Ekaay's summary, questions and the
+ * prescription draft. Once the consult is over it opens on the prescription, the one thing left to do.
  */
 export function ConsultPanel({
   record,
+  summary,
   memberId,
   consultId,
   patientName,
   doctorName,
   allergyTerms,
+  askReady,
   initialTab = "Summary",
 }: {
   record: PatientRecord;
+  /** Ekaay's summary (`EkaaySummary`), rendered on the server: it may be written as the page loads. */
+  summary: ReactNode;
   memberId: string;
   consultId: string;
   patientName: string;
   doctorName: string;
   allergyTerms: string[];
+  /** Whether Ekaay can answer questions (`ekaayReady()`). */
+  askReady: boolean;
   initialTab?: Tab;
 }) {
   const [tab, setTab] = useState<Tab>(initialTab);
@@ -58,7 +64,7 @@ export function ConsultPanel({
     <section
       ref={panel}
       id="prescription"
-      className="scroll-mt-[calc(env(safe-area-inset-top)+4.5rem)] rounded-xl border border-line bg-card p-4 shadow-card sm:p-5 lg:scroll-mt-20"
+      className="glass-panel scroll-mt-[calc(env(safe-area-inset-top)+4.5rem)] rounded-2xl p-4 sm:p-5 lg:scroll-mt-20"
     >
       <div role="tablist" aria-label="Record" className="segmented">
         {tabs.map((name) => (
@@ -77,21 +83,7 @@ export function ConsultPanel({
 
       {/* All three stay mounted so a half-written draft survives a tab change. */}
       <div role="tabpanel" hidden={tab !== "Summary"}>
-        {record.summary.length > 0 ? (
-          <ul className="mt-4 flex flex-col gap-2.5">
-            {record.summary.map((line) => (
-              <li key={line} className="flex gap-2.5 text-sm leading-relaxed text-ink">
-                <span aria-hidden className="mt-2 size-1.5 shrink-0 rounded-full bg-brand" />
-                {line}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-4 text-[13px] text-body">
-            Ekaay hasn’t written a summary for this patient yet. The timeline and results are on their
-            record page.
-          </p>
-        )}
+        {summary}
         <h3 className="mt-5 border-t border-line pt-4 text-xs font-bold text-muted">Current medicines</h3>
         <p className="mt-1 text-sm leading-relaxed text-ink">
           {record.medicines.length > 0 ? record.medicines.join("; ") : "No regular medicines on file."}
@@ -99,7 +91,7 @@ export function ConsultPanel({
         <p className="mt-4 text-xs text-muted">Ekaay informs. You diagnose and prescribe.</p>
       </div>
       <div role="tabpanel" hidden={tab !== "Ask the record"}>
-        <AskRecord />
+        <AskRecord ready={askReady} memberId={memberId} patientName={patientName} />
       </div>
       <div role="tabpanel" hidden={tab !== "Prescription"}>
         <PrescriptionDraft

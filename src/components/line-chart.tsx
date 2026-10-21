@@ -11,8 +11,8 @@ const PAD = { left: 34, right: 14, top: 22, bottom: 26 };
 
 /** Fixed series order: colour follows the series, never its rank. */
 const SERIES_COLORS = ["#DD4301", "#244C56"];
-/** The normal range is a quiet grey band; its label says what it is. */
-const BAND_FILL = { success: "#EEF2F3", warning: "#FBF1D8" };
+/** The normal range is a quiet see-through band, so it takes the glass's tint; its label says what it is. */
+const BAND_FILL = { success: "rgba(40, 64, 84, 0.06)", warning: "rgba(143, 98, 0, 0.1)" };
 
 export function LineChart({ spec }: { spec: ChartSpec }) {
   const [hover, setHover] = useState<number | null>(null);
@@ -78,9 +78,9 @@ export function LineChart({ spec }: { spec: ChartSpec }) {
           {ticks.map((t) => (
             <g key={t}>
               {bands.length === 0 ? (
-                <line x1={PAD.left} x2={W - PAD.right} y1={y(t)} y2={y(t)} stroke="#E3E8E9" strokeWidth="1" />
+                <line x1={PAD.left} x2={W - PAD.right} y1={y(t)} y2={y(t)} strokeWidth="1" className="stroke-line" />
               ) : null}
-              <text x={PAD.left - 7} y={y(t) + 4} fontSize="11" textAnchor="end" fill="#87979B" className="tabular-nums">
+              <text x={PAD.left - 7} y={y(t) + 4} fontSize="11" textAnchor="end" className="fill-muted tabular-nums">
                 {format(t)}
               </text>
             </g>
@@ -92,9 +92,9 @@ export function LineChart({ spec }: { spec: ChartSpec }) {
               x2={x(hover)}
               y1={PAD.top}
               y2={H - PAD.bottom}
-              stroke="#8A9A9E"
               strokeWidth="1"
               strokeDasharray="3 3"
+              className="stroke-muted"
             />
           ) : null}
 
@@ -143,7 +143,7 @@ export function LineChart({ spec }: { spec: ChartSpec }) {
                       fontSize="12"
                       fontWeight="600"
                       textAnchor="middle"
-                      fill="#0E2A33"
+                      className="fill-ink"
                     >
                       {format(v)}
                     </text>
@@ -162,7 +162,7 @@ export function LineChart({ spec }: { spec: ChartSpec }) {
                 fontSize="11"
                 textAnchor={i === 0 ? "start" : i === n - 1 ? "end" : "middle"}
                 dx={i === 0 ? -10 : i === n - 1 ? 10 : 0}
-                fill="#87979B"
+                className="fill-muted"
               >
                 {label}
               </text>
@@ -186,7 +186,7 @@ export function LineChart({ spec }: { spec: ChartSpec }) {
         {hover !== null ? (
           <div
             role="presentation"
-            className="pointer-events-none absolute top-0 z-10 min-w-28 rounded-lg bg-ink px-3 py-2 text-xs text-white shadow-floating"
+            className="pointer-events-none absolute top-0 z-10 min-w-28 rounded-lg bg-card px-3 py-2 text-xs text-ink shadow-floating"
             style={{
               left: `${(x(hover) / W) * 100}%`,
               transform: `translateX(${hover === 0 ? "0" : hover === n - 1 ? "-100%" : "-50%"})`,
@@ -197,10 +197,10 @@ export function LineChart({ spec }: { spec: ChartSpec }) {
               <p key={s.name} className="mt-1 flex items-center gap-1.5">
                 <span
                   aria-hidden
-                  className="inline-block size-2 rounded-full ring-1 ring-white/70"
+                  className="inline-block size-2 rounded-full"
                   style={{ background: SERIES_COLORS[i] }}
                 />
-                <span className="text-white/75">{s.name}</span>
+                <span className="text-body">{s.name}</span>
                 <span className="ml-auto pl-2 font-semibold">
                   {format(s.values[hover])} {spec.unit}
                 </span>

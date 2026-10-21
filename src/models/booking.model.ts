@@ -36,6 +36,8 @@ const bookingSchema = new Schema(
 
     /** Set when a doctor ordered the tests, so results flow back to them. */
     orderedByConsult: { type: Schema.Types.ObjectId, ref: "Consult" },
+    /** The prescription the tests were booked from, when they were. The app indexes it. */
+    prescription: { type: Schema.Types.ObjectId, ref: "Prescription" },
     result: { type: Schema.Types.ObjectId, ref: "HealthRecord" },
   },
   { timestamps: true },

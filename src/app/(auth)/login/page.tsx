@@ -27,7 +27,7 @@ export default async function LoginPage(props: PageProps<"/login">) {
         </p>
       ) : null}
 
-      <h1 className="font-display text-[1.6875rem] font-bold leading-tight tracking-[-0.015em] text-ink">
+      <h1 className="font-display text-[1.6875rem] font-semibold leading-tight tracking-[-0.015em] text-ink">
         Welcome back, doctor
       </h1>
       <p className="mt-2 text-[15px] leading-relaxed text-body">
@@ -38,7 +38,7 @@ export default async function LoginPage(props: PageProps<"/login">) {
 
       <p className="mt-5 text-center text-[13px] text-body">
         New to the network?{" "}
-        <Link href="/register" className="font-bold text-brand hover:text-brand-strong">
+        <Link href="/register" className="font-bold text-brand-deep hover:underline">
           Register as a doctor
         </Link>
       </p>

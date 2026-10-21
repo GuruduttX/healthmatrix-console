@@ -48,7 +48,7 @@ export function VerifyForm({ resendAt, devCode }: { resendAt: number; devCode?: 
           required
           autoFocus
           // The spacing after the last digit would pull the code left of centre; the indent evens it out.
-          className="field h-15 rounded-2xl indent-[0.5em] text-center font-display text-[1.625rem]! font-bold tabular-nums tracking-[0.5em]"
+          className="field h-15 indent-[0.5em] text-center font-display text-[1.625rem]! font-semibold! tabular-nums tracking-[0.5em]"
         />
         <button type="submit" disabled={verifying} className="btn btn-primary btn-lg mt-5 w-full">
           {verifying ? "Checking…" : "Continue"}
@@ -62,7 +62,7 @@ export function VerifyForm({ resendAt, devCode }: { resendAt: number; devCode?: 
             You can ask again in <span className="tabular-nums">{wait}s</span>.
           </span>
         ) : (
-          <button type="submit" disabled={resending} className="font-bold text-brand hover:text-brand-strong disabled:opacity-60">
+          <button type="submit" disabled={resending} className="font-bold text-brand-deep hover:underline disabled:opacity-60">
             {resending ? "Sending…" : "Send it again"}
           </button>
         )}

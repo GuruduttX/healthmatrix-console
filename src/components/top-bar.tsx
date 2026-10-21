@@ -16,7 +16,7 @@ const menuItem =
  */
 export function TopBar({ doctor, unread }: { doctor: Doctor; unread: number }) {
   return (
-    <header className="sticky top-0 z-20 hidden h-16 items-center gap-3 bg-canvas/85 px-8 backdrop-blur-xl backdrop-saturate-150 lg:flex print:hidden">
+    <header className="sticky top-0 z-20 hidden h-16 items-center gap-3 bg-canvas/50 px-8 shadow-[0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-[20px] backdrop-saturate-170 lg:flex print:hidden">
       <Suspense fallback={<PatientSearchFallback />}>
         <PatientSearch />
       </Suspense>
@@ -25,16 +25,16 @@ export function TopBar({ doctor, unread }: { doctor: Doctor; unread: number }) {
         <Link
           href="/notifications"
           aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
-          className="btn btn-secondary btn-icon relative size-10 text-ink shadow-card"
+          className="btn btn-frost btn-icon relative size-10"
         >
           <Bell aria-hidden className="size-4.5" />
           {unread > 0 ? (
-            <span aria-hidden className="absolute right-2.5 top-2.5 size-2 rounded-full bg-brand ring-2 ring-card" />
+            <span aria-hidden className="absolute right-2.5 top-2.5 size-2 rounded-full bg-brand ring-2 ring-white" />
           ) : null}
         </Link>
 
         <details className="relative">
-          <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-full border border-line-strong bg-card p-1 pr-2.5 shadow-card transition-colors hover:bg-surface [&::-webkit-details-marker]:hidden">
+          <summary className="glass-small flex cursor-pointer list-none items-center gap-1.5 rounded-full p-1 pr-2.5 transition-colors hover:bg-white/70 [&::-webkit-details-marker]:hidden">
             <DoctorAvatar photoUrl={doctor.photoUrl} initials={doctor.initials} />
             <ChevronDown aria-hidden className="size-3.5 text-muted" />
             <span className="sr-only">Account menu</span>
@@ -55,7 +55,7 @@ export function TopBar({ doctor, unread }: { doctor: Doctor; unread: number }) {
               <UserRoundPen aria-hidden className="size-4 text-muted" />
               Edit profile
               {doctor.missing.length ? (
-                <span className="ml-auto rounded-full bg-brand-soft px-2 text-[11px] font-bold leading-5 text-brand">
+                <span className="ml-auto rounded-full bg-brand-soft px-2 text-[11px] font-bold leading-5 text-brand-deep">
                   {doctor.missing.length} to add
                 </span>
               ) : null}

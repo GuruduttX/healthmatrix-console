@@ -15,7 +15,7 @@ export function CheckNewButton({
   variant,
   collapsed = false,
 }: {
-  variant: "sidebar" | "icon" | "glass";
+  variant: "sidebar" | "icon" | "frost";
   /** Sidebar folded to its icons: just the button, with the live dot on it. */
   collapsed?: boolean;
 }) {
@@ -48,8 +48,8 @@ export function CheckNewButton({
   const spinning = checking && asked;
 
   if (variant !== "sidebar") {
-    // `glass` sits on a dark header, round like the app's header buttons.
-    const glass = variant === "glass";
+    // `frost`: a round of glass, like the app's header buttons.
+    const round = variant === "frost" ? "btn-frost" : "";
     return (
       <>
         <button
@@ -58,11 +58,11 @@ export function CheckNewButton({
           disabled={spinning}
           aria-label="Check for updates"
           title={updated || "Check for updates"}
-          className={glass ? "btn btn-glass btn-icon size-11 min-h-11 disabled:opacity-100" : "btn btn-ghost btn-icon text-ink"}
+          className={round ? `btn btn-icon size-11 min-h-11 disabled:opacity-100 ${round}` : "btn btn-ghost btn-icon text-ink"}
         >
           <Icon
             aria-hidden
-            className={`size-4.5 ${spinning ? "animate-spin" : ""} ${justChecked ? (glass ? "text-brand-light" : "text-brand") : ""}`}
+            className={`size-4.5 ${spinning ? "animate-spin" : ""} ${justChecked ? "text-brand-deep" : ""}`}
           />
         </button>
         <span role="status" className="sr-only">
@@ -76,7 +76,7 @@ export function CheckNewButton({
 
   return (
     <div
-      className={`group relative flex items-center justify-center rounded-full border border-line bg-surface py-1 pr-1 transition-[padding] ${motion} ${
+      className={`glass-small group relative flex items-center justify-center rounded-full py-1 pr-1 transition-[padding] ${motion} ${
         collapsed ? "pl-1" : "pl-3.5"
       }`}
     >
@@ -102,10 +102,10 @@ export function CheckNewButton({
         title={collapsed ? "Live, every 30 s. Check for updates" : "Check for updates"}
         className="btn btn-ghost btn-sm btn-icon relative shrink-0"
       >
-        <Icon aria-hidden className={`size-4 ${spinning ? "animate-spin" : ""} ${justChecked ? "text-brand" : ""}`} />
+        <Icon aria-hidden className={`size-4 ${spinning ? "animate-spin" : ""} ${justChecked ? "text-brand-deep" : ""}`} />
         <span
           aria-hidden
-          className={`absolute right-1 top-1 size-2 rounded-full bg-success ring-2 ring-surface transition-opacity ${motion} ${collapsed ? "opacity-100" : "opacity-0"}`}
+          className={`absolute right-1 top-1 size-2 rounded-full bg-success ring-2 ring-white transition-opacity ${motion} ${collapsed ? "opacity-100" : "opacity-0"}`}
         />
       </button>
     </div>

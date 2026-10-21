@@ -31,15 +31,15 @@ export default async function VerifyPage() {
     <>
       <Link
         href={back}
-        className="-ml-1 inline-flex items-center gap-1.5 rounded-full py-1 pl-1 pr-3 text-[13px] font-semibold text-body transition-colors hover:bg-surface hover:text-ink"
+        className="-ml-1 inline-flex items-center gap-1.5 rounded-full py-1 pl-1 pr-3 text-[13px] font-semibold text-body transition-colors hover:bg-white/50 hover:text-ink"
       >
-        <span className="inline-flex size-7 items-center justify-center rounded-full border border-line-strong bg-card shadow-card">
+        <span className="glass-flat inline-flex size-7 items-center justify-center rounded-full">
           <ChevronLeft aria-hidden className="size-4" />
         </span>
         Change number
       </Link>
 
-      <h1 className="mt-4 font-display text-[1.6875rem] font-bold leading-tight tracking-[-0.015em] text-ink">
+      <h1 className="mt-4 font-display text-[1.6875rem] font-semibold leading-tight tracking-[-0.015em] text-ink">
         Enter the OTP
       </h1>
       <p className="mt-2 text-[15px] leading-relaxed text-body">

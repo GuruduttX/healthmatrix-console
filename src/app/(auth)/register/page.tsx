@@ -14,8 +14,8 @@ export default async function RegisterPage() {
 
   return (
     <>
-      <p className="mb-1 text-[13px] font-bold text-brand">New doctor</p>
-      <h1 className="font-display text-[1.6875rem] font-bold leading-tight tracking-[-0.015em] text-ink">
+      <p className="mb-1 text-[13px] font-bold text-brand-deep">New doctor</p>
+      <h1 className="font-display text-[1.6875rem] font-semibold leading-tight tracking-[-0.015em] text-ink">
         Join the doctor console
       </h1>
       <p className="mt-2 text-[15px] leading-relaxed text-body">
@@ -27,7 +27,7 @@ export default async function RegisterPage() {
 
       <p className="mt-5 text-center text-[13px] text-body">
         Already registered?{" "}
-        <Link href="/login" className="font-bold text-brand hover:text-brand-strong">
+        <Link href="/login" className="font-bold text-brand-deep hover:underline">
           Sign in
         </Link>
       </p>

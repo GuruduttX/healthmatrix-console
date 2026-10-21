@@ -119,7 +119,8 @@ function releasePreview(ref: RefObject<LocalVideoTrack | null>) {
  * camera or mic, so the doctor sees the patient arrive in the app's waiting room the moment
  * they do. Admit starts the consult and shares the doctor's camera and mic, which pulls the
  * patient into the call. Ending closes the room for both. It can fill the screen and shrink back.
- * Opened from an Admit button elsewhere (`admitOnOpen`), it admits the patient by itself.
+ * Opened from an Admit button elsewhere (`admitOnOpen`), it admits the patient by itself. Glass
+ * on the lit page until the call starts, then dark, as the app's waiting room and call screen.
  */
 export function ConsultStage({
   consultId,
@@ -495,13 +496,13 @@ export function ConsultStage({
 
   if (phase === "ended") {
     return (
-      <section className="rounded-3xl border border-line bg-card px-6 py-8 text-center shadow-card sm:py-10">
+      <section className="glass-panel rounded-3xl px-6 py-8 text-center sm:py-10">
         <span aria-hidden className="mx-auto inline-flex size-19 items-center justify-center rounded-full bg-success-soft">
-          <span className="inline-flex size-13.5 items-center justify-center rounded-full bg-card text-success shadow-card">
+          <span className="glass-small inline-flex size-13.5 items-center justify-center rounded-full text-success">
             <CircleCheck className="size-6" />
           </span>
         </span>
-        <h2 className="mt-4 font-display text-[1.375rem] font-bold tracking-[-0.01em] text-ink">Consult ended</h2>
+        <h2 className="mt-4 font-display text-[1.375rem] font-semibold tracking-[-0.01em] text-ink">Consult ended</h2>
         <p className="mx-auto mt-1.5 max-w-md text-sm leading-relaxed text-body">
           {seconds > 0 ? `You spoke with ${firstName} for ${clock(seconds)}. ` : ""}
           Sign the prescription so medicines and follow-ups reach {firstName}’s reminders. Tests you
@@ -553,12 +554,32 @@ export function ConsultStage({
 
   const problem = live ? mediaProblem : (mediaProblem ?? previewProblem);
 
+  /**
+   * Live, the stage is dark, as the app's call screen: ink deepening to teal, white words and
+   * see-through controls. Before Admit it is glass on the lit page, as the app's waiting room. Full
+   * screen has no page behind it to see through, so it gets the page's peach and sky as a wash.
+   */
+  const surface = live
+    ? `bg-linear-to-br from-ink-deep via-ink via-55% to-teal text-white ${expanded ? "" : "relative shadow-lifted"}`
+    : expanded
+      ? "bg-linear-to-bl from-[#f8eadf] via-canvas to-[#e3eef7] text-ink"
+      : "glass-panel text-ink";
+  const pill = "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold";
+  const warningPill = `${pill} ${live ? "bg-white/90" : "border border-white/85 bg-warning-soft"} text-warning`;
+  /** The doctor's own picture: dark behind the camera, as video is; a pane of glass when there's none before Admit. */
+  const selfFrame = live
+    ? "border border-white/25 bg-ink-mid shadow-floating"
+    : selfVisible
+      ? "border-2 border-white bg-ink-mid shadow-card"
+      : "glass-flat";
+  const initials = "inline-flex size-28 items-center justify-center rounded-full font-display text-4xl font-semibold tracking-[-0.02em]";
+
   return (
     <section
       ref={stageRef}
       aria-label="Video consult"
-      className={`hero-bg flex flex-col items-center justify-center overflow-hidden text-white ${
-        expanded ? "fixed inset-0 z-50 h-dvh w-full" : "relative aspect-video min-h-96 w-full rounded-3xl shadow-lifted"
+      className={`flex flex-col items-center justify-center overflow-hidden ${surface} ${
+        expanded ? "fixed inset-0 z-50 h-dvh w-full" : "aspect-video min-h-96 w-full rounded-3xl"
       }`}
     >
       <div
@@ -572,27 +593,30 @@ export function ConsultStage({
         className={`absolute inset-x-4 z-10 flex items-start justify-between gap-3 ${expanded ? "top-[calc(1rem+env(safe-area-inset-top))]" : "top-4"}`}
       >
         <div className="flex flex-wrap items-center gap-2">
-          {recordShared ? (
-            <span className="glass inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold backdrop-blur">
-              <LockOpen aria-hidden className="size-3.5 text-live" />
-              {firstName}’s record shared by OTP
-            </span>
-          ) : (
-            <span className="glass rounded-full px-2.5 py-1 text-xs font-semibold backdrop-blur">Record not shared yet</span>
-          )}
+          {/* See-through on the dark call, glass set into the pane before it. */}
+          <span className={`${pill} ${live ? "glass backdrop-blur" : "glass-flat text-ink-mid"}`}>
+            {recordShared ? (
+              <>
+                <LockOpen aria-hidden className={`size-3.5 ${live ? "text-live" : "text-success"}`} />
+                {firstName}’s record shared by OTP
+              </>
+            ) : (
+              "Record not shared yet"
+            )}
+          </span>
           {live && connected && remote.present && !remote.audioOn ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-black/40 px-2.5 py-1 text-xs font-semibold">
+            <span className={`${pill} bg-black/40`}>
               <MicOff aria-hidden className="size-3.5" />
               Muted
             </span>
           ) : null}
           {connected && reconnecting ? (
-            <span role="status" className="inline-flex items-center gap-1.5 rounded-full bg-warning-soft px-2.5 py-1 text-xs font-semibold text-warning">
+            <span role="status" className={warningPill}>
               <WifiOff aria-hidden className="size-3.5" />
               Reconnecting…
             </span>
           ) : connected && weakConnection ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-warning-soft px-2.5 py-1 text-xs font-semibold text-warning">
+            <span className={warningPill}>
               <SignalLow aria-hidden className="size-3.5" />
               Weak connection
             </span>
@@ -610,7 +634,7 @@ export function ConsultStage({
             onClick={expanded ? shrink : expand}
             aria-label={expanded ? "Exit full screen" : "Full screen"}
             title={expanded ? "Exit full screen" : "Full screen"}
-            className="btn btn-glass btn-icon size-9 min-h-9"
+            className={`btn btn-icon size-9 min-h-9 ${live ? "btn-glass" : "btn-frost"}`}
           >
             {expanded ? <Minimize2 aria-hidden className="size-4" /> : <Maximize2 aria-hidden className="size-4" />}
           </button>
@@ -619,25 +643,34 @@ export function ConsultStage({
 
       {showPatient ? null : (
         <div className="relative z-10 flex flex-col items-center px-6 text-center">
-          <span className="relative inline-flex size-28 items-center justify-center">
-            {inWaitingRoom ? <span aria-hidden className="absolute inset-0 animate-ping rounded-full bg-brand-mid/40" /> : null}
-            <span className="relative inline-flex size-28 items-center justify-center rounded-full bg-white/10 font-display text-4xl font-bold tracking-[-0.02em] ring-1 ring-white/15">
-              {patientInitials}
-            </span>
+          <span className="relative inline-flex rounded-full">
+            {/* A ring that grows out of the patient's round and fades, as in the app's waiting room. */}
+            {inWaitingRoom ? (
+              <span aria-hidden className="absolute inset-0 rounded-full border-[1.5px] border-brand-light motion-safe:animate-ping" />
+            ) : null}
+            {live ? (
+              <span className={`relative ${initials} bg-white/10 ring-1 ring-white/15`}>{patientInitials}</span>
+            ) : (
+              <span className="relative rounded-full bg-white/70 p-1 shadow-[0_1px_2px_rgba(30,50,70,0.06),0_6px_14px_rgba(30,50,70,0.1)]">
+                <span className={`${initials} bg-linear-to-br from-[#eef3f4] to-[#dbe5e7] text-ink-mid`}>{patientInitials}</span>
+              </span>
+            )}
           </span>
-          <p className="mt-4 font-display text-xl font-bold tracking-[-0.01em]">
+          <p className="mt-4 font-display text-xl font-semibold tracking-[-0.01em]">
             {inWaitingRoom ? `${patientName} is in the waiting room` : patientName}
           </p>
-          <p role="status" className="mt-1 max-w-md text-[13px] text-white/70">
+          <p role="status" className={`mt-1 max-w-md text-[13px] ${live ? "text-white/70" : "text-body"}`}>
             {message}
           </p>
-          {!live && !inWaitingRoom && connected ? <p className="mt-1 text-[13px] text-white/50">Scheduled for {time}.</p> : null}
-          {problem ? <p className="mt-2 max-w-md text-[13px] font-medium text-brand-light">{problem}</p> : null}
+          {!live && !inWaitingRoom && connected ? <p className="mt-1 text-[13px] text-muted">Scheduled for {time}.</p> : null}
+          {problem ? (
+            <p className={`mt-2 max-w-md text-[13px] ${live ? "font-medium text-brand-light" : "font-semibold text-danger"}`}>{problem}</p>
+          ) : null}
           {action ? (
             <button
               type="button"
               onClick={action.onClick}
-              className="btn btn-light btn-sm mt-4"
+              className={`btn btn-sm mt-4 ${live ? "btn-light" : "btn-secondary"}`}
             >
               <RotateCw aria-hidden className="size-4" />
               {action.label}
@@ -648,7 +681,7 @@ export function ConsultStage({
               type="button"
               onClick={admit}
               disabled={admitting}
-              className="btn btn-primary btn-lg mt-6 px-8 shadow-floating"
+              className="btn btn-primary btn-lg mt-6 px-8"
             >
               <UserCheck aria-hidden className="size-5" />
               {admitting ? "Admitting…" : "Admit"}
@@ -660,7 +693,7 @@ export function ConsultStage({
       {videoReady ? (
         <div
           aria-label={live ? "Your video" : "Your camera preview, not shared"}
-          className={`absolute right-4 z-10 h-20 w-16 overflow-hidden rounded-2xl border border-white/25 bg-ink-mid shadow-floating sm:top-auto [&>div>video]:size-full [&>div>video]:-scale-x-100 [&>div>video]:object-cover ${
+          className={`absolute right-4 z-10 h-20 w-16 overflow-hidden rounded-2xl sm:top-auto [&>div>video]:size-full [&>div>video]:-scale-x-100 [&>div>video]:object-cover ${selfFrame} ${
             expanded
               ? "top-[calc(4rem+env(safe-area-inset-top))] sm:bottom-[calc(6rem+env(safe-area-inset-bottom))] sm:h-36 sm:w-28"
               : "top-16 sm:bottom-20 sm:h-24 sm:w-20"
@@ -669,7 +702,7 @@ export function ConsultStage({
           <div ref={selfBox} className={`size-full ${selfVisible ? "" : "hidden"}`} />
           {selfVisible ? null : (
             <span className="absolute inset-0 flex items-center justify-center">
-              <VideoOff aria-hidden className="size-5 text-white/70" />
+              <VideoOff aria-hidden className={`size-5 ${live ? "text-white/70" : "text-muted"}`} />
             </span>
           )}
         </div>
@@ -699,11 +732,12 @@ export function ConsultStage({
           >
             {cameraOn ? <Video aria-hidden className="size-5" /> : <VideoOff aria-hidden className="size-5" />}
           </button>
+          {/* The app's hang-up red: brighter than the crimson, so it reads on the dark call. No glow. */}
           <button
             type="button"
             onClick={() => setConfirmingEnd(true)}
             disabled={pending}
-            className="inline-flex h-12 items-center gap-2 rounded-full bg-[#d93a1f] px-5 text-sm font-bold shadow-[0_8px_20px_rgba(217,58,31,0.4)] transition-colors hover:bg-[#bf2f17] disabled:opacity-60"
+            className="inline-flex h-12 items-center gap-2 rounded-full bg-[#e5372b] px-5 text-sm font-bold text-white transition-colors hover:bg-[#c92e23] disabled:opacity-60"
           >
             <PhoneOff aria-hidden className="size-5" />
             End consult

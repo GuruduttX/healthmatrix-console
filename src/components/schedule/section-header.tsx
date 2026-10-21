@@ -3,7 +3,7 @@
 import { ChevronDown } from "lucide-react";
 import type { ReactNode } from "react";
 
-/** A section heading with a chevron on the right that shows or hides the section's body. */
+/** A section heading with a chevron on the right, in a round of glass, that shows or hides the section's body. */
 export function SectionHeader({
   title,
   open,
@@ -25,9 +25,9 @@ export function SectionHeader({
         aria-controls={controls}
         aria-label={open ? "Hide details" : "Show details"}
         onClick={onToggle}
-        className="btn btn-ghost btn-sm btn-icon -my-1 -mr-1.5 text-muted"
+        className="btn btn-frost btn-sm btn-icon -my-1"
       >
-        <ChevronDown aria-hidden className={`size-4 transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown aria-hidden className={`size-4 text-muted transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
     </div>
   );

@@ -41,7 +41,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             className="nudge-enter flex max-w-sm items-center gap-2.5 rounded-2xl bg-ink px-4 py-3 text-[13px] font-semibold text-white shadow-floating ring-1 ring-white/10"
           >
             {toast.problem ? (
-              <TriangleAlert aria-hidden className="size-5 shrink-0 text-warning-soft" />
+              // A light amber: the warning tint is see-through now, and would vanish on the ink.
+              <TriangleAlert aria-hidden className="size-5 shrink-0 text-[#f2c14e]" />
             ) : (
               <CircleCheck aria-hidden className="size-5 shrink-0 text-live" />
             )}

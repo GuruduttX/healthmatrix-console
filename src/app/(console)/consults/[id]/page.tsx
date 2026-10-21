@@ -5,10 +5,12 @@ import { notFound } from "next/navigation";
 import { ConsultPanel } from "@/components/consult/consult-panel";
 import { ConsultStage } from "@/components/consult/consult-stage";
 import { AccessGate } from "@/components/record/access-gate";
+import { EkaaySummary } from "@/components/record/ekaay-summary";
 import { PatientRecordCards } from "@/components/record/patient-record-cards";
 import { Card, Chip, PageHeader, PanelLink, Section } from "@/components/ui";
 import { getConsult, getVaccineSchedule } from "@/lib/console-data";
 import { getCurrentDoctor } from "@/lib/doctor-view";
+import { ekaayReady } from "@/lib/ekaay";
 import { ageAndSex } from "@/lib/patient-text";
 import { videoReady } from "@/lib/video";
 
@@ -75,11 +77,15 @@ export default async function ConsultPage(props: PageProps<"/consults/[id]">) {
             {record ? (
               <ConsultPanel
                 record={record}
+                summary={
+                  <EkaaySummary memberId={patient.id} patientName={patient.firstName} lines={record.summary} className="mt-4" />
+                }
                 memberId={patient.id}
                 consultId={consult.id}
                 patientName={patient.firstName}
                 doctorName={doctor.shortName}
                 allergyTerms={found.allergyTerms}
+                askReady={ekaayReady()}
                 initialTab={consult.status === "completed" ? "Prescription" : "Summary"}
               />
             ) : null}

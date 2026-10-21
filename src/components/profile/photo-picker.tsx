@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useEffect, useRef, useState, useTransition, type ChangeEvent } from "react";
 
 import { DialogHeader, dialogClass } from "@/components/dialog-parts";
+import { IconTile } from "@/components/ui";
 import { removeProfilePhoto, uploadProfilePhoto } from "@/lib/profile-actions";
 
 /** Files under this go up as they are; bigger ones are shrunk in the browser first. */
@@ -108,7 +109,6 @@ export function PhotoPicker({ photoUrl, initials }: { photoUrl?: string; initial
 
   const shown = preview ?? saved;
   const sheetItem = "btn btn-lg w-full justify-start gap-3 px-2.5 text-left font-medium";
-  const sheetIcon = "inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-line bg-surface text-body";
 
   return (
     <div className="flex flex-col items-center gap-2.5 text-center">
@@ -119,27 +119,30 @@ export function PhotoPicker({ photoUrl, initials }: { photoUrl?: string; initial
         aria-label={saved ? "Change profile photo" : "Add profile photo"}
         className="group relative rounded-full disabled:cursor-wait"
       >
-        <span className="relative inline-flex size-24 items-center justify-center overflow-hidden rounded-full bg-linear-to-br from-brand-mid to-brand text-2xl font-bold text-white shadow-card ring-4 ring-card">
-          {shown ? (
-            <Image
-              src={shown}
-              alt=""
-              fill
-              sizes="96px"
-              unoptimized={Boolean(preview)}
-              className="object-cover"
-              onError={() => setPreview(undefined)}
-            />
-          ) : (
-            initials
-          )}
-          {pending ? (
-            <span className="absolute inset-0 flex items-center justify-center bg-ink/55">
-              <LoaderCircle aria-hidden className="size-6 animate-spin" />
-            </span>
-          ) : null}
+        {/* In a ring of white, as on the profile; the camera badge is the one orange on it. */}
+        <span className="block rounded-full bg-white/70 p-1 shadow-[0_1px_2px_rgba(30,50,70,0.06),0_6px_14px_rgba(30,50,70,0.1)]">
+          <span className="relative inline-flex size-24 items-center justify-center overflow-hidden rounded-full bg-linear-to-br from-brand-mid to-brand text-2xl font-bold text-white">
+            {shown ? (
+              <Image
+                src={shown}
+                alt=""
+                fill
+                sizes="96px"
+                unoptimized={Boolean(preview)}
+                className="object-cover"
+                onError={() => setPreview(undefined)}
+              />
+            ) : (
+              initials
+            )}
+            {pending ? (
+              <span className="absolute inset-0 flex items-center justify-center bg-ink/55">
+                <LoaderCircle aria-hidden className="size-6 animate-spin" />
+              </span>
+            ) : null}
+          </span>
         </span>
-        <span className="absolute -bottom-0.5 -right-0.5 inline-flex size-9 items-center justify-center rounded-full border-[3px] border-card bg-brand text-white shadow-raised transition-transform group-active:scale-95">
+        <span className="absolute bottom-0 right-0 inline-flex size-9 items-center justify-center rounded-full border-[2.5px] border-white bg-brand-deep text-white shadow-glow transition-transform group-active:scale-95">
           <Camera aria-hidden className="size-4" />
         </span>
       </button>
@@ -148,7 +151,7 @@ export function PhotoPicker({ photoUrl, initials }: { photoUrl?: string; initial
         {pending ? (
           <span className="text-body">Saving your photo…</span>
         ) : message ? (
-          <span className={message.tone === "error" ? "text-danger" : "text-brand"}>{message.text}</span>
+          <span className={message.tone === "error" ? "text-danger" : "text-brand-deep"}>{message.text}</span>
         ) : (
           <button
             type="button"
@@ -177,23 +180,17 @@ export function PhotoPicker({ photoUrl, initials }: { photoUrl?: string; initial
           </p>
           {/* Phones and tablets only: on a computer the camera option opens the same file picker. */}
           <button type="button" onClick={() => choose(cameraRef.current)} className={`${sheetItem} btn-ghost text-ink pointer-fine:hidden`}>
-            <span className={sheetIcon}>
-              <Camera aria-hidden className="size-4" />
-            </span>
+            <IconTile icon={Camera} tone="neutral" />
             Take a photo
           </button>
           <button type="button" onClick={() => choose(galleryRef.current)} className={`${sheetItem} btn-ghost text-ink`}>
-            <span className={sheetIcon}>
-              <ImagePlus aria-hidden className="size-4" />
-            </span>
+            <IconTile icon={ImagePlus} tone="neutral" />
             <span className="pointer-coarse:hidden">Choose a file</span>
             <span className="hidden pointer-coarse:inline">Choose from gallery</span>
           </button>
           {saved ? (
             <button type="button" onClick={remove} className={`${sheetItem} btn-danger-ghost`}>
-              <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-danger-soft">
-                <Trash2 aria-hidden className="size-4" />
-              </span>
+              <IconTile icon={Trash2} tone="danger" />
               Remove photo
             </button>
           ) : null}

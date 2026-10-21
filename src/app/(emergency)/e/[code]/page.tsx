@@ -1,14 +1,18 @@
+import { Activity, HeartHandshake, Pill, ShieldCheck, TriangleAlert } from "lucide-react";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { after } from "next/server";
 
 import {
   BloodGroup,
-  Card,
   Contacts,
+  Detail,
   EmergencyBanner,
   Footnote,
   Identity,
+  Items,
+  NoDetails,
+  Panel,
 } from "@/components/emergency/emergency-profile";
 import { HelplineBar } from "@/components/emergency/helpline-bar";
 import { clientIp, findEmergencyProfile, logScan } from "@/lib/emergency-db";
@@ -56,34 +60,55 @@ export default async function EmergencyPage(props: PageProps<"/e/[code]">) {
       <EmergencyBanner title="Emergency profile">
         If {firstName} needs help, call an ambulance first, then their family.
       </EmergencyBanner>
-      <Identity code={code} member={view.member} />
+      <Identity code={code} member={view.member}>
+        {view.bloodGroup ? <BloodGroup bloodGroup={view.bloodGroup} /> : null}
+      </Identity>
 
-      {view.bloodGroup ? <BloodGroup bloodGroup={view.bloodGroup} /> : null}
-      {view.allergies ? <Card label="Allergies">{view.allergies.join(", ")}</Card> : null}
-      {view.conditions ? <Card label="Conditions">{view.conditions.join(", ")}</Card> : null}
-      {view.medicines ? <Card label="Current medicines">{view.medicines.join("; ")}</Card> : null}
-      {view.emergencyContacts ? <Contacts contacts={view.emergencyContacts} /> : null}
-      {view.organDonor !== undefined ? (
-        <Card label="Organ donor">{view.organDonor ? "Yes" : "No"}</Card>
-      ) : null}
-      {view.insurance ? (
-        <Card label="Insurance">
-          {view.insurance.provider}
-          {view.insurance.policyNumber ? (
-            <span className="block text-base font-medium text-body">
-              Policy {view.insurance.policyNumber}
-            </span>
-          ) : null}
-        </Card>
-      ) : null}
-
-      {hasDetails ? null : (
-        <section className="rounded-2xl bg-card px-4 py-4 text-ink">
-          {firstName} has not added medical details yet. Call the helplines below.
-        </section>
-      )}
-
+      {/* Right under who this is, as on the app's responder preview: the first thing to do is call. */}
       <HelplineBar />
+
+      {view.allergies || view.conditions || view.medicines ? (
+        <Panel title="Medical">
+          {view.allergies ? (
+            <Detail icon={TriangleAlert} tone="danger" label="Allergies">
+              <Items items={view.allergies} flag="danger" />
+            </Detail>
+          ) : null}
+          {view.conditions ? (
+            <Detail icon={Activity} tone="warning" label="Conditions">
+              <Items items={view.conditions} flag="warning" />
+            </Detail>
+          ) : null}
+          {view.medicines ? (
+            <Detail icon={Pill} label="Current medicines">
+              <Items items={view.medicines} />
+            </Detail>
+          ) : null}
+        </Panel>
+      ) : null}
+      {view.emergencyContacts ? <Contacts contacts={view.emergencyContacts} /> : null}
+      {view.organDonor !== undefined || view.insurance ? (
+        <Panel title="Other details">
+          {view.organDonor !== undefined ? (
+            <Detail icon={HeartHandshake} label="Organ donor">
+              {view.organDonor ? "Yes" : "No"}
+            </Detail>
+          ) : null}
+          {view.insurance ? (
+            <Detail icon={ShieldCheck} label="Insurance">
+              {view.insurance.provider}
+              {view.insurance.policyNumber ? (
+                <span className="block text-base font-medium text-body">
+                  Policy {view.insurance.policyNumber}
+                </span>
+              ) : null}
+            </Detail>
+          ) : null}
+        </Panel>
+      ) : null}
+
+      {hasDetails ? null : <NoDetails firstName={firstName} />}
+
       <Footnote />
     </>
   );

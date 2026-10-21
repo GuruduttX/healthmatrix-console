@@ -1,5 +1,5 @@
 import { FileSignature, MessageSquareText } from "lucide-react";
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { JumpNav } from "@/components/jump-nav";
@@ -11,14 +11,12 @@ import { PrescriptionDraft } from "@/components/record/prescription-draft";
 import { Card, CardTitle } from "@/components/ui";
 import { getPatient, getPatientRecord, getVaccineSchedule } from "@/lib/console-data";
 import { getCurrentDoctor } from "@/lib/doctor-view";
+import { ekaayReady } from "@/lib/ekaay";
 
 export async function generateMetadata(props: PageProps<"/patients/[id]">): Promise<Metadata> {
   const { id } = await props.params;
   return { title: (await getPatient(id))?.patient.name ?? "Patient" };
 }
-
-/** Phones: the browser's bars take the dark header's colour. */
-export const viewport: Viewport = { themeColor: "#0b2129" };
 
 /** The parts of the record a doctor jumps between on a phone, in the order they come. */
 const sections = [
@@ -87,7 +85,7 @@ export default async function PatientPage(props: PageProps<"/patients/[id]">) {
                     <CardTitle icon={MessageSquareText} tile tone="neutral">
                       Ask the record
                     </CardTitle>
-                    <AskRecord />
+                    <AskRecord ready={ekaayReady()} memberId={patient.id} patientName={patient.firstName} />
                   </Card>
                 </div>
               </div>

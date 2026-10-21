@@ -9,6 +9,8 @@ import { clockLabel, fromMinutes, toMinutes } from "@/lib/schedule";
  * A time field: type a time ("9:30 pm", "21:30", "noon"), or pick it on a clock face that
  * opens below. The dial sets the hour first, then the minutes in 5-minute steps. Values are
  * "HH:mm" in 24-hour time; "24:00" (midnight, end of day) only where `allowMidnight` is set.
+ * The box is frosted glass like the other fields, as the app's time picker; the clock face
+ * floats on solid white, as menus do.
  */
 
 const SIZE = 224;
@@ -146,7 +148,7 @@ export function ClockField({
 
   return (
     <div ref={wrapper} className="relative">
-      <div className="flex min-h-11 items-center rounded-lg border-[1.5px] border-line-strong bg-card transition-[border-color,box-shadow] focus-within:border-brand focus-within:shadow-[0_0_0_4px_rgba(221,67,1,0.12)] lg:min-h-9 lg:rounded-xl lg:border">
+      <div className="flex min-h-11 items-center rounded-[1rem] border-[1.5px] border-line-strong bg-white/62 shadow-(--glass-glow-small) transition-[border-color,box-shadow] focus-within:border-brand focus-within:shadow-[0_0_0_4px_rgba(221,67,1,0.12)] lg:min-h-9 lg:rounded-lg">
         <input
           id={id}
           aria-label={label}
@@ -171,7 +173,7 @@ export function ClockField({
           }}
           inputMode="text"
           autoComplete="off"
-          className="w-[5.25rem] min-w-0 self-stretch bg-transparent pl-3 text-sm font-medium tabular-nums text-ink outline-none"
+          className="w-21 min-w-0 self-stretch bg-transparent pl-3 text-sm font-medium tabular-nums text-ink outline-none"
         />
         <button
           type="button"
@@ -205,7 +207,7 @@ export function ClockField({
             >
               {midnight ? "12" : String(hour).padStart(2, "0")}
             </button>
-            <span className="font-display text-3xl font-bold text-muted">:</span>
+            <span className="font-display text-3xl font-semibold text-muted">:</span>
             <button
               type="button"
               onClick={() => setMode("minute")}
@@ -214,7 +216,8 @@ export function ClockField({
             >
               {String(minute).padStart(2, "0")}
             </button>
-            <div className="ml-2 flex flex-col gap-1">
+            {/* AM and PM as a small segmented control, as the app's: a quiet track, the choice a raised white pane. */}
+            <div className="ml-2 flex flex-col gap-0.5 rounded-xl bg-selected p-0.5">
               {(["am", "pm"] as const).map((half) => {
                 const active = (half === "pm") === pm && !midnight;
                 return (
@@ -223,7 +226,7 @@ export function ClockField({
                     type="button"
                     aria-pressed={active}
                     onClick={() => onChange(join(hour, minute, half === "pm"))}
-                    className={`rounded-full px-2.5 py-0.5 text-xs font-bold uppercase transition-colors ${active ? "bg-brand text-white" : "text-body hover:bg-selected hover:text-ink"}`}
+                    className={`rounded-[0.625rem] px-2.5 py-1 text-xs font-bold uppercase transition-[background-color,color,box-shadow] ${active ? "bg-white text-ink shadow-card" : "text-muted hover:text-ink"}`}
                   >
                     {half}
                   </button>

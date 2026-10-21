@@ -8,7 +8,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useDraftOwner } from "@/components/record/draft-owner";
 import { LabTestDialog } from "@/components/record/lab-test-dialog";
 import { VaccineDialog, type VaccineFormMemory } from "@/components/record/vaccine-dialog";
-import { Chip } from "@/components/ui";
+import { Chip, IconTile } from "@/components/ui";
 import { savePrescription } from "@/lib/console-actions";
 import type { LabTestInput } from "@/lib/lab-tests";
 import { allergyClash } from "@/lib/patient-text";
@@ -219,7 +219,7 @@ export function PrescriptionDraft({
   return (
     <div className="mt-4">
       {restored ? (
-        <div role="status" className="mb-3 flex items-center gap-3 rounded-2xl bg-surface py-2 pl-3.5 pr-1.5 text-[13px]">
+        <div role="status" className="glass-flat mb-3 flex items-center gap-3 rounded-2xl py-2 pl-3.5 pr-1.5 text-[13px]">
           <History aria-hidden className="size-4 shrink-0 text-muted" />
           <p className="min-w-0 flex-1 text-ink">
             <span className="font-semibold">Picked up where you left off.</span>{" "}
@@ -389,15 +389,13 @@ function lastEdited(at: number) {
   return `${when.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}, ${time}`;
 }
 
-/** Lab tests on the prescription, as one card; with `onRemove` each can be taken off. */
+/** Lab tests on the prescription, as one panel of glass set into the card; with `onRemove` each can be taken off. */
 function TestList({ tests, onRemove }: { tests: LabTestInput[]; onRemove?: (index: number) => void }) {
   if (tests.length === 0) return null;
   return (
-    <section className="mt-3 rounded-2xl bg-surface p-3.5">
+    <section className="glass-flat mt-3 rounded-2xl p-3.5">
       <h3 className="flex items-center gap-2 text-[13px] font-semibold text-ink">
-        <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-brand">
-          <FlaskConical aria-hidden className="size-3.5" />
-        </span>
+        <IconTile icon={FlaskConical} size="xs" />
         Lab tests
       </h3>
       <ul className="mt-2 divide-y divide-line">
@@ -426,7 +424,7 @@ function TestList({ tests, onRemove }: { tests: LabTestInput[]; onRemove?: (inde
   );
 }
 
-/** Vaccines on the prescription; with handlers they can be edited and removed. */
+/** Vaccines on the prescription, each a panel of glass set into the card; with handlers they can be edited and removed. */
 function VaccineList({
   vaccines,
   onEdit,
@@ -440,10 +438,8 @@ function VaccineList({
   return (
     <ul className="mt-3 flex flex-col gap-2">
       {vaccines.map((v, i) => (
-        <li key={i} className="flex items-start gap-3 rounded-2xl bg-surface p-3.5">
-          <span className="mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-brand">
-            <Syringe aria-hidden className="size-4" />
-          </span>
+        <li key={i} className="glass-flat flex items-start gap-3 rounded-2xl p-3.5">
+          <IconTile icon={Syringe} size="md" className="mt-0.5" />
           <div className="min-w-0 flex-1 text-[13px]">
             <p className="font-semibold text-ink">
               {v.name}

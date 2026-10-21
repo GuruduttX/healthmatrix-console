@@ -77,7 +77,7 @@ export function ProfileNudge({ missing }: { missing: ProfileGap[] }) {
   return (
     <aside
       aria-label="Complete your profile"
-      className="nudge-enter relative flex items-center gap-1 rounded-xl border border-line bg-card py-3 pl-3.5 pr-2 shadow-card lg:hidden print:hidden"
+      className="nudge-enter glass-panel relative flex items-center gap-1 rounded-2xl py-3 pl-3.5 pr-2 lg:hidden print:hidden"
     >
       <Link href="/profile/edit" className="pressable flex min-w-0 flex-1 items-center gap-3">
         <Ring percent={percent} />

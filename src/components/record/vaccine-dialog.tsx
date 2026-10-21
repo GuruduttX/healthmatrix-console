@@ -386,7 +386,7 @@ export function VaccineDialog({
                   ).map(([value, label]) => (
                     <label
                       key={value}
-                      className="segment cursor-pointer py-2 text-center has-checked:bg-card has-checked:text-ink has-checked:shadow-[0_1px_2px_rgba(14,42,51,0.1),0_0_0_1px_rgba(14,42,51,0.04)] has-focus-visible:outline-2 has-focus-visible:outline-offset-1 has-focus-visible:outline-brand lg:py-1.5"
+                      className="segment cursor-pointer py-2 text-center has-checked:bg-white/92 has-checked:text-ink has-checked:shadow-(--glass-shadow-small) has-focus-visible:outline-2 has-focus-visible:outline-offset-1 has-focus-visible:outline-brand lg:py-1.5"
                     >
                       <input
                         type="radio"

@@ -35,7 +35,12 @@ export function RequestsCard({
   const missed = requests.filter((r) => r.missed);
 
   return (
-    <Section id={id} title="Booking requests" count={waiting.length} className={className}>
+    <Section
+      id={id}
+      title="Booking requests"
+      count={waiting.length}
+      className={className}
+    >
       <p className="-mt-1.5 mb-3 px-0.5 text-[13px] text-body">Times outside your open slots. Nothing is booked until you approve.</p>
       {/* Lays its rows out by its own width: a row on Schedule, stacked in Today's side column. */}
       <Card flush className="@container">
@@ -52,7 +57,9 @@ export function RequestsCard({
         )}
         {missed.length ? (
           <>
-            <h3 className="border-y border-line bg-surface px-4 py-2 text-xs font-bold text-body @md:px-5">
+            <h3
+              className="border-y border-line bg-white/45 px-4 py-2 text-xs font-bold text-body @md:px-5"
+            >
               Time passed without a reply
             </h3>
             <ul className="divide-y divide-line">
@@ -129,7 +136,7 @@ function RequestRow({ request }: { request: ConsultRequest }) {
             {request.about ? <span className="text-[13px] text-muted"> · {request.about}</span> : null}
           </p>
           <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[13px] text-ink">
-            <CalendarClock aria-hidden className="size-3.5 text-brand" />
+            <CalendarClock aria-hidden className="size-3.5 text-brand-deep" />
             <span className="font-bold tabular-nums">{request.when}</span>
             {request.inHowLong ? <span className="text-body">· {request.inHowLong}</span> : null}
           </p>
@@ -232,7 +239,7 @@ function DeclineDialog({
               rows={3}
               aria-describedby={`${id}-hint`}
               placeholder="Pick one above or write your own."
-              className="field font-normal"
+              className="field"
             />
           </label>
           <p id={`${id}-hint`} className="mt-1.5 text-xs text-muted">

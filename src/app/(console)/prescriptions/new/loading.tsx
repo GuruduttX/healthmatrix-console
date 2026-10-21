@@ -1,4 +1,4 @@
-import { Bone, SkeletonCard, SkeletonPage, StackBone } from "@/components/skeletons";
+import { Bone, SkeletonCard, SkeletonPage, StackBone, TitleBone } from "@/components/skeletons";
 
 /** New prescription: pick the patient, the three ways to capture, and the safety checks. */
 export default function NewPrescriptionLoading() {
@@ -23,7 +23,7 @@ export default function NewPrescriptionLoading() {
             </div>
             <div className="mt-3 grid grid-cols-3 gap-2 sm:gap-3">
               {Array.from({ length: 3 }, (_, i) => (
-                <div key={i} className="flex flex-col items-center gap-2 rounded-2xl bg-surface px-2 py-4">
+                <div key={i} className="glass-flat flex flex-col items-center gap-2 rounded-2xl px-2 py-4">
                   <Bone className="size-5" />
                   <Bone className="h-3.5 w-14" />
                 </div>
@@ -33,10 +33,7 @@ export default function NewPrescriptionLoading() {
         </div>
 
         <SkeletonCard>
-          <div className="flex items-center gap-2.5">
-            <Bone className="size-8 rounded-[0.625rem]" />
-            <Bone className="h-4.5 w-28" />
-          </div>
+          <TitleBone width="w-28" />
           <div className="mt-4 flex flex-col gap-4">
             {Array.from({ length: 2 }, (_, i) => (
               <div key={i}>

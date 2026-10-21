@@ -30,8 +30,9 @@ export function AccessGate({
   if (status === "active") {
     return (
       <>
-        <p className="mb-5 flex w-fit max-w-full items-center gap-2.5 rounded-2xl bg-success-soft py-2 pl-2 pr-4 text-[13px] font-semibold leading-snug text-success">
-          <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-card">
+        {/* A pill of glass on the page, its lock in a round tinted the colour of "open". */}
+        <p className="glass-small mb-5 flex w-fit max-w-full items-center gap-2.5 rounded-2xl py-1.5 pl-1.5 pr-4 text-[13px] font-semibold leading-snug text-ink-mid">
+          <span data-tone="success" className="brand-tile size-7">
             <LockOpen aria-hidden className="size-3.5" />
           </span>
           {note}
@@ -46,14 +47,14 @@ export function AccessGate({
   const sendToField = <input type="hidden" name="sendTo" value={sendTo} />;
 
   return (
-    <section className="mx-auto max-w-xl rounded-xl border border-line bg-card px-5 py-7 text-center shadow-card sm:p-8">
-      {/* The app's empty-state look: the icon on soft rings. */}
-      <span aria-hidden className="mx-auto inline-flex size-19 items-center justify-center rounded-full bg-brand-soft">
-        <span className="inline-flex size-13.5 items-center justify-center rounded-full bg-linear-to-br from-brand-mid to-brand text-white shadow-glow">
+    <section className="glass-panel mx-auto max-w-xl rounded-2xl px-5 py-7 text-center sm:p-8">
+      {/* The app's empty-state look: the icon in a round of glass on a soft halo. */}
+      <span aria-hidden className="mx-auto inline-flex size-19 items-center justify-center rounded-full bg-brand-soft text-brand-deep">
+        <span className="glass-small inline-flex size-13.5 items-center justify-center rounded-full">
           {waiting ? <KeyRound className="size-6" /> : <Lock className="size-6" />}
         </span>
       </span>
-      <h2 className="mt-4 font-display text-[1.375rem] font-bold tracking-[-0.01em] text-ink">
+      <h2 className="mt-4 font-display text-[1.375rem] font-semibold tracking-[-0.01em] text-ink">
         {waiting ? "Enter the OTP" : "This record is locked"}
       </h2>
       <p className="mx-auto mt-1.5 max-w-md text-sm leading-relaxed text-body">
@@ -124,7 +125,7 @@ export function AccessGate({
                 ).map((option) => (
                   <label
                     key={option.value}
-                    className="cursor-pointer rounded-2xl border-[1.5px] border-line-strong bg-card p-3.5 transition-colors hover:bg-surface has-checked:border-brand has-checked:bg-brand-soft has-focus-visible:outline-2 has-focus-visible:outline-brand"
+                    className="cursor-pointer rounded-2xl border-[1.5px] border-line-strong bg-white/60 p-3.5 transition-colors hover:bg-white/80 has-checked:border-brand has-checked:bg-brand-soft has-focus-visible:outline-2 has-focus-visible:outline-brand"
                   >
                     <input
                       type="radio"

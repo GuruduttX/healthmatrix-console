@@ -2,9 +2,11 @@
 
 /*
  * HealthMatrix brand tokens, the same ones the member app uses (healthmatrix-app,
- * src/constants/theme.ts): ink headers with a warm and a cool glow, white cards on a pale
- * grey-green page, the logo's orange for the one main action. Green, amber and red carry
- * clinical meaning (in range, borderline, out of range, allergies). Light-only for now.
+ * src/constants/theme.ts): a warm white page with soft peach and sky-blue light, panes of glass
+ * over it, and the logo's orange for the one main action. Lines, fills and tints are see-through,
+ * so they take the tint of the glass behind them. The flag colours carry clinical meaning (in
+ * range, borderline, out of range, allergies), picked as the app's to stay apart for red-green
+ * colour blindness, and none of them is the brand orange. Light-only for now.
  */
 @theme inline {
   --font-sans: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
@@ -13,35 +15,44 @@
   --color-ink: #0e2a33;
   --color-ink-deep: #08191f;
   --color-ink-mid: #244c56;
-  /* Between ink and the brand green: the middle of the next-consult card's gradient. */
+  /* Between ink and the brand green: the video call's backdrop. */
   --color-teal: #155a57;
-  --color-body: #4d6368;
-  --color-muted: #7f9195;
+  /* Secondary text: warm greys, since orange sits badly on cool ones. */
+  --color-body: #5e5751;
+  /* Captions and quiet text: 4.6:1 on the page. */
+  --color-muted: #766d66;
 
-  /* The page, as in the app. */
-  --color-canvas: #f3f7f7;
-  /* Quiet fills inside a card, and hovered rows. */
-  --color-surface: #f3f7f7;
+  /* The page: warm white, under the light. */
+  --color-canvas: #fbfaf8;
+  /* Wells inside a pane, and hovered rows. */
+  --color-surface: rgba(40, 64, 84, 0.05);
+  /* Solid white: what must stay opaque (a dialog, a menu, a ring around a badge). Cards are glass. */
   --color-card: #ffffff;
-  /* Selected rows, neutral badges, the track of a segmented control. */
-  --color-selected: #e1ebec;
-  --color-line: #dfe8e9;
-  --color-line-strong: #d3dfe0;
+  /* Selected rows, neutral badges, tracks. */
+  --color-selected: rgba(40, 64, 84, 0.07);
+  /* Borders and dividers. */
+  --color-line: rgba(40, 64, 84, 0.1);
+  /* Field outlines: a step stronger, so an empty input still shows its edge. */
+  --color-line-strong: rgba(40, 64, 84, 0.16);
 
   --color-brand: #dd4301;
   --color-brand-strong: #bf3a00;
   --color-brand-mid: #e67748;
   --color-brand-light: #f6af91;
-  --color-brand-soft: #fef1ea;
+  /* Orange text, links and thin icons on white or glass: the brand's orange is 4.3:1 there, this 5.4:1. */
+  --color-brand-deep: #c13a01;
+  --color-brand-soft: rgba(221, 67, 1, 0.08);
 
-  --color-success: #0e7564;
-  --color-success-soft: #daf0ea;
-  /* Darker than the app's amber, so small text on its soft fill stays readable. */
-  --color-warning: #855600;
-  --color-warning-soft: #fbefd2;
-  --color-danger: #c23a00;
-  --color-danger-soft: #fce3d6;
-  /* The live dot on dark cards. */
+  /* In range, done, on, signed: a blue teal. */
+  --color-success: #0b6e99;
+  --color-success-soft: rgba(11, 110, 153, 0.1);
+  /* Borderline, waiting. */
+  --color-warning: #8f6200;
+  --color-warning-soft: rgba(143, 98, 0, 0.1);
+  /* Out of range, allergies, errors and removing things: a crimson, never orange. */
+  --color-danger: #a3123a;
+  --color-danger-soft: rgba(163, 18, 58, 0.08);
+  /* The live dot on the dark video call. */
   --color-live: #4ade80;
 
   /* The app's corners: soft controls, 20px cards, round everything small. */
@@ -51,13 +62,14 @@
   --radius-2xl: 1.5rem;
   --radius-3xl: 2rem;
 
-  --shadow-card: 0 1px 2px rgba(14, 42, 51, 0.04), 0 6px 20px rgba(14, 42, 51, 0.05);
-  --shadow-raised: 0 2px 6px rgba(14, 42, 51, 0.06), 0 12px 28px rgba(14, 42, 51, 0.08);
-  /* Cards that ride over the bottom of a dark header. */
-  --shadow-lifted: 0 2px 6px rgba(14, 42, 51, 0.06), 0 18px 40px rgba(14, 42, 51, 0.12);
-  --shadow-floating: 0 10px 30px rgba(14, 42, 51, 0.14), 0 2px 6px rgba(14, 42, 51, 0.06);
-  /* Under the orange main action. */
-  --shadow-glow: 0 8px 20px rgba(221, 67, 1, 0.32);
+  /* Light and cool, as the app's small glass, so it sits on the blue and peach. */
+  --shadow-card: 0 0 0 1px rgba(44, 72, 96, 0.07), 0 1px 2px rgba(30, 50, 70, 0.05), 0 5px 14px rgba(30, 50, 70, 0.08);
+  --shadow-raised: 0 0 0 1px rgba(44, 72, 96, 0.07), 0 1px 3px rgba(30, 50, 70, 0.04), 0 10px 30px rgba(30, 50, 70, 0.07);
+  --shadow-lifted: 0 2px 6px rgba(30, 50, 70, 0.05), 0 14px 34px rgba(30, 50, 70, 0.09);
+  /* Menus, toasts and dialogs over the page. */
+  --shadow-floating: 0 10px 30px rgba(30, 50, 70, 0.14), 0 2px 6px rgba(30, 50, 70, 0.06);
+  /* Under the orange main action: close and warm, never an orange glow (it makes the brand shout). */
+  --shadow-glow: 0 1px 2px rgba(110, 30, 0, 0.12), 0 6px 14px rgba(110, 30, 0, 0.14);
 }
 
 /* In the base layer, so any utility on an element (a field's own focus style, say) wins. */
@@ -71,8 +83,9 @@
     background: var(--color-canvas);
   }
 
+  /* Clear, so the light behind the page (`body::before`) shows through it. */
   body {
-    background: var(--color-canvas);
+    background: transparent;
     color: var(--color-ink);
     font-size: 0.875rem;
     line-height: 1.5;
@@ -145,31 +158,45 @@
   aspect-ratio: 1;
 }
 
-/* The logo's orange with its soft glow: the one main action on a screen. */
+/*
+ * The one main action on a screen, as the app's: a touch lighter than the brand's orange, light
+ * on its top edge and a close, warm shadow. Never an orange glow: it makes the brand shout.
+ */
 @utility btn-primary {
-  background-color: var(--color-brand);
+  background-color: #d03f01;
   color: #fff;
-  box-shadow: 0 6px 16px rgba(221, 67, 1, 0.28);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.3),
+    var(--shadow-glow);
   &:hover:not(:disabled) {
-    background-color: var(--color-brand-strong);
+    background-color: var(--color-brand-deep);
   }
 }
 
+/* Beside it: a pill of small glass. */
 @utility btn-secondary {
-  background-color: var(--color-card);
+  background-color: var(--glass-fill-soft);
   color: var(--color-ink);
-  box-shadow: inset 0 0 0 1px var(--color-line-strong);
+  box-shadow:
+    inset 0 0 0 1px var(--glass-rim),
+    var(--glass-glow-small),
+    var(--glass-shadow-small);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   &:hover:not(:disabled) {
-    background-color: var(--color-surface);
+    background-color: rgba(255, 255, 255, 0.7);
   }
 }
 
-/* Orange on peach, for a second action beside a primary one. */
+/* A quiet call to act: deep orange on a see-through peach. */
 @utility btn-soft {
   background-color: var(--color-brand-soft);
-  color: var(--color-brand);
+  color: var(--color-brand-deep);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.7),
+    var(--glass-glow-small);
   &:hover:not(:disabled) {
-    background-color: #fde3d5;
+    background-color: rgba(221, 67, 1, 0.14);
   }
 }
 
@@ -181,12 +208,16 @@
   }
 }
 
+/* Removing or cancelling, as the app's: crimson words on a pill of glass, never orange. */
 @utility btn-danger {
-  background-color: var(--color-danger);
-  color: #fff;
-  box-shadow: 0 6px 16px rgba(194, 58, 0, 0.24);
+  background-color: var(--glass-fill-soft);
+  color: var(--color-danger);
+  box-shadow:
+    inset 0 0 0 1px var(--glass-rim),
+    var(--glass-glow-small),
+    var(--glass-shadow-flat);
   &:hover:not(:disabled) {
-    background-color: #a33100;
+    background-color: var(--color-danger-soft);
   }
 }
 
@@ -197,7 +228,7 @@
   }
 }
 
-/* See-through, for actions on a dark header or card. */
+/* See-through, for actions on the dark video call. */
 @utility btn-glass {
   background-color: rgba(255, 255, 255, 0.08);
   color: #fff;
@@ -207,7 +238,7 @@
   }
 }
 
-/* White on a dark header: the main action there. */
+/* White on the dark video call: the main action there. */
 @utility btn-light {
   background-color: #fff;
   color: var(--color-ink);
@@ -217,13 +248,17 @@
   }
 }
 
-/* Text inputs, selects and text areas: white, soft corners, ringed in orange while focused. */
+/*
+ * Text inputs, selects and text areas, as the app's: a pane of frosted glass set into the page,
+ * a warm outline so an empty one still shows its edge, ringed in orange while focused.
+ */
 @utility field {
   width: 100%;
   min-height: 3rem;
-  border-radius: 0.875rem;
+  border-radius: 1rem;
   border: 1.5px solid var(--color-line-strong);
-  background-color: var(--color-card);
+  background-color: rgba(255, 255, 255, 0.62);
+  box-shadow: var(--glass-glow-small);
   padding: 0.625rem 0.875rem;
   font-size: 0.875rem;
   font-weight: 500;
@@ -243,7 +278,7 @@
   &:is(select) {
     appearance: none;
     padding-right: 2.5rem;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%237f9195' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23766d66' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
     background-position: right 0.875rem center;
     background-repeat: no-repeat;
     background-size: 1rem;
@@ -251,24 +286,25 @@
   @media (min-width: 1024px) {
     min-height: 2.5rem;
     padding: 0.5rem 0.75rem;
-    border-radius: 0.75rem;
+    border-radius: 0.875rem;
   }
 }
 
-/* A white card on the page: lists, tables and cards. */
-@utility panel {
-  border-radius: var(--radius-xl);
-  border: 1px solid var(--color-line);
-  background-color: var(--color-card);
-  box-shadow: var(--shadow-card);
-}
-
-/* Two to four options on a grey track, the chosen one raised. Items mark it with aria. */
+/* Two to four options on a track of glass, the chosen one a brighter pane raised above it. Items mark it with aria. */
 @utility segmented {
   display: flex;
   gap: 0.25rem;
   padding: 0.25rem;
   border-radius: 9999px;
+  border: 1px solid var(--glass-rim);
+  background-color: rgba(255, 255, 255, 0.32);
+  box-shadow: var(--glass-glow-small), var(--glass-shadow-flat);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+/* In a dialog, which is solid white, a clear track would vanish: it takes a see-through grey there. */
+dialog .segmented {
   background-color: var(--color-selected);
 }
 
@@ -277,12 +313,13 @@
   flex: 1 1 0%;
   align-items: center;
   justify-content: center;
+  gap: 0.375rem;
   min-height: 2.5rem;
   border-radius: 9999px;
   padding: 0.375rem 0.75rem;
   font-size: 0.875rem;
   font-weight: 700;
-  color: var(--color-body);
+  color: var(--color-muted);
   white-space: nowrap;
   transition-property: background-color, color, box-shadow;
   transition-duration: 150ms;
@@ -294,9 +331,9 @@
   &[aria-checked="true"],
   &[aria-current="true"],
   &[aria-current="page"] {
-    background-color: var(--color-card);
+    background-color: rgba(255, 255, 255, 0.92);
     color: var(--color-ink);
-    box-shadow: var(--shadow-card);
+    box-shadow: var(--glass-shadow-small);
   }
   @media (min-width: 1024px) {
     min-height: 2.125rem;
@@ -304,24 +341,27 @@
   }
 }
 
-/* Filter pills along the top of a list, the chosen one filled in ink. */
+/* Filter pills along the top of a list, as the app's chips: pills of glass, solid ink once chosen, so the choice reads without more orange. */
 @utility chip {
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
   min-height: 2.375rem;
-  padding: 0 1rem;
+  padding: 0 0.9375rem;
   border-radius: 9999px;
-  border: 1px solid var(--color-line-strong);
-  background-color: var(--color-card);
+  border: 1px solid var(--glass-rim);
+  background-color: var(--glass-fill-soft);
+  box-shadow: var(--glass-glow-small), var(--glass-shadow-small);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   font-size: 0.875rem;
   font-weight: 700;
-  color: var(--color-body);
+  color: var(--color-ink);
   white-space: nowrap;
-  transition-property: background-color, color, border-color, transform;
+  transition-property: background-color, color, border-color, box-shadow, transform;
   transition-duration: 150ms;
   &:hover {
-    color: var(--color-ink);
+    background-color: rgba(255, 255, 255, 0.7);
   }
   &:active {
     transform: scale(0.97);
@@ -333,30 +373,14 @@
     border-color: var(--color-ink);
     background-color: var(--color-ink);
     color: #fff;
+    box-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.18),
+      0 4px 12px rgba(14, 42, 51, 0.18);
   }
   @media (min-width: 1024px) {
     min-height: 2.125rem;
     padding: 0 0.875rem;
     font-size: 0.8125rem;
-  }
-}
-
-/* The same pills on a dark header: see-through, and white once chosen. */
-@utility chip-glass {
-  border-color: rgba(255, 255, 255, 0.14);
-  background-color: rgba(255, 255, 255, 0.08);
-  color: #fff;
-  &:hover {
-    color: #fff;
-    background-color: rgba(255, 255, 255, 0.14);
-  }
-  &[aria-current="true"],
-  &[aria-current="page"],
-  &[aria-pressed="true"],
-  &[aria-selected="true"] {
-    border-color: #fff;
-    background-color: #fff;
-    color: var(--color-ink);
   }
 }
 
@@ -370,7 +394,7 @@
   border-radius: 0.3125rem;
   border: 1px solid var(--color-line-strong);
   border-bottom-width: 2px;
-  background-color: var(--color-card);
+  background-color: rgba(255, 255, 255, 0.62);
   padding: 0 0.25rem;
   font-family: var(--font-sans);
   font-size: 0.6875rem;
@@ -379,35 +403,231 @@
 }
 
 /*
- * The ink gradient behind every dark header, as in the app's HeroBackground: a warm glow from
- * the top right and a cool one from the bottom left.
+ * The glass look, the member app's (healthmatrix-app: `Glass` in src/constants/theme.ts and
+ * src/components/ui/glass.tsx): panes of nearly clear glass over a warm white page lit by soft
+ * peach and sky blue. These are its values; keep the two in step.
  */
-@utility hero-bg {
-  background-color: var(--color-ink);
+:root {
+  /* A pane's body: nearly clear, so the light behind it shows through. */
+  --glass-fill: rgba(255, 255, 255, 0.16);
+  /* Small glass on a pane or the page: rounds, pills, second buttons. */
+  --glass-fill-soft: rgba(255, 255, 255, 0.4);
+  /* Glass set into glass: a panel or a pill on a card. */
+  --glass-fill-flat: rgba(255, 255, 255, 0.2);
+  --glass-rim: rgba(255, 255, 255, 0.95);
+  /* Light on the top edge, and frost thickening toward the edges, as in a slab of glass. */
+  --glass-glow: inset 0 1px 1px rgba(255, 255, 255, 0.95), inset 0 0 14px rgba(255, 255, 255, 0.6);
+  --glass-glow-small: inset 0 1px 1px rgba(255, 255, 255, 0.95), inset 0 0 8px rgba(255, 255, 255, 0.65);
+  /* A faint cool edge line, then a close and a wide lift: light, so it sits on blue and peach. */
+  --glass-shadow: 0 0 0 1px rgba(44, 72, 96, 0.07), 0 1px 3px rgba(30, 50, 70, 0.04), 0 10px 30px rgba(30, 50, 70, 0.07);
+  --glass-shadow-small: 0 0 0 1px rgba(44, 72, 96, 0.07), 0 1px 2px rgba(30, 50, 70, 0.05), 0 5px 14px rgba(30, 50, 70, 0.08);
+  --glass-shadow-flat: 0 0 0 1px rgba(44, 72, 96, 0.07);
+  --glass-blur: blur(26px) saturate(180%);
+  /* Gloss across the top-left corner, where the light falls. */
+  --glass-sheen: linear-gradient(135deg, rgba(255, 255, 255, 0.42) 0%, rgba(255, 255, 255, 0) 55%);
+  /*
+   * Faint peach from the top-right corner and sky blue from the bottom left, as if the glass were
+   * tinted. Each reaches 70% of the pane's longer side (`farthest-side` from a corner is that side).
+   */
+  --glass-tint:
+    radial-gradient(circle farthest-side at 100% 0%, rgba(246, 224, 204, 0.294), rgba(246, 224, 204, 0.111) 35%, rgba(246, 224, 204, 0) 70%),
+    radial-gradient(circle farthest-side at 0% 100%, rgba(217, 233, 244, 0.75), rgba(217, 233, 244, 0.28) 35%, rgba(217, 233, 244, 0) 70%);
+  /* The rim: bright where the light strikes the top-left edge, fading along the sides, and catching it again at the bottom right. */
+  --glass-rim-light: linear-gradient(to bottom right, #fff 0%, rgba(255, 255, 255, 0.5) 40%, rgba(255, 255, 255, 0.35) 72%, rgba(255, 255, 255, 0.9) 100%);
+}
+
+/*
+ * A pane of glass on the page: cards and panels. A clear body that takes the tint of the light
+ * behind it (blurred), a faint peach and blue within, gloss across the top left, and a rim.
+ */
+@utility glass-panel {
+  position: relative;
+  background-color: var(--glass-fill);
+  background-image: var(--glass-sheen), var(--glass-tint);
+  box-shadow: var(--glass-glow), var(--glass-shadow);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    padding: 1.5px;
+    border-radius: inherit;
+    background: var(--glass-rim-light);
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box exclude,
+      linear-gradient(#000 0 0);
+    pointer-events: none;
+  }
+}
+
+/* Small glass on a pane or the page, as the app's `glassSurface.small`: rounds, pills and boxes. */
+@utility glass-small {
+  border: 1px solid var(--glass-rim);
+  background-color: var(--glass-fill-soft);
+  box-shadow: var(--glass-glow-small), var(--glass-shadow-small);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+/* Glass set into glass, as the app's `glassSurface.flat`: a panel or a pill on a card. No blur of its own. */
+@utility glass-flat {
+  border: 1px solid var(--glass-rim);
+  background-color: var(--glass-fill-flat);
+  box-shadow: var(--glass-glow-small), var(--glass-shadow-flat);
+}
+
+/* A small frosted pill on a glass screen: the date, a summary. */
+@utility glass-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 2rem;
+  padding: 0 0.75rem;
+  border-radius: 9999px;
+  border: 1px solid var(--glass-rim);
+  background-color: var(--glass-fill-soft);
+  box-shadow: var(--glass-glow-small), var(--glass-shadow-small);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-ink-mid);
+  white-space: nowrap;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+/* A round of small glass on a glass screen: the bell, check for updates. */
+@utility btn-frost {
+  border: 1px solid var(--glass-rim);
+  background-color: var(--glass-fill-soft);
+  color: var(--color-ink);
+  box-shadow: var(--glass-glow-small), var(--glass-shadow-small);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  &:hover:not(:disabled) {
+    background-color: rgba(255, 255, 255, 0.7);
+  }
+}
+
+/*
+ * The round of glass an icon sits in at the start of a row, as the app's `IconTile`: clear white
+ * cooling to sky, a bright rim and the faint edge line, and the icon in the deep brand orange
+ * (the brand's own orange is too light for thin lines on white). A row whose colour means
+ * something takes its flag's tint instead (`data-tone`, from `BrandIcon`'s `status`).
+ */
+@utility brand-tile {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid var(--glass-rim);
+  background-image: linear-gradient(160deg, rgba(255, 255, 255, 0.88), rgba(222, 236, 247, 0.6));
+  box-shadow: var(--glass-shadow-flat);
+  color: var(--color-brand-deep);
+  &[data-tone="success"] {
+    background-image: none;
+    background-color: var(--color-success-soft);
+    color: var(--color-success);
+  }
+  &[data-tone="warning"] {
+    background-image: none;
+    background-color: var(--color-warning-soft);
+    color: var(--color-warning);
+  }
+  &[data-tone="danger"] {
+    background-image: none;
+    background-color: var(--color-danger-soft);
+    color: var(--color-danger);
+  }
+  &[data-tone="neutral"] {
+    color: var(--color-body);
+  }
+}
+
+/*
+ * A round of clear glass holding a glass glyph, as the app's quick actions: the page shows
+ * through it (blurred), peach and sky blue play inside it, and a soft orange haze spreads behind
+ * the glyph, as through frosted glass. `GlassDish` draws it.
+ */
+@utility glass-dish {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid var(--glass-rim);
+  background-color: var(--glass-fill);
   background-image:
-    radial-gradient(130% 140% at 100% 0%, rgba(221, 67, 1, 0.55) 0%, rgba(221, 67, 1, 0.18) 34%, rgba(221, 67, 1, 0) 66%),
-    radial-gradient(110% 120% at 0% 100%, rgba(16, 128, 109, 0.34) 0%, rgba(16, 128, 109, 0) 58%),
-    linear-gradient(135deg, #08191f 0%, #0e2a33 55%, #244c56 100%);
+    radial-gradient(40% 40% at 50% 55%, rgba(255, 194, 156, 0.6), rgba(255, 194, 156, 0.2) 55%, rgba(255, 194, 156, 0)),
+    var(--glass-sheen),
+    var(--glass-tint);
+  box-shadow: var(--glass-glow-small), var(--glass-shadow-small);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
 }
 
-/* The next consult: ink to teal to the brand green, warm in one corner. */
-@utility teal-bg {
-  background-color: var(--color-ink);
-  background-image:
-    linear-gradient(225deg, rgba(221, 67, 1, 0.3) 0%, rgba(221, 67, 1, 0) 45%),
-    linear-gradient(135deg, #0e2a33 0%, #155a57 60%, #10806d 100%);
+/*
+ * Glass spheres behind a pane, as on the app's Home banner (`GlassOrbs`): lit from the top left,
+ * crisp where they show past the pane's edge and frosted where it covers them. That's what makes
+ * glass read as glass.
+ */
+@utility glass-orb-peach {
+  position: absolute;
+  border-radius: 9999px;
+  pointer-events: none;
+  background: radial-gradient(circle farthest-side at 34% 28%, #fff7f1 0%, #ffd9c1 55%, #f6b188 100%);
 }
 
-/* Ekaay's cards, as in the app: a thin orange-to-peach frame and warm light in one corner. */
-@utility ekaay-frame {
-  border: 1.5px solid transparent;
-  background:
-    radial-gradient(90% 70% at 100% 0%, rgba(246, 175, 145, 0.32), rgba(246, 175, 145, 0) 70%) padding-box,
-    linear-gradient(#fff, #fff) padding-box,
-    linear-gradient(135deg, #e67748, #f6af91 45%, #fde4d6) border-box;
+@utility glass-orb-sky {
+  position: absolute;
+  border-radius: 9999px;
+  pointer-events: none;
+  background: radial-gradient(circle farthest-side at 34% 28%, #f3faff 0%, #bfddf4 55%, #86b8e0 100%);
 }
 
-/* Glass on a dark surface: pills, panels and badges. */
+/* Phones: the app's tab dock, frosted, brighter along the top edge, with a light, cool lift. */
+@utility glass-dock {
+  border: 1px solid var(--glass-rim);
+  background-color: var(--glass-fill-soft);
+  background-image: linear-gradient(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0) 60%);
+  box-shadow:
+    var(--glass-glow),
+    0 0 0 1px rgba(44, 72, 96, 0.05),
+    0 2px 6px rgba(30, 50, 70, 0.05),
+    0 12px 32px rgba(30, 50, 70, 0.1);
+  backdrop-filter: blur(36px) saturate(180%);
+  -webkit-backdrop-filter: blur(36px) saturate(180%);
+}
+
+/* The open screen in the dock or the sidebar: a pane of orange-tinted glass with a bright rim, as the app's dock marks its tab. */
+@utility nav-active {
+  border-color: rgba(255, 255, 255, 0.85);
+  background-color: rgba(255, 196, 160, 0.4);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.85),
+    inset 0 1px 1px rgba(255, 255, 255, 0.95),
+    0 2px 8px rgba(196, 80, 20, 0.12);
+}
+
+/*
+ * The profile button's ring, as on the app's Home: thin, sky blue to peach, meeting through pale
+ * tints so they never mix to grey, with a white gap inside it (the child's own padding).
+ */
+@utility medallion {
+  border-radius: 9999px;
+  padding: 2px;
+  background: linear-gradient(135deg, #86beea 0%, #d8e9f7 45%, #fce4d4 55%, #f3a97e 100%);
+  box-shadow: 0 1px 2px rgba(30, 50, 70, 0.06), 0 6px 14px rgba(30, 50, 70, 0.1);
+}
+
+/* Glass on the dark video call: pills, panels and badges. */
 @utility glass {
   border: 1px solid rgba(255, 255, 255, 0.14);
   background-color: rgba(255, 255, 255, 0.08);
@@ -451,14 +671,21 @@ html {
     font-size: 16px;
   }
 
+  /* Slides only: a fade would leave every pane of glass on the screen unfrosted until it ends. */
   .page-enter {
-    animation: page-enter 0.24s ease-out;
+    animation: page-slide 0.24s ease-out;
   }
 }
 
 @keyframes page-enter {
   from {
     opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes page-slide {
+  from {
     transform: translateY(8px);
   }
 }
@@ -483,9 +710,14 @@ html {
   animation-delay: 300ms;
 }
 
-/* One section easing in; give each its own `[animation-delay:…]` to stagger them. */
-.rise-in {
+/*
+ * One section easing in; give each its own `[animation-delay:…]` to stagger them. Its parts fade
+ * in, not the section: glass can't see through an ancestor that is fading in, so a card would
+ * show what's behind it sharp until the fade ended and then snap to frosted.
+ */
+.rise-in > * {
   animation: rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: inherit;
 }
 
 @keyframes rise {
@@ -533,14 +765,56 @@ dialog.sheet[open]::backdrop {
   }
 }
 
+/* Loading outlines pulse their placeholders, not the whole page, for the same reason. */
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton-page [data-bone] {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .page-enter,
   .nudge-enter,
   .rise > *,
-  .rise-in,
+  .rise-in > *,
   dialog.sheet[open],
-  dialog.sheet[open]::backdrop {
+  dialog.sheet[open]::backdrop,
+  body::before {
     animation: none;
+  }
+}
+
+/*
+ * The page behind the glass, as the app's `Aurora`: warm white (the html's own colour) with four
+ * round glows, peach and sky blue in turn as they zig-zag down the screen, white between them and
+ * at the edges. Fixed, so panes slide over the glows as the page scrolls and take their tint. Each
+ * is strongest at its centre and fades out before its edge, so it reads as a disc of light with no
+ * edge. The lowest one is listed first: it paints on top.
+ */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle 42vw at 24% 99%, rgba(217, 233, 244, 0.62) 0%, rgba(217, 233, 244, 0.384) 45%, rgba(217, 233, 244, 0.099) 80%, rgba(217, 233, 244, 0) 100%),
+    radial-gradient(circle 42vw at 74% 73%, rgba(246, 224, 204, 0.221) 0%, rgba(246, 224, 204, 0.137) 45%, rgba(246, 224, 204, 0.035) 80%, rgba(246, 224, 204, 0) 100%),
+    radial-gradient(circle 48vw at 28% 45%, rgba(217, 233, 244, 0.78) 0%, rgba(217, 233, 244, 0.484) 45%, rgba(217, 233, 244, 0.125) 80%, rgba(217, 233, 244, 0) 100%),
+    radial-gradient(circle 44vw at 70% 16%, rgba(246, 224, 204, 0.252) 0%, rgba(246, 224, 204, 0.157) 45%, rgba(246, 224, 204, 0.041) 80%, rgba(246, 224, 204, 0) 100%);
+  animation: orbs-in 1.1s ease-out both;
+}
+
+@keyframes orbs-in {
+  from {
+    opacity: 0;
+    scale: 1.06;
+  }
+}
+
+@media print {
+  body::before {
+    display: none;
   }
 }
 

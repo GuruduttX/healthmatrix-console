@@ -11,13 +11,12 @@ import {
   UserRoundPen,
   type LucideIcon,
 } from "lucide-react";
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { FormMessage } from "@/components/auth/form-message";
 import { DoctorAvatar } from "@/components/doctor-avatar";
-import { bleed } from "@/components/hero";
 import { SignOutForm } from "@/components/sign-out-form";
 import { BackLink, StackBar } from "@/components/stack-bar";
 import { SwitchList } from "@/components/switch-list";
@@ -29,8 +28,8 @@ import type { Tone } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Profile and settings" };
 
-/** Phones: the browser's bars take the dark header's colour. */
-export const viewport: Viewport = { themeColor: "#0b2129" };
+/** A pill on the identity card: glass set into the glass. */
+const pill = "glass-flat inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold text-ink-mid";
 
 /** A row in a settings list, as in a phone's Settings app. */
 function SettingsRow({
@@ -86,57 +85,62 @@ export default async function ProfilePage({ searchParams }: PageProps<"/profile"
 
   return (
     <>
-      <StackBar tone="dark" back={{ href: "/", label: "Today" }} title="Profile" revealId="doctor-name" />
+      <StackBar back={{ href: "/", label: "Today" }} title="Profile" revealId="doctor-name" />
       <BackLink href="/" label="Today" />
 
-      {/* Who you are, on the same dark header as the app's profile. */}
-      <header
-        className={`hero-bg relative overflow-hidden rounded-b-[2rem] px-4 pb-14 pt-[calc(env(safe-area-inset-top)+3.75rem)] text-white sm:px-6 lg:rounded-3xl lg:px-8 lg:pb-16 lg:pt-8 print:hidden ${bleed}`}
-      >
-        <div className="relative flex flex-col items-center gap-x-6 gap-y-1 text-center lg:flex-row lg:text-left">
-          <Link href="/profile/edit" aria-label="Change your photo" className="group relative shrink-0 rounded-full bg-white/14 p-1">
-            <DoctorAvatar photoUrl={doctor.photoUrl} initials={doctor.initials} size="xl" className="lg:size-24" />
-            <span className="absolute bottom-1 right-1 inline-flex size-9 items-center justify-center rounded-full border-[3px] border-ink bg-brand transition-transform group-active:scale-95">
+      {/*
+        Who you are, on a pane of glass as the app's profile: the photo in a ring of white with the
+        one orange on it (the way to change it), then the name and two pills. Centred on phones.
+      */}
+      <header className="glass-panel mt-2 rounded-2xl px-4 py-5 sm:px-6 lg:mt-0 lg:px-7 lg:py-6 print:hidden">
+        <div className="flex flex-col items-center gap-x-6 gap-y-3 text-center lg:flex-row lg:text-left">
+          <Link href="/profile/edit" aria-label="Change your photo" className="group relative shrink-0 rounded-full">
+            <span className="block rounded-full bg-white/70 p-1 shadow-[0_1px_2px_rgba(30,50,70,0.06),0_6px_14px_rgba(30,50,70,0.1)]">
+              <DoctorAvatar photoUrl={doctor.photoUrl} initials={doctor.initials} size="xl" className="lg:size-24" />
+            </span>
+            <span className="absolute bottom-1 right-1 inline-flex size-9 items-center justify-center rounded-full border-[2.5px] border-white bg-brand-deep text-white shadow-glow transition-transform group-active:scale-95">
               <Camera aria-hidden className="size-4" />
             </span>
           </Link>
-          <div className="mt-2.5 min-w-0 lg:mt-0">
-            <h1 id="doctor-name" className="font-display text-2xl font-bold leading-8 tracking-[-0.01em] lg:text-[1.75rem] lg:leading-9">
+          <div className="min-w-0">
+            <h1
+              id="doctor-name"
+              className="font-display text-2xl font-semibold leading-8 tracking-[-0.015em] text-ink lg:text-[1.75rem] lg:leading-9"
+            >
               {doctor.name}
             </h1>
-            <p className="mt-0.5 text-[13px] text-white/70">{[doctor.specialty, doctor.qualifications].filter(Boolean).join(" · ")}</p>
-            <div className="mt-3 flex flex-wrap justify-center gap-2 lg:justify-start">
-              <span className="glass inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold text-[#7fd6c2]">
-                <BadgeCheck aria-hidden className="size-3.5" />
+            <p className="mt-0.5 text-[13px] text-body">{[doctor.specialty, doctor.qualifications].filter(Boolean).join(" · ")}</p>
+            <div className="mt-3 flex flex-wrap justify-center gap-1.5 lg:justify-start">
+              <span className={pill}>
+                <BadgeCheck aria-hidden className="size-3.5 text-success" />
                 Reg. {doctor.registrationNumber}
               </span>
               {doctor.experienceYears != null ? (
-                <span className="glass inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold text-brand-light">
-                  <BriefcaseMedical aria-hidden className="size-3.5" />
+                <span className={pill}>
+                  <BriefcaseMedical aria-hidden className="size-3.5 text-brand-deep" />
                   {doctor.experienceYears} {doctor.experienceYears === 1 ? "year" : "years"} in practice
                 </span>
               ) : null}
             </div>
           </div>
-          <Link href="/profile/edit" className="btn btn-light btn-sm ml-auto hidden shrink-0 lg:inline-flex">
+          <Link href="/profile/edit" className="btn btn-secondary btn-sm ml-auto hidden shrink-0 lg:inline-flex">
             <UserRoundPen aria-hidden className="size-4" />
             Edit profile
           </Link>
         </div>
       </header>
 
-      {/* The cards ride up over the bottom of the header, as in the app. */}
-      <div className="relative z-10 -mt-9 grid items-start gap-5 lg:-mt-10 xl:grid-cols-2 xl:gap-6">
+      <div className="mt-5 grid items-start gap-5 lg:mt-6 xl:grid-cols-2 xl:gap-6">
         <div className="flex min-w-0 flex-col gap-5 xl:gap-6">
-          {saved ? <FormMessage notice="Your profile is saved." className="rounded-2xl shadow-card" /> : null}
+          {saved ? <FormMessage notice="Your profile is saved." className="border border-white/85" /> : null}
 
           {doctor.missing.length ? (
-            <Card className="shadow-lifted">
+            <Card>
               <div className="flex items-center justify-between gap-4">
                 <CardTitle icon={CircleDashed} tile>
                   Complete your profile
                 </CardTitle>
-                <span className="font-display text-base font-bold tabular-nums text-ink">{percent}%</span>
+                <span className="font-display text-base font-semibold tabular-nums text-ink">{percent}%</span>
               </div>
               <div aria-hidden className="mt-3 h-2 overflow-hidden rounded-full bg-selected">
                 <div className="h-full rounded-full bg-linear-to-r from-brand-mid to-brand" style={{ width: `${percent}%` }} />
@@ -149,7 +153,7 @@ export default async function ProfilePage({ searchParams }: PageProps<"/profile"
                       href="/profile/edit"
                       className="flex items-center gap-2.5 rounded-xl px-2 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-surface active:bg-surface"
                     >
-                      <CircleDashed aria-hidden className="size-4 shrink-0 text-brand" />
+                      <CircleDashed aria-hidden className="size-4 shrink-0 text-brand-deep" />
                       Add {GAP_LABELS[gap].toLowerCase()}
                       <ChevronRight aria-hidden className="ml-auto size-4.5 text-muted" />
                     </Link>
@@ -159,7 +163,7 @@ export default async function ProfilePage({ searchParams }: PageProps<"/profile"
             </Card>
           ) : null}
 
-          <Card className={doctor.missing.length ? "" : "shadow-lifted"}>
+          <Card>
             <CardTitle>About you</CardTitle>
             {doctor.about ? (
               <p className="mt-3 whitespace-pre-line rounded-2xl bg-surface px-4 py-3.5 text-sm leading-relaxed text-ink">{doctor.about}</p>
@@ -184,8 +188,8 @@ export default async function ProfilePage({ searchParams }: PageProps<"/profile"
         </div>
 
         <div className="flex min-w-0 flex-col gap-7 xl:gap-6">
-          {/* A card, not a titled section: on wide screens it rides up over the header too. */}
-          <Card className="xl:shadow-lifted">
+          {/* Its title inside the card, not above it, so the note under the title stays with the switches. */}
+          <Card>
             <CardTitle icon={Bell} tile>
               Tell me when
             </CardTitle>

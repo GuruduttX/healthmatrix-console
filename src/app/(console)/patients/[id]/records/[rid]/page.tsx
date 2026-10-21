@@ -1,14 +1,16 @@
-import { FileText, FlaskConical, MapPin, Microscope, Pill, TriangleAlert } from "lucide-react";
+import { FileText, FlaskConical, MapPin, MessageSquareText, Microscope, Pill, TriangleAlert } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { PatientHeader } from "@/components/patient-header";
 import { AccessGate } from "@/components/record/access-gate";
-import { timelineIcons, timelineTypeNames } from "@/components/record/timeline-icons";
+import { AskRecord } from "@/components/record/ask-record";
+import { timelineIcons, timelineTones, timelineTypeNames } from "@/components/record/timeline-icons";
 import { VaccineSchedule } from "@/components/record/vaccine-schedule";
 import { EkaayHeading } from "@/components/record/patient-record-cards";
 import { Card, CardTitle, Chip, flagTone, IconTile } from "@/components/ui";
 import { getRecordDetail } from "@/lib/console-data";
+import { ekaayReady } from "@/lib/ekaay";
 import type { DetailValue, Tone } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Record" };
@@ -57,7 +59,7 @@ function ValueRow({ value }: { value: DetailValue }) {
         ) : null}
         {value.range ? <p className="mt-1.5 text-xs text-muted">{value.range}</p> : null}
       </td>
-      <td className="whitespace-nowrap px-3 py-3 text-right font-display text-sm font-bold tabular-nums text-ink">{value.value}</td>
+      <td className="whitespace-nowrap px-3 py-3 text-right font-display text-sm font-semibold tabular-nums text-ink">{value.value}</td>
       <td className="w-px whitespace-nowrap py-3 pl-3 text-right">
         <Chip tone={flagTone[value.flag]}>{value.label}</Chip>
       </td>
@@ -96,13 +98,14 @@ export default async function RecordDetailPage(props: PageProps<"/patients/[id]/
       <div className="mt-5 lg:mt-6">
         <AccessGate patient={patient} nominee={found.nominee}>
           {entry && detail ? (
-            // One column, full width: the entry, then the notes on it side by side, then what it holds.
+            // One column, full width: the entry, the notes on it side by side, what it holds, then questions.
             <div className="flex flex-col gap-5">
               <Card>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-                  <IconTile icon={Icon} size="lg" look="solid" />
+                  {/* In its round of glass, tinted as its row on the patient's record. */}
+                  <IconTile icon={Icon} size="lg" tone={timelineTones[entry.type]} />
                   <div className="min-w-0 flex-1">
-                    <h2 className="font-display text-lg font-bold leading-snug tracking-[-0.01em] text-ink">{entry.title}</h2>
+                    <h2 className="font-display text-lg font-semibold leading-snug tracking-[-0.01em] text-ink">{entry.title}</h2>
                     <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] text-body">
                       <span>
                         {timelineTypeNames[entry.type]}, {entry.date}
@@ -149,7 +152,7 @@ export default async function RecordDetailPage(props: PageProps<"/patients/[id]/
                 // Equal halves that stretch to the taller one; a lone note takes the full width.
                 <div className={`grid gap-5 ${detail.explains && detail.remarks ? "lg:grid-cols-2" : ""}`}>
                   {detail.explains ? (
-                    <Card highlight className="flex flex-col">
+                    <Card className="flex flex-col">
                       <EkaayHeading title="Ekaay explains" />
                       <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink">{detail.explains}</p>
                       <p className="mt-auto pt-3 text-xs text-muted">Ekaay informs. You diagnose and prescribe.</p>
@@ -260,6 +263,13 @@ export default async function RecordDetailPage(props: PageProps<"/patients/[id]/
                     {detail.report ? "See the lab’s PDF report for this entry’s results." : "No values or items were recorded with this entry."}
                   </p>
                 ) : null}
+              </Card>
+
+              <Card>
+                <CardTitle icon={MessageSquareText} tile tone="neutral">
+                  Ask the record
+                </CardTitle>
+                <AskRecord ready={ekaayReady()} memberId={patient.id} patientName={patient.firstName} recordId={rid} />
               </Card>
             </div>
           ) : null}

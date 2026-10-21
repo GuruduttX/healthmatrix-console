@@ -3,6 +3,7 @@
 import { Plus, X } from "lucide-react";
 import { useId, useMemo, useState, type ReactNode } from "react";
 
+import { switchKnob, switchTrack } from "@/components/switch-list";
 import { saveWeeklySchedule } from "@/lib/console-actions";
 import { fromMinutes, LIMITS, toMinutes, WEEKDAYS, type Session } from "@/lib/schedule";
 
@@ -14,7 +15,7 @@ import { SaveMessage, useScheduleSave } from "./use-schedule-save";
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
 const INITIALS: Record<number, string> = { 0: "S", 1: "M", 2: "T", 3: "W", 4: "T", 5: "F", 6: "S" };
 
-const segmentClass = "segment inline-flex h-9 items-center justify-center lg:h-8";
+const segmentClass = "segment h-9 lg:h-8";
 const inlineLink = "font-semibold text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink";
 
 type Hours = { from: string; to: string };
@@ -68,12 +69,9 @@ function Switch({ on, onToggle, label }: { on: boolean; onToggle: () => void; la
       aria-checked={on}
       aria-label={label}
       onClick={onToggle}
-      className={`relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 before:absolute before:-inset-2 ${on ? "bg-success" : "bg-line-strong"}`}
+      className={switchTrack(on)}
     >
-      <span
-        aria-hidden
-        className={`absolute top-0.5 size-6 rounded-full bg-white shadow-[0_2px_4px_rgba(14,42,51,0.24)] transition-[left] duration-200 ${on ? "left-5.5" : "left-0.5"}`}
-      />
+      <span aria-hidden className={switchKnob(on)} />
     </button>
   );
 }
@@ -111,12 +109,13 @@ function HoursEditor({ hours, onChange, label }: { hours: Hours[]; onChange: (ho
         </div>
       ))}
       {hours.length < LIMITS.sessionsPerDay ? (
+        // A pill of glass with an orange plus, as the app's "Add a time".
         <button
           type="button"
           onClick={() => onChange([...hours, nextHours(hours)])}
-          className="btn btn-ghost btn-sm -ml-2.5 w-fit"
+          className="btn btn-secondary btn-sm mt-1 w-fit"
         >
-          <Plus aria-hidden className="size-4" />
+          <Plus aria-hidden className="size-4 text-brand-deep" />
           Add more hours, e.g. an evening
         </button>
       ) : null}
@@ -144,7 +143,7 @@ function RuleField({
   return (
     <label className="flex min-w-0 flex-col gap-1.5 text-[13px] font-semibold text-ink">
       {label}
-      <span className="field flex items-center gap-2 py-0 focus-within:border-brand focus-within:shadow-[0_0_0_3px_rgba(221,67,1,0.14)]">
+      <span className="field flex items-center gap-2 py-0 focus-within:border-brand focus-within:shadow-[0_0_0_4px_rgba(221,67,1,0.12)]">
         <input
           type="number"
           inputMode="numeric"
@@ -153,7 +152,7 @@ function RuleField({
           step={step}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full min-w-0 self-stretch bg-transparent font-normal tabular-nums text-ink outline-none"
+          className="w-full min-w-0 self-stretch bg-transparent font-medium tabular-nums text-ink outline-none"
         />
         <span className="shrink-0 whitespace-nowrap text-xs font-normal text-muted">{unit}</span>
       </span>
@@ -246,7 +245,7 @@ export function AvailabilityCard({
       <SectionHeader title={title} open={open} onToggle={() => setOpen((o) => !o)} controls={bodyId} />
       <p className="mt-1 text-[13px] text-body">{description}</p>
 
-      <div className="mt-4 flex items-center gap-4 rounded-2xl bg-surface px-4 py-3.5">
+      <div className="glass-flat mt-4 flex items-center gap-4 rounded-2xl px-4 py-3.5">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold text-ink">Taking new bookings</p>
           <p className="mt-0.5 text-xs text-body">
@@ -299,7 +298,7 @@ export function AvailabilityCard({
       </div>
 
       <div id={bodyId} hidden={!open}>
-        <div role="tabpanel" className={`mt-3 rounded-2xl bg-surface p-3.5 sm:p-4 ${accepting ? "" : "opacity-60"}`}>
+        <div role="tabpanel" className={`glass-flat mt-3 rounded-2xl p-3.5 sm:p-4 ${accepting ? "" : "opacity-60"}`}>
           {weekday === null ? (
             <>
               <p className="mb-3 text-xs text-body">

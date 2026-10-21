@@ -21,7 +21,7 @@ export function LoginForm({ intent }: { intent: AuthIntent }) {
     <>
       <FormMessage error={state.error} />
       {switchLink ? (
-        <Link href={switchLink.href} className="mt-2.5 inline-block text-[13px] font-bold text-brand hover:text-brand-strong">
+        <Link href={switchLink.href} className="mt-2.5 inline-block text-[13px] font-bold text-brand-deep hover:underline">
           {switchLink.label} →
         </Link>
       ) : null}
@@ -30,7 +30,8 @@ export function LoginForm({ intent }: { intent: AuthIntent }) {
         <label htmlFor="phone" className="text-[13px] font-bold text-body">
           Mobile number
         </label>
-        <div className="flex min-h-13 items-center gap-1 overflow-hidden rounded-2xl border-[1.5px] border-line-strong bg-card pl-4 transition-[border-color,box-shadow] focus-within:border-brand focus-within:shadow-[0_0_0_4px_rgba(221,67,1,0.12)]">
+        {/* Drawn like a `field`, with +91 inside it, as the app's number field. */}
+        <div className="flex min-h-13 items-center gap-1 overflow-hidden rounded-[1rem] border-[1.5px] border-line-strong bg-white/62 pl-4 shadow-(--glass-glow-small) transition-[border-color,box-shadow] focus-within:border-brand focus-within:shadow-[0_0_0_4px_rgba(221,67,1,0.12)]">
           <span className="text-base font-semibold tabular-nums text-body">+91</span>
           <input
             id="phone"

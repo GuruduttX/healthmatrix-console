@@ -1,5 +1,6 @@
 export * from "./access-grant.model";
 export * from "./access-log.model";
+export * from "./ask-conversation.model";
 export * from "./booking.model";
 export * from "./consult.model";
 export * from "./consult-request.model";

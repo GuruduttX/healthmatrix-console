@@ -5,8 +5,8 @@ import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { bleed } from "@/components/hero";
 
 /**
- * Phones: pills under the bar that jump to each part of a long screen, the one in view marked.
- * Sections missing from the page (no vaccines, say) are left out.
+ * Phones: pills of glass under the bar that jump to each part of a long screen, the one in view
+ * marked, on a strip frosted like the bar. Sections missing from the page (no vaccines, say) are left out.
  */
 export function JumpNav({ label, items }: { label: string; items: { id: string; label: string }[] }) {
   const [present, setPresent] = useState(items);
@@ -54,7 +54,7 @@ export function JumpNav({ label, items }: { label: string; items: { id: string; 
   return (
     <nav
       aria-label={label}
-      className={`sticky top-[calc(env(safe-area-inset-top)+3.75rem)] z-20 mb-4 bg-canvas/85 py-2 backdrop-blur-xl backdrop-saturate-150 lg:hidden print:hidden ${bleed}`}
+      className={`sticky top-[calc(env(safe-area-inset-top)+3.75rem)] z-20 mb-4 bg-canvas/60 py-2 shadow-[0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-[20px] backdrop-saturate-170 lg:hidden print:hidden ${bleed}`}
     >
       <div ref={strip} className="no-scrollbar flex gap-2 overflow-x-auto px-4 sm:px-6">
         {present.map((item) => (

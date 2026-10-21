@@ -1,6 +1,7 @@
 import { ArrowRight, BellRing, KeyRound, LockOpen, TriangleAlert, UserCheck, Video } from "lucide-react";
 import Link from "next/link";
 
+import { GlassOrbs } from "@/components/glass";
 import { RelativeTime } from "@/components/relative-time";
 import { Avatar } from "@/components/ui";
 import { ageAndSex } from "@/lib/patient-text";
@@ -30,23 +31,25 @@ function pick(consults: Consult[], now = Date.now()) {
   };
 }
 
-/** A pill on the teal card. */
-const pill = "glass inline-flex min-w-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold";
+/** A pill on the card: glass set into the glass, or a warm one for what needs the doctor now. */
+const pill = "inline-flex min-w-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold";
+const flatPill = `glass-flat ${pill} text-ink-mid`;
+const warmPill = `${pill} border border-white/85 bg-brand/8 text-brand-deep`;
 
 /** The pulsing green dot of something happening now. */
 function LiveDot() {
   return (
     <span aria-hidden className="relative inline-flex size-2 shrink-0">
-      <span className="absolute inset-0 rounded-full bg-live/60 motion-safe:animate-ping" />
-      <span className="relative size-2 rounded-full bg-live shadow-[0_0_0_3px_rgba(74,222,128,0.25)]" />
+      <span className="absolute inset-0 rounded-full bg-success/50 motion-safe:animate-ping" />
+      <span className="relative size-2 rounded-full bg-success shadow-[0_0_0_3px_rgba(14,117,100,0.18)]" />
     </span>
   );
 }
 
 /**
- * The one consult that needs the doctor next, at the top of Today, on the teal card the app
- * uses for a member's next consult: the call in progress, else a patient in the waiting room,
- * else the next booking. It says whether the record is open yet, so there's time to ask for the
+ * The one consult that needs the doctor next, at the top of Today, on a pane of glass with two
+ * glass spheres peeking past its edges, as the app's Home banner: the call in progress, else a
+ * patient in the waiting room, else the next booking. It says whether the record is open yet, so there's time to ask for the
  * OTP before the call. `soon`: ids of consults about to start, when the doctor has that alert on.
  */
 export function UpNext({ consults, soon }: { consults: Consult[]; soon: string[] }) {
@@ -83,110 +86,110 @@ export function UpNext({ consults, soon }: { consults: Consult[]; soon: string[]
   }[state];
 
   return (
-    <section
-      aria-labelledby="up-next-title"
-      className="teal-bg relative overflow-hidden rounded-3xl p-4 text-white shadow-[0_14px_30px_rgba(16,128,109,0.28)] sm:p-5"
-    >
-      <div className="flex items-center justify-between gap-2">
-        <span className={`${pill} ${urgent && state === "next" ? "border-brand-light/40 bg-brand/35" : ""}`}>
-          {state === "next" ? (
-            urgent ? (
-              <BellRing aria-hidden className="size-3.5" />
-            ) : (
-              <Video aria-hidden className="size-3.5" />
-            )
-          ) : (
-            <LiveDot />
-          )}
-          {eyebrow}
-        </span>
-        <span className={`${pill} tabular-nums`}>
-          <span className="truncate">
-            {consult.day} · {consult.time}
-          </span>
-        </span>
-      </div>
-
-      <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-6">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-3">
-            <span className="relative shrink-0 rounded-full bg-white/12 p-0.5 ring-[1.5px] ring-white/50">
-              <Avatar initials={patient.initials} tone={patient.avatarTone} size="md" />
-              <span className="absolute -bottom-1 -right-1 inline-flex size-5.5 items-center justify-center rounded-full border-2 border-teal bg-brand">
-                <Video aria-hidden className="size-2.5" strokeWidth={2.8} />
-              </span>
-            </span>
-            <div className="min-w-0">
-              <h2 id="up-next-title" className="truncate font-display text-[19px] font-bold leading-6 tracking-[-0.01em]">
-                <Link href={`/patients/${patient.id}`} className="hover:underline">
-                  {patient.name}
-                </Link>
-              </h2>
-              {about ? <p className="truncate text-xs text-white/70">{about}</p> : null}
-            </div>
-          </div>
-          <p className="mt-3 line-clamp-2 text-[13px] leading-relaxed text-white/85">{consult.reason}</p>
-          <div className="mt-2.5 flex flex-wrap gap-1.5">
-            <span className={pill}>
-              {recordOpen ? (
-                <LockOpen aria-hidden className="size-3.5 text-live" />
+    <div className="relative">
+      <GlassOrbs />
+      <section aria-labelledby="up-next-title" className="glass-panel rounded-2xl p-4 sm:p-5">
+        <div className="flex items-center justify-between gap-2">
+          <span className={urgent && state === "next" ? warmPill : flatPill}>
+            {state === "next" ? (
+              urgent ? (
+                <BellRing aria-hidden className="size-3.5" />
               ) : (
-                <KeyRound aria-hidden className="size-3.5 text-brand-light" />
-              )}
-              {recordOpen ? "Record open" : patient.access.status === "pending" ? "Awaiting OTP" : "Record not shared yet"}
-            </span>
-            {patient.allergies.map((allergy) => (
-              <span key={allergy} className="inline-flex items-center gap-1.5 rounded-full border border-[#ffb48f]/35 bg-danger/40 px-2.5 py-1 text-xs font-semibold text-[#ffe1d3]">
-                <TriangleAlert aria-hidden className="size-3.5" />
-                Allergy: {allergy}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-2 sm:w-72 sm:shrink-0">
-          <div className="glass flex items-center gap-3 rounded-2xl bg-white/10 py-2.5 pl-3.5 pr-2.5">
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-xs text-white/70">{panel.label}</p>
-              <p className="truncate font-display text-[22px] font-bold leading-7 tabular-nums">{panel.value}</p>
-            </div>
-            <Link
-              // Admit here lets the patient in: the consult page admits on arrival, no second click.
-              href={`/consults/${consult.id}${state === "waiting" ? "?admit=1" : ""}`}
-              aria-label={action.label}
-              className="btn btn-primary btn-sm shrink-0 px-4 shadow-[0_8px_20px_rgba(221,67,1,0.45)]"
-            >
-              <action.icon aria-hidden className="size-4" />
-              {state === "live" ? "Join" : state === "waiting" ? "Admit" : "Open"}
-            </Link>
-          </div>
-          {/* Asking now means the record is there when the call starts. */}
-          {!recordOpen && state !== "live" ? (
-            <Link href={`/patients/${patient.id}`} className="btn btn-glass btn-sm">
-              <KeyRound aria-hidden className="size-4" />
-              {patient.access.status === "pending" ? "Enter the OTP" : "Ask for the record"}
-            </Link>
-          ) : null}
-        </div>
-      </div>
-
-      {then ? (
-        <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-white/12 pt-3 text-[13px] text-white/75">
-          <span>
-            After this{" "}
-            <Link href={`/consults/${then.id}`} className="font-bold text-white hover:underline">
-              {then.patient.name}
-            </Link>{" "}
-            at {then.time}, <RelativeTime at={then.startsAt} />
+                <Video aria-hidden className="size-3.5" />
+              )
+            ) : (
+              <LiveDot />
+            )}
+            {eyebrow}
           </span>
-          {soon.includes(then.id) ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-white">
-              <BellRing aria-hidden className="size-3" />
-              Starting soon
+          <span className={`${flatPill} tabular-nums`}>
+            <span className="truncate">
+              {consult.day} · {consult.time}
             </span>
-          ) : null}
-        </p>
-      ) : null}
-    </section>
+          </span>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-6">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-3">
+              <span className="relative shrink-0 rounded-full bg-white/70 p-0.5 shadow-[0_1px_2px_rgba(30,50,70,0.06),0_6px_14px_rgba(30,50,70,0.1)]">
+                <Avatar initials={patient.initials} tone={patient.avatarTone} size="md" />
+                <span className="absolute -bottom-1 -right-1 inline-flex size-5.5 items-center justify-center rounded-full border-2 border-white bg-brand text-white">
+                  <Video aria-hidden className="size-2.5" strokeWidth={2.8} />
+                </span>
+              </span>
+              <div className="min-w-0">
+                <h2 id="up-next-title" className="truncate font-display text-[19px] font-semibold leading-6 tracking-[-0.01em] text-ink">
+                  <Link href={`/patients/${patient.id}`} className="hover:underline">
+                    {patient.name}
+                  </Link>
+                </h2>
+                {about ? <p className="truncate text-xs text-muted">{about}</p> : null}
+              </div>
+            </div>
+            <p className="mt-3 line-clamp-2 text-[13px] leading-relaxed text-body">{consult.reason}</p>
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
+              <span className={flatPill}>
+                {recordOpen ? (
+                  <LockOpen aria-hidden className="size-3.5 text-success" />
+                ) : (
+                  <KeyRound aria-hidden className="size-3.5 text-brand-deep" />
+                )}
+                {recordOpen ? "Record open" : patient.access.status === "pending" ? "Awaiting OTP" : "Record not shared yet"}
+              </span>
+              {patient.allergies.map((allergy) => (
+                <span key={allergy} className={`${pill} border border-white/85 bg-danger/8 text-danger`}>
+                  <TriangleAlert aria-hidden className="size-3.5" />
+                  Allergy: {allergy}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2 sm:w-72 sm:shrink-0">
+            <div className="glass-flat flex items-center gap-3 rounded-2xl py-2.5 pl-3.5 pr-2.5">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs text-muted">{panel.label}</p>
+                <p className="truncate font-display text-[22px] font-semibold leading-7 tabular-nums text-ink">{panel.value}</p>
+              </div>
+              <Link
+                // Admit here lets the patient in: the consult page admits on arrival, no second click.
+                href={`/consults/${consult.id}${state === "waiting" ? "?admit=1" : ""}`}
+                aria-label={action.label}
+                className="btn btn-primary btn-sm shrink-0 px-4"
+              >
+                <action.icon aria-hidden className="size-4" />
+                {state === "live" ? "Join" : state === "waiting" ? "Admit" : "Open"}
+              </Link>
+            </div>
+            {/* Asking now means the record is there when the call starts. */}
+            {!recordOpen && state !== "live" ? (
+              <Link href={`/patients/${patient.id}`} className="btn btn-secondary btn-sm">
+                <KeyRound aria-hidden className="size-4" />
+                {patient.access.status === "pending" ? "Enter the OTP" : "Ask for the record"}
+              </Link>
+            ) : null}
+          </div>
+        </div>
+
+        {then ? (
+          <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-line pt-3 text-[13px] text-body">
+            <span>
+              After this{" "}
+              <Link href={`/consults/${then.id}`} className="font-bold text-ink hover:underline">
+                {then.patient.name}
+              </Link>{" "}
+              at {then.time}, <RelativeTime at={then.startsAt} />
+            </span>
+            {soon.includes(then.id) ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-white">
+                <BellRing aria-hidden className="size-3" />
+                Starting soon
+              </span>
+            ) : null}
+          </p>
+        ) : null}
+      </section>
+    </div>
   );
 }

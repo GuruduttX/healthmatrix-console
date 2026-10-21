@@ -8,6 +8,7 @@ import { z } from "zod";
 import {
   AccessGrantModel,
   AccessLogModel,
+  BookingModel,
   ConsultModel,
   ConsultRequestModel,
   DoctorModel,
@@ -21,7 +22,14 @@ import {
 } from "@/models";
 
 import { OTP_MAX_ATTEMPTS, OTP_RESEND_MS, requireDoctor } from "./auth";
-import { ACCESS_OTP_TTL_MS, ACCESS_TTL_MS, DEFAULT_SETTINGS, offRestOfToday, type SettingGroup } from "./console-data";
+import {
+  ACCESS_OTP_TTL_MS,
+  ACCESS_TTL_MS,
+  DEFAULT_SETTINGS,
+  isResultsPatient,
+  offRestOfToday,
+  type SettingGroup,
+} from "./console-data";
 import { formatWhen } from "./format";
 import { connectDB } from "./db";
 import { labTestsField, type LabCatalog, type LabTestInput } from "./lab-tests";
@@ -759,14 +767,27 @@ export async function removeTimeOff(timeOffId: string) {
 // ---------------------------------------------------------------------------
 // Results
 
-/** Moves a result off the "new" list once the doctor has looked at it. */
-export async function markResultReviewed(orderId: string) {
+/** Moves a pod booking's results off the "new" list once the doctor has looked at them. */
+export async function markResultReviewed(bookingId: string) {
   const doctor = await signedInDoctor();
-  const id = objectId(orderId);
+  const id = objectId(bookingId);
   if (!id) return;
+  const booking = await BookingModel.findOne({ _id: id, result: { $exists: true } })
+    .select("member profiles tests createdAt")
+    .lean();
+  if (!booking || !(await isResultsPatient(doctor._id, booking.member))) return;
+  const tests = booking.tests?.length ?? 0;
   await TestOrderModel.updateOne(
-    { _id: id, doctor: doctor._id, status: "result_back" },
-    { $set: { status: "reviewed", reviewedAt: new Date() } },
+    { doctor: doctor._id, booking: booking._id },
+    {
+      $set: { status: "reviewed", reviewedAt: new Date() },
+      $setOnInsert: {
+        member: booking.member,
+        test: booking.profiles?.length ? booking.profiles.join(", ") : `${tests} test${tests === 1 ? "" : "s"}`,
+        orderedAt: booking.createdAt,
+      },
+    },
+    { upsert: true },
   );
   refresh();
 }
@@ -781,8 +802,15 @@ export async function updateSetting(group: SettingGroup, key: string, on: boolea
   refresh();
 }
 
-export async function markNotificationsRead() {
+/**
+ * The doctor has Notifications open: everything up to `upTo` (when that list was read) is seen,
+ * so the bell's dot goes. Never moves back, and never past now.
+ */
+export async function markNotificationsSeen(upTo: string) {
   const doctor = await signedInDoctor();
-  await DoctorModel.updateOne({ _id: doctor._id }, { $set: { "settings.notificationsSeenAt": new Date() } });
+  const at = new Date(upTo);
+  if (Number.isNaN(at.getTime())) return;
+  const seen = new Date(Math.min(at.getTime(), Date.now()));
+  await DoctorModel.updateOne({ _id: doctor._id }, { $max: { "settings.notificationsSeenAt": seen } });
   refresh();
 }

@@ -1,19 +1,19 @@
 import { Bone, ChipBone, SkeletonPage } from "@/components/skeletons";
 import { bleed } from "@/components/hero";
 
-/** One prescription: the letterhead page with the doctor, the patient and the items. */
+/** One prescription: the letterhead, a pane of glass, with the doctor, the patient and the items. */
 export default function PrescriptionLoading() {
   return (
     <SkeletonPage>
       <div className={`flex items-center px-4 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] sm:px-6 lg:hidden ${bleed}`}>
-        <Bone className="size-11 rounded-full bg-card shadow-card ring-1 ring-line-strong" />
+        <Bone tone="frost" className="size-11 rounded-full" />
         <Bone className="mx-auto h-4.5 w-32" />
         <span className="size-11" />
       </div>
       <div className="mx-auto max-w-2xl">
         <Bone className="mb-3 hidden h-6 w-32 rounded-full lg:block" />
       </div>
-      <div className="mx-auto mt-2 max-w-2xl rounded-xl border border-line bg-card p-5 shadow-card sm:p-10 lg:mt-1">
+      <div className="glass-panel mx-auto mt-2 max-w-2xl rounded-2xl p-5 sm:p-10 lg:mt-1">
         <div className="flex flex-wrap items-start justify-between gap-4 border-b border-line pb-5">
           <div>
             <Bone className="h-6 w-44" />

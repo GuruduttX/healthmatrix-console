@@ -11,7 +11,7 @@ const toneClasses: Record<Tone, string> = {
   success: "bg-success-soft text-success",
   warning: "bg-warning-soft text-warning",
   danger: "bg-danger-soft text-danger",
-  brand: "bg-brand-soft text-brand",
+  brand: "bg-brand-soft text-brand-deep",
   neutral: "bg-selected text-ink-mid",
 };
 
@@ -66,14 +66,14 @@ export function Chip({
 }
 
 const tileSizes = {
-  xs: "size-7 rounded-lg [&>svg]:size-4",
-  sm: "size-8 rounded-[0.625rem] [&>svg]:size-4",
-  md: "size-10 rounded-xl [&>svg]:size-5",
-  lg: "size-11 rounded-[0.875rem] [&>svg]:size-5",
+  xs: "size-7 [&>svg]:size-3.5",
+  sm: "size-8 [&>svg]:size-4",
+  md: "size-10 [&>svg]:size-4.5",
+  lg: "size-11 [&>svg]:size-5",
 };
 
 const softTones: Record<Tone, string> = {
-  brand: "bg-brand-soft text-brand",
+  brand: "bg-brand-soft text-brand-deep",
   success: "bg-success-soft text-success",
   warning: "bg-warning-soft text-warning",
   danger: "bg-danger-soft text-danger",
@@ -81,15 +81,18 @@ const softTones: Record<Tone, string> = {
 };
 
 const tileLooks = {
-  /** An icon on its tone's soft tint, as the app's IconTile. */
-  soft: "",
+  /** In a round of glass, as the app's IconTile: quiet for brand and neutral, a flag's tint for the rest. */
+  soft: "brand-tile",
   /** The logo's orange as a light-to-deep gradient with a white glyph: where it should stand out. */
-  solid: "bg-linear-to-br from-brand-mid to-brand text-white shadow-[0_4px_12px_rgba(221,67,1,0.28)]",
+  solid: "inline-flex items-center justify-center rounded-full bg-linear-to-br from-brand-mid to-brand text-white shadow-glow",
   /** White with an orange glyph, for tiles that sit on a dark or orange surface. */
-  inverse: "bg-white text-brand shadow-[0_2px_6px_rgba(0,0,0,0.18)]",
+  inverse: "inline-flex items-center justify-center rounded-full bg-white text-brand shadow-[0_2px_6px_rgba(0,0,0,0.18)]",
 };
 
-/** An icon on a soft tinted rounded square, in one of the app's tones. */
+/**
+ * An icon in a round dish, as the app's IconTile. Brand and neutral icons share one quiet dish of
+ * glass (never orange on peach); a flag's tone tints the dish with its colour.
+ */
 export function IconTile({
   icon: Icon,
   size = "sm",
@@ -107,7 +110,8 @@ export function IconTile({
   return (
     <span
       aria-hidden
-      className={`inline-flex shrink-0 items-center justify-center ${tileSizes[size]} ${look === "soft" ? softTones[tone] : tileLooks[look]} ${className}`}
+      data-tone={look === "soft" && tone !== "brand" ? tone : undefined}
+      className={`shrink-0 ${tileSizes[size]} ${tileLooks[look]} ${className}`}
     >
       <Icon />
     </span>
@@ -150,26 +154,21 @@ export function Avatar({
   );
 }
 
+/** A card on the page, as the app's: a pane of glass. Lists inside it use hairline dividers, not shaded boxes. */
 export function Card({
   id,
   className = "",
   flush = false,
-  highlight = false,
   children,
 }: {
   id?: string;
   className?: string;
-  /** Ekaay's look, for anything the AI wrote: a thin orange frame and a warm corner. */
-  highlight?: boolean;
   /** Drop the padding so rows can run edge to edge. */
   flush?: boolean;
   children: ReactNode;
 }) {
   return (
-    <section
-      id={id}
-      className={`min-w-0 rounded-xl shadow-card ${highlight ? "ekaay-frame" : "border border-line bg-card"} ${flush ? "overflow-hidden" : "p-4 sm:p-5"} ${className}`}
-    >
+    <section id={id} className={`min-w-0 rounded-2xl glass-panel ${flush ? "overflow-hidden" : "p-4 sm:p-5"} ${className}`}>
       {children}
     </section>
   );
@@ -188,8 +187,8 @@ export function CardTitle({
   children: ReactNode;
 }) {
   return (
-    <h2 className={`flex items-center font-display text-base font-bold tracking-[-0.005em] text-ink ${tile ? "gap-2.5" : "gap-2"}`}>
-      {Icon && tile ? <IconTile icon={Icon} tone={tone} /> : Icon ? <Icon aria-hidden className="size-4 text-brand" /> : null}
+    <h2 className={`flex items-center font-display text-base font-semibold tracking-[-0.01em] text-ink ${tile ? "gap-2.5" : "gap-2"}`}>
+      {Icon && tile ? <IconTile icon={Icon} tone={tone} /> : Icon ? <Icon aria-hidden className="size-4 text-brand-deep" /> : null}
       {children}
     </h2>
   );
@@ -243,7 +242,7 @@ export function PanelHeader({
 /** A section's link at the right of its title, such as "Full schedule ›". */
 export function PanelLink({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <Link href={href} className="inline-flex shrink-0 items-center gap-0.5 text-[13px] font-bold text-brand hover:text-brand-strong">
+    <Link href={href} className="inline-flex shrink-0 items-center gap-0.5 text-sm font-semibold text-brand-deep transition-opacity hover:opacity-70">
       {children}
       <ChevronRight aria-hidden className="size-4" />
     </Link>
@@ -251,8 +250,8 @@ export function PanelLink({ href, children }: { href: string; children: ReactNod
 }
 
 /**
- * A titled block of a screen, as on the app's Home: the title in the display face above the
- * card, with a count, a quiet note or a "See all ›" link at the right.
+ * A titled block of a screen, as on the app's Home: a calm heading in the display face above the
+ * card, the count a quiet number beside it, and a quiet note or a "See all ›" link at the right.
  */
 export function Section({
   id,
@@ -275,9 +274,12 @@ export function Section({
   return (
     <section id={id} aria-labelledby={id ? `${id}-title` : undefined} className={`min-w-0 ${className}`}>
       <div className="mb-3 flex min-h-7 items-center justify-between gap-3 px-0.5">
-        <h2 id={id ? `${id}-title` : undefined} className="flex min-w-0 items-center gap-2 font-display text-[19px] font-bold leading-6 tracking-[-0.01em] text-ink">
+        <h2
+          id={id ? `${id}-title` : undefined}
+          className="flex min-w-0 items-center gap-2 font-display text-xl font-semibold leading-6.5 tracking-[-0.015em] text-ink"
+        >
           <span className="truncate">{title}</span>
-          {count ? <Count value={count} /> : null}
+          {count ? <span className="text-base font-semibold tabular-nums text-muted">{count}</span> : null}
         </h2>
         {action ?? (meta ? <span className="shrink-0 text-[13px] text-muted">{meta}</span> : null)}
       </div>
@@ -287,8 +289,8 @@ export function Section({
 }
 
 /**
- * The top of a screen. A tab's own screen gets the dark hero (`children` go under its title:
- * a search, filter pills). A screen opened from one (`back`) gets, on phones, the app's bar with
+ * The top of a screen. A tab's own screen gets the app's tab header: a large title on the page with
+ * a quiet line under it (`children` go below: a search, filter pills). A screen opened from one (`back`) gets, on phones, the app's bar with
  * a round back button, its title appearing in the bar once the big one has scrolled away.
  */
 export function PageHeader({
@@ -332,10 +334,10 @@ export function PageHeader({
         <BackLink href={back.href} label={back.label} />
         <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
           <div className="min-w-0 max-w-3xl">
-            {eyebrow ? <p className="mb-1 text-[13px] font-semibold text-brand">{eyebrow}</p> : null}
+            {eyebrow ? <p className="mb-1 text-[13px] font-semibold text-brand-deep">{eyebrow}</p> : null}
             <h1
               id="page-title"
-              className="font-display text-[1.75rem] font-bold leading-tight tracking-[-0.015em] text-ink lg:text-[2rem]"
+              className="font-display text-[1.625rem] font-semibold leading-tight tracking-[-0.02em] text-ink lg:text-[2rem]"
             >
               {title}
             </h1>
@@ -350,20 +352,18 @@ export function PageHeader({
 }
 
 /**
- * Filters along the top of a list, as pills that scroll sideways on phones. Links, so the
- * choice is in the address. `glass` for pills on a dark hero.
+ * Filters along the top of a list, as the app's chips: pills of glass that scroll sideways on
+ * phones, solid ink once chosen. Links, so the choice is in the address.
  */
 export function FilterTabs({
   label,
   items,
   active,
-  glass = false,
   className = "",
 }: {
   label: string;
   items: { value: string; label: string; href: string; count?: number }[];
   active: string;
-  glass?: boolean;
   className?: string;
 }) {
   return (
@@ -376,13 +376,13 @@ export function FilterTabs({
               key={item.value}
               href={item.href}
               aria-current={selected ? "true" : undefined}
-              className={`chip ${glass ? "chip-glass" : ""}`}
+              className="chip"
             >
               {item.label}
               {item.count !== undefined ? (
                 <span
-                  className={`rounded-full px-1.5 text-[11px] font-bold tabular-nums leading-4 ${
-                    selected ? (glass ? "bg-ink/10" : "bg-white/20") : glass ? "bg-white/15" : "bg-selected"
+                  className={`-mr-1.5 min-w-5 rounded-full px-1.5 text-center text-[11px] font-bold tabular-nums leading-4 ${
+                    selected ? "bg-white/18 text-white" : "bg-surface text-body"
                   }`}
                 >
                   {item.count}
@@ -396,7 +396,7 @@ export function FilterTabs({
   );
 }
 
-/** What a list says when it is empty: an icon on soft rings, a line on what goes here. */
+/** What a list says when it is empty, as the app's: an icon in a round of glass on a soft halo, a line on what goes here. */
 export function EmptyState({
   icon: Icon,
   title,
@@ -412,12 +412,12 @@ export function EmptyState({
     <div className="flex flex-col items-center px-6 py-10 text-center">
       {Icon ? (
         <span aria-hidden className={`mb-4 inline-flex size-19 items-center justify-center rounded-full ${softTones[tone]}`}>
-          <span className="inline-flex size-13.5 items-center justify-center rounded-full bg-card shadow-card [&>svg]:size-6">
+          <span className="glass-small inline-flex size-13.5 items-center justify-center rounded-full [&>svg]:size-6">
             <Icon />
           </span>
         </span>
       ) : null}
-      {title ? <p className="text-base font-bold text-ink">{title}</p> : null}
+      {title ? <p className="font-display text-base font-semibold text-ink">{title}</p> : null}
       <div className="mt-1 max-w-sm text-sm leading-relaxed text-body">{children}</div>
     </div>
   );

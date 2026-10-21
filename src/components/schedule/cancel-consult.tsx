@@ -75,7 +75,7 @@ function CancelDialog({
               maxLength={200}
               rows={3}
               placeholder="e.g. I’m called to an emergency. Please book another time."
-              className="field font-normal"
+              className="field"
             />
           </label>
           {error ? <DialogError>{error}</DialogError> : null}

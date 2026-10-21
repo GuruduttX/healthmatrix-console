@@ -199,7 +199,7 @@ export type VaccineView = {
 export type DraftRef = { id: string; items: string[]; vaccines: VaccineInput[]; tests: LabTestInput[] };
 
 export type PatientRecord = {
-  /** Ekaay's summary lines, empty until Ekaay has written one. */
+  /** Ekaay's summary lines from a consult, empty when none has one (`EkaaySummary` then writes one from the record). */
   summary: string[];
   medicines: string[];
   /** The prescriptions given to the patient, newest first. Lab results live on the lab tests card. */
@@ -236,16 +236,23 @@ export type Prescription = {
   items: string[];
 };
 
-export type TestOrderStatus = "awaiting_booking" | "booked" | "result_back" | "reviewed";
+export type TestOrderStatus = "awaiting_booking" | "booked" | "result_back" | "reviewed" | "cancelled";
 
+/** A row on Results: a pod booking by one of the doctor's patients, or tests they ordered that aren't booked yet. */
 export type TestOrder = {
   id: string;
   patient: PatientRef;
+  /** "Liver Function Test", "HbA1c, TSH" or "3 tests". */
   test: string;
-  orderedOn: string;
+  /** When the doctor ordered it; unset for tests the patient booked without their order. */
+  orderedOn?: string;
   where: string;
   status: TestOrderStatus;
+  /** Where a booking still waiting for results is at the lab: "Not tested yet", "Testing", … */
+  progress?: string;
   result?: { value: string; flag: ResultFlag; label: string; date: string };
+  /** Results from Mobilab's test mode: made-up values, never a real reading. */
+  isSample?: boolean;
 };
 
 export type Notification = {
@@ -255,5 +262,6 @@ export type Notification = {
   body: string;
   href: string;
   tone: Tone;
-  unread: boolean;
+  /** When it happened, as an ISO string: newer than when the doctor last opened Notifications is new. */
+  at: string;
 };

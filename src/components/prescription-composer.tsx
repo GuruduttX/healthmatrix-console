@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 
 import { useDraftOwner } from "@/components/record/draft-owner";
 import { PrescriptionDraft } from "@/components/record/prescription-draft";
-import { IconTile } from "@/components/ui";
+import { Card, IconTile } from "@/components/ui";
 import { listLocalRx, readLocalRx, readVaccineForm } from "@/lib/rx-autosave";
 
 type PatientOption = {
@@ -17,8 +17,9 @@ type PatientOption = {
   medicines: string[];
 };
 
+/** One way to capture: a tile of glass set into the card. */
 const captureButton =
-  "pressable flex flex-col items-center gap-2 rounded-2xl border border-line bg-surface px-2 py-4 text-[13px] font-bold text-ink transition-colors hover:bg-selected disabled:cursor-not-allowed disabled:opacity-45";
+  "pressable glass-flat flex flex-col items-center gap-2 rounded-2xl px-2 py-4 text-[13px] font-bold text-ink enabled:hover:bg-white/60 disabled:cursor-not-allowed disabled:opacity-45";
 
 export function PrescriptionComposer({
   options,
@@ -81,8 +82,8 @@ export function PrescriptionComposer({
   return (
     <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] xl:gap-6">
       <div className="flex min-w-0 flex-col gap-5">
-        <section className="rounded-xl border border-line bg-card p-4 shadow-card sm:p-5">
-          <label htmlFor="rx-patient" className="flex items-center gap-2.5 font-display text-base font-bold text-ink">
+        <Card>
+          <label htmlFor="rx-patient" className="flex items-center gap-2.5 font-display text-base font-semibold text-ink">
             <Step n={1} />
             Patient
           </label>
@@ -113,7 +114,7 @@ export function PrescriptionComposer({
                       <button
                         type="button"
                         onClick={() => choosePatient(p.id)}
-                        className="chip min-h-9 px-3.5 text-[13px] text-ink"
+                        className="chip"
                       >
                         {p.name}
                         <span className="font-normal text-body">
@@ -131,10 +132,10 @@ export function PrescriptionComposer({
               ? "Only patients whose record is open are listed. Ask for an OTP to add others."
               : "No patient’s record is open to you right now. Open a patient’s page and ask for an OTP first."}
           </p>
-        </section>
+        </Card>
 
-        <section className="rounded-xl border border-line bg-card p-4 shadow-card sm:p-5">
-          <h2 className="flex items-center gap-2.5 font-display text-base font-bold text-ink">
+        <Card>
+          <h2 className="flex items-center gap-2.5 font-display text-base font-semibold text-ink">
             <Step n={2} />
             Capture
           </h2>
@@ -155,11 +156,11 @@ export function PrescriptionComposer({
           <p className="mt-3 text-xs text-muted">
             Dictation and photos need Ekaay, which isn’t connected yet. Type the prescription for now.
           </p>
-        </section>
+        </Card>
 
         {patient && typing ? (
-          <section className="rounded-xl border border-line bg-card p-4 shadow-card sm:p-5">
-            <h2 className="flex items-center gap-2.5 font-display text-base font-bold text-ink">
+          <Card>
+            <h2 className="flex items-center gap-2.5 font-display text-base font-semibold text-ink">
               <Step n={3} />
               Review and sign
             </h2>
@@ -173,12 +174,12 @@ export function PrescriptionComposer({
               doctorName={doctorName}
               allergyTerms={patient.allergyTerms}
             />
-          </section>
+          </Card>
         ) : null}
       </div>
 
-      <aside className="rounded-xl border border-line bg-card p-4 shadow-card sm:p-5 xl:sticky xl:top-20">
-        <h2 className="flex items-center gap-2.5 font-display text-base font-bold text-ink">
+      <aside className="glass-panel rounded-2xl p-4 sm:p-5 xl:sticky xl:top-20">
+        <h2 className="flex items-center gap-2.5 font-display text-base font-semibold text-ink">
           <IconTile icon={ShieldCheck} tone="success" />
           Safety checks
         </h2>
@@ -218,7 +219,7 @@ export function PrescriptionComposer({
 /** The number of a step in writing a prescription. */
 function Step({ n }: { n: number }) {
   return (
-    <span aria-hidden className="inline-flex size-7 items-center justify-center rounded-full bg-brand text-xs font-bold tabular-nums text-white shadow-[0_4px_10px_rgba(221,67,1,0.25)]">
+    <span aria-hidden className="inline-flex size-7 items-center justify-center rounded-full bg-brand text-xs font-bold tabular-nums text-white">
       {n}
     </span>
   );

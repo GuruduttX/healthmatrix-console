@@ -8,9 +8,10 @@ import { useEffect, useRef, type ReactNode } from "react";
 type Variant = "bar" | "hero";
 
 const fields: Record<Variant, string> = {
-  bar: "peer h-10 w-full rounded-full border border-line-strong bg-card pl-10 pr-10 text-sm font-medium text-ink shadow-card transition-[border-color,box-shadow] placeholder:font-normal placeholder:text-muted focus:border-brand focus:shadow-[0_0_0_4px_rgba(221,67,1,0.12)] focus:outline-none",
-  // As the search on the app's Records header: white, on the dark header, with a deep shadow.
-  hero: "h-13 w-full rounded-[1.125rem] border-0 bg-card pl-12 pr-4 font-medium text-ink shadow-[0_12px_30px_rgba(0,0,0,0.22)] placeholder:font-normal placeholder:text-muted focus:shadow-[0_12px_30px_rgba(0,0,0,0.22),0_0_0_4px_rgba(246,175,145,0.45)] focus:outline-none",
+  // A pill of small glass in the top bar.
+  bar: "glass-small peer h-10 w-full rounded-full pl-10 pr-10 text-sm font-medium text-ink transition-[border-color,box-shadow] placeholder:font-normal placeholder:text-muted focus:border-brand focus:shadow-[0_0_0_4px_rgba(221,67,1,0.12)] focus:outline-none",
+  // As the app's fields: a pane of frosted glass set into the page, under the Patients title.
+  hero: "field h-13 rounded-2xl pl-12 pr-4 text-base",
 };
 
 /**

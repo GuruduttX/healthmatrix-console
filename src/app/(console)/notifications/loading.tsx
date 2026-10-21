@@ -5,7 +5,7 @@ export default function NotificationsLoading() {
   return (
     <SkeletonPage>
       <div className="mx-auto max-w-3xl lg:mx-0">
-        <StackBone lines={2} action />
+        <StackBone lines={2} />
         <SectionBone width="w-16">
           <SkeletonCard flush>
             <ul className="divide-y divide-line">

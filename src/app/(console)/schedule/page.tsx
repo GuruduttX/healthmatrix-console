@@ -1,5 +1,5 @@
 import { CalendarDays, CalendarOff, Clock, Radio } from "lucide-react";
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
 
 import { ConsultRow } from "@/components/consult-row";
 import { RequestsCard } from "@/components/requests/requests-card";
@@ -13,9 +13,6 @@ import { istDateKey } from "@/lib/schedule";
 export async function generateMetadata(): Promise<Metadata> {
   return { title: waitingTitle("Schedule", await getSchedule()) };
 }
-
-/** Phones: the browser's bars take the dark header's colour. */
-export const viewport: Viewport = { themeColor: "#0b2129" };
 
 export default async function SchedulePage() {
   const [consults, settings, availability, notes, requests] = await Promise.all([
