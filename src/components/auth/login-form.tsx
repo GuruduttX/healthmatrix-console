@@ -2,7 +2,9 @@
 
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
+
+import styles from "./auth-shell.module.css";
 
 import { FormMessage } from "./form-message";
 import { requestOtp, type AuthFormState, type AuthIntent } from "@/lib/auth-actions";
@@ -15,6 +17,9 @@ const SWITCH_LINKS = {
 /** The mobile number step. `intent` decides whether the number must already be registered. */
 export function LoginForm({ intent }: { intent: AuthIntent }) {
   const [state, action, pending] = useActionState(requestOtp, {} satisfies AuthFormState);
+  useEffect(() => {
+    if (state.navigateTo) window.location.assign(state.navigateTo);
+  }, [state.navigateTo]);
   const switchLink = state.switchTo ? SWITCH_LINKS[state.switchTo] : null;
 
   return (
@@ -25,13 +30,13 @@ export function LoginForm({ intent }: { intent: AuthIntent }) {
           {switchLink.label} →
         </Link>
       ) : null}
-      <form action={action} className="mt-6 flex flex-col gap-1.5">
+      <form action={action} className={`${styles.phoneForm} mt-6 flex flex-col gap-1.5`}>
         <input type="hidden" name="intent" value={intent} />
         <label htmlFor="phone" className="text-[13px] font-bold text-body">
           Mobile number
         </label>
         {/* Drawn like a `field`, with +91 inside it, as the app's number field. */}
-        <div className="flex min-h-13 items-center gap-1 overflow-hidden rounded-[1rem] border-[1.5px] border-line-strong bg-white/62 pl-4 shadow-(--glass-glow-small) transition-[border-color,box-shadow] focus-within:border-brand focus-within:shadow-[0_0_0_4px_rgba(221,67,1,0.12)]">
+        <div className={`${styles.phoneField} flex min-h-13 items-center gap-1 overflow-hidden rounded-[1rem] border-[1.5px] border-line-strong bg-white/62 pl-4 shadow-(--glass-glow-small) transition-[border-color,box-shadow] focus-within:border-brand focus-within:shadow-[0_0_0_4px_rgba(221,67,1,0.12)]`}>
           <span className="text-base font-semibold tabular-nums text-body">+91</span>
           <input
             id="phone"
@@ -47,7 +52,7 @@ export function LoginForm({ intent }: { intent: AuthIntent }) {
             className="min-w-0 flex-1 self-stretch bg-transparent px-2 text-base font-semibold tabular-nums tracking-wide text-ink placeholder:font-normal placeholder:tracking-normal placeholder:text-muted outline-none"
           />
         </div>
-        <button type="submit" disabled={pending} className="btn btn-primary btn-lg mt-5 w-full">
+        <button type="submit" disabled={pending || Boolean(state.navigateTo)} className={`${styles.continueButton} btn btn-primary btn-lg mt-5 w-full`}>
           {pending ? "Sending…" : intent === "register" ? "Send OTP to register" : "Send OTP"}
           {pending ? null : <ArrowRight aria-hidden className="size-4.5" />}
         </button>

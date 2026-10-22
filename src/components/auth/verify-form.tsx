@@ -19,6 +19,10 @@ function useCountdown(until: number) {
 export function VerifyForm({ resendAt, devCode }: { resendAt: number; devCode?: string }) {
   const [state, verify, verifying] = useActionState(verifyOtp, {} satisfies AuthFormState);
   const [resent, resend, resending] = useActionState(resendOtp, {} satisfies AuthFormState);
+  const navigateTo = state.navigateTo ?? resent.navigateTo;
+  useEffect(() => {
+    if (navigateTo) window.location.assign(navigateTo);
+  }, [navigateTo]);
   // A resend sets cookies, so the page re-renders with the new code's `resendAt`.
   const wait = useCountdown(resendAt);
 
@@ -50,7 +54,7 @@ export function VerifyForm({ resendAt, devCode }: { resendAt: number; devCode?: 
           // The spacing after the last digit would pull the code left of centre; the indent evens it out.
           className="field h-15 indent-[0.5em] text-center font-display text-[1.625rem]! font-semibold! tabular-nums tracking-[0.5em]"
         />
-        <button type="submit" disabled={verifying} className="btn btn-primary btn-lg mt-5 w-full">
+        <button type="submit" disabled={verifying || Boolean(navigateTo)} className="btn btn-primary btn-lg mt-5 w-full">
           {verifying ? "Checking…" : "Continue"}
         </button>
       </form>

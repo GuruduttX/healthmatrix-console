@@ -9,8 +9,11 @@ mongoose.set("strictQuery", true);
 
 const cached = globalThis as typeof globalThis & { mongooseConnection?: Promise<typeof mongoose> };
 
-export function connectDB() {
-  // Next.js re-evaluates modules on hot reload; keep the one connection across reloads.
+export async function connectDB() {
+  if (mongoose.connection.readyState === 1) return mongoose;
+
+  // Share only an in-flight attempt. A resolved promise cannot tell us whether
+  // the connection has since dropped. Mongoose handles reconnecting sockets.
   cached.mongooseConnection ??= (() => {
     const uri = process.env.MONGODB_URI;
     if (!uri) throw new Error("MONGODB_URI is not set. Add it to .env.");
@@ -22,10 +25,8 @@ export function connectDB() {
         // Build indexes on boot in development; in production create them deliberately.
         autoIndex: process.env.NODE_ENV !== "production",
       })
-      .catch((error: unknown) => {
-        // Let the next request try again instead of reusing a failed promise.
+      .finally(() => {
         cached.mongooseConnection = undefined;
-        throw error;
       });
   })();
 

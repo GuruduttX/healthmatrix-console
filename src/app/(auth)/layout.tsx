@@ -1,5 +1,8 @@
-import { FileSearch, KeyRound, Lock, Mic, Sparkles, Video } from "lucide-react";
+import { FileSearch, KeyRound, Lock, Mic } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
+import { ArrowLeft, ShieldCheck } from "lucide-react";
+import styles from "@/components/auth/auth-shell.module.css";
 
 import { IconTile } from "@/components/ui";
 import { showOtpOnScreen } from "@/lib/otp-sender";
@@ -22,13 +25,6 @@ const points: { icon: typeof KeyRound; title: string; text: string }[] = [
   },
 ];
 
-/** What the console brings, under the brand on phones, as on the app's sign-in: an orange icon and a word each, no boxes. */
-const features = [
-  { icon: KeyRound, label: "OTP-only records" },
-  { icon: Sparkles, label: "Ekaay summaries" },
-  { icon: Video, label: "Video consults" },
-];
-
 /** The logo on a tile of bright glass, as on the app's sign-in: nearly opaque, so the page's peach never shows under the orange. */
 function LogoTile({ size }: { size: "sm" | "lg" }) {
   return (
@@ -44,7 +40,7 @@ function LogoTile({ size }: { size: "sm" | "lg" }) {
 
 export default function AuthLayout({ children }: LayoutProps<"/">) {
   return (
-    <div className="grid min-h-dvh lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+    <div className={`${styles.shell} grid min-h-dvh lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]`}>
       {/* Wide screens: the console's promise beside the form, straight on the page with the light behind. */}
       <aside className="hidden flex-col justify-between px-12 py-10 lg:flex xl:px-16">
         <div className="flex items-center gap-3">
@@ -76,23 +72,12 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
       </aside>
 
       {/* The brand and the form sit together a little above the middle, as on the app's sign-in. */}
-      <div className="flex min-w-0 flex-col justify-center px-5 pb-[calc(3rem+env(safe-area-inset-bottom))] pt-[calc(env(safe-area-inset-top)+2rem)] sm:px-6 lg:py-10">
+      <div className={`${styles.formColumn} flex min-w-0 flex-col justify-center px-5 pb-[calc(3rem+env(safe-area-inset-bottom))] pt-[calc(env(safe-area-inset-top)+2rem)] sm:px-6 lg:py-10`}>
         {/* Phones: the brand on the page, above the form's pane of glass. */}
-        <header className="mx-auto mb-7 flex w-full max-w-104 flex-col items-center text-center lg:hidden">
-          <LogoTile size="lg" />
-          <p className="mt-3.5 font-display text-[1.875rem] font-semibold leading-9 tracking-[-0.02em] text-ink">HealthMatrix</p>
-          <p className="mt-1 text-[15px] font-medium leading-snug text-body">The doctor console. Patient records, opened with their OTP.</p>
-          <ul className="mt-3.5 flex flex-wrap justify-center gap-x-4 gap-y-2">
-            {features.map(({ icon: Icon, label }) => (
-              <li key={label} className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-ink">
-                <Icon aria-hidden className="size-3.5 text-brand-deep" />
-                {label}
-              </li>
-            ))}
-          </ul>
-        </header>
+        <header className={styles.mobileHeader}><Link href="/welcome" aria-label="Back to welcome"><ArrowLeft size={20} /></Link><span>HEALTHMATRIX <small>FOR DOCTORS</small></span><ShieldCheck size={21} /></header>
+        <div className={styles.mobileArtwork} aria-hidden="true"><span className={styles.artHalo} /><Image src="/landing/doctors.png" width={320} height={300} priority alt="" /><span className={styles.artBadge}><ShieldCheck size={15} /> Your care. Connected.</span></div>
 
-        <main className="mx-auto w-full max-w-104">
+        <main className={`${styles.formMain} mx-auto w-full max-w-104`}>
           {/* Production with OTP_SHOW_CODE=true: say so plainly, so it is never mistaken for the real thing. */}
           {process.env.NODE_ENV === "production" && showOtpOnScreen() ? (
             <p role="note" className="mb-4 rounded-2xl bg-warning-soft px-3.5 py-2.5 text-[13px] font-semibold text-warning">
@@ -100,7 +85,7 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
             </p>
           ) : null}
           {/* The one pane on the page. */}
-          <div className="glass-panel rounded-2xl p-5 sm:p-7 lg:p-9">{children}</div>
+          <div className={`${styles.formSheet} glass-panel rounded-2xl p-5 sm:p-7 lg:p-9`}><span className={styles.sheetHandle} aria-hidden="true" />{children}</div>
           <p className="mt-6 flex items-center justify-center gap-1.5 text-xs text-muted">
             <Lock aria-hidden className="size-3" />
             Every record you open is logged for the patient

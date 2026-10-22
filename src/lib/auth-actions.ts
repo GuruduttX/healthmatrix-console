@@ -25,6 +25,8 @@ import { DoctorModel, DoctorOtpChallengeModel } from "@/models";
 export type AuthFormState = {
   error?: string;
   notice?: string;
+  /** Browser navigation avoids a Server Action redirect fetching through the hosting proxy. */
+  navigateTo?: "/login" | "/login/verify" | "/" | "/onboarding";
   /** The other page to offer when the number doesn't fit this one. */
   switchTo?: "login" | "register";
 };
@@ -125,18 +127,18 @@ export async function requestOtp(_prev: AuthFormState, formData: FormData): Prom
       createdAt: { $gt: new Date(Date.now() - OTP_RESEND_MS) },
       expiresAt: { $gt: new Date() },
     });
-    if (recent) redirect("/login/verify");
+    if (recent) return { navigateTo: "/login/verify" };
   }
 
   const failure = await issueOtp(phone, intent);
   if (failure) return failure;
-  redirect("/login/verify");
+  return { navigateTo: "/login/verify" };
 }
 
 /** "Send it again" on the code screen. */
 export async function resendOtp(): Promise<AuthFormState> {
   const phone = (await cookies()).get(OTP_PHONE_COOKIE)?.value;
-  if (!phone || !PHONE_PATTERN.test(phone)) redirect("/login");
+  if (!phone || !PHONE_PATTERN.test(phone)) return { navigateTo: "/login" };
 
   const failure = await issueOtp(phone, await otpIntent());
   return failure ?? { notice: "We sent a new code." };
@@ -146,7 +148,7 @@ export async function resendOtp(): Promise<AuthFormState> {
 export async function verifyOtp(_prev: AuthFormState, formData: FormData): Promise<AuthFormState> {
   const cookieStore = await cookies();
   const phone = cookieStore.get(OTP_PHONE_COOKIE)?.value;
-  if (!phone || !PHONE_PATTERN.test(phone)) redirect("/login");
+  if (!phone || !PHONE_PATTERN.test(phone)) return { navigateTo: "/login" };
 
   const code = String(formData.get("otp") ?? "").trim();
   if (!/^\d{6}$/.test(code)) return { error: "Enter the 6-digit code from the SMS." };
@@ -186,7 +188,7 @@ export async function verifyOtp(_prev: AuthFormState, formData: FormData): Promi
     cookieStore.delete({ name, path: "/" });
   }
   await createSession(phone, doctor?._id);
-  redirect(doctor && isProfileComplete(doctor) ? "/" : "/onboarding");
+  return { navigateTo: doctor && isProfileComplete(doctor) ? "/" : "/onboarding" };
 }
 
 export type OnboardingField =

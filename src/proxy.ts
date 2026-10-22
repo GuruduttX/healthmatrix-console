@@ -14,7 +14,11 @@ export function proxy(request: NextRequest) {
   }
 
   const signedIn = request.cookies.has(SESSION_COOKIE);
-  const isPublic = pathname.startsWith("/login") || pathname.startsWith("/register");
+  // Keep the signed-in console at / while welcoming new visitors without a session.
+  if (pathname === "/" && !signedIn) {
+    return NextResponse.rewrite(new URL("/welcome", request.url));
+  }
+  const isPublic = pathname === "/welcome" || pathname.startsWith("/landing/") || pathname.startsWith("/login") || pathname.startsWith("/register");
 
   // Signed-in visitors are not bounced off /login here: a stale cookie would loop. The
   // login page sends a valid session on to the console itself.
