@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
-import { DoctorLanding } from "@/components/landing/doctor-landing";
+
+import { LandingPage } from "@/components/landing/landing-page";
 
 export const metadata: Metadata = {
-  title: "Care with the whole picture | HealthMatrix",
-  description: "A connected workspace for doctors. Bring patient records, consultations, Ekaay summaries and prescriptions together with HealthMatrix.",
+  title: { absolute: "The doctor console | HealthMatrix" },
+  description:
+    "One calm console for your schedule, patient records, video consults, prescriptions and lab results. Records open only with the patient’s OTP. Join in four steps.",
 };
 
 export default function WelcomePage() {
-  return <DoctorLanding />;
+  return <LandingPage />;
 }

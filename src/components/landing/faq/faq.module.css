@@ -1,0 +1,52 @@
+/* Answers slide open where the browser can animate to `auto`, and simply appear elsewhere. */
+.faq {
+  interpolate-size: allow-keywords;
+}
+
+.item::details-content {
+  block-size: 0;
+  overflow: hidden;
+  transition:
+    block-size 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
+    content-visibility 0.45s allow-discrete;
+}
+
+.item[open]::details-content {
+  block-size: auto;
+}
+
+.item[open] {
+  background-color: rgba(255, 255, 255, 0.74);
+}
+
+.icon {
+  transition:
+    transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+    background-color 0.3s,
+    color 0.3s;
+}
+
+.item[open] .icon {
+  transform: rotate(135deg);
+  background-color: #d03f01;
+  color: #fff;
+}
+
+.item summary:hover .icon {
+  transform: scale(1.1);
+}
+
+.item[open] summary:hover .icon {
+  transform: rotate(135deg) scale(1.1);
+}
+
+.item[open] .answer {
+  animation: answer-in 0.5s 0.05s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes answer-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}

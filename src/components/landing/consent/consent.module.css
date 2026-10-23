@@ -1,0 +1,170 @@
+.panel {
+  background-image: var(--glass-sheen), linear-gradient(120deg, rgba(224, 238, 243, 0.85), rgba(250, 233, 219, 0.85));
+}
+
+/* A large, slow shield of light in the corner. */
+.shield {
+  position: absolute;
+  top: -30%;
+  right: -12%;
+  width: 34rem;
+  height: 34rem;
+  border-radius: 9999px;
+  background: conic-gradient(from 0deg, rgba(159, 203, 224, 0.4), rgba(246, 175, 145, 0.35), rgba(255, 255, 255, 0), rgba(159, 203, 224, 0.4));
+  filter: blur(50px);
+  animation: turn 24s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/*
+ * The journey: four steps on a rail, a spark of light running along it every 8 s, and each step
+ * lighting as the spark reaches it (its delay is its place on the rail: 0.8 × 8 s × n / 3).
+ * Down the page on phones, across on wide screens.
+ */
+.journey {
+  --cycle: 8s;
+  position: relative;
+  display: grid;
+  gap: 1.75rem;
+}
+
+.rail {
+  position: absolute;
+  top: 1.5rem;
+  bottom: 1.5rem;
+  left: 1.4375rem;
+  width: 2px;
+  background: repeating-linear-gradient(to bottom, rgba(36, 76, 86, 0.25) 0 6px, transparent 6px 12px);
+}
+
+.spark {
+  position: absolute;
+  left: 50%;
+  width: 0.875rem;
+  height: 0.875rem;
+  margin: -0.4375rem 0 0 -0.4375rem;
+  border-radius: 9999px;
+  background: var(--color-brand);
+  box-shadow:
+    0 0 0 5px rgba(221, 67, 1, 0.18),
+    0 0 18px 4px rgba(246, 175, 145, 0.9);
+  animation: run-down var(--cycle) cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes run-down {
+  0% {
+    top: 0;
+    opacity: 0;
+  }
+  5% {
+    opacity: 1;
+  }
+  80% {
+    top: 100%;
+    opacity: 1;
+  }
+  90%,
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+
+.step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.node {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  flex-shrink: 0;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  border: 1px solid #fff;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--color-ink-mid);
+  box-shadow: var(--glass-shadow-small);
+  animation: light var(--cycle) ease-out infinite;
+  animation-delay: calc(var(--cycle) * 0.8 * var(--n) / 3);
+}
+
+@keyframes light {
+  0% {
+    background-color: #d03f01;
+    color: #fff;
+    transform: scale(1.12);
+    box-shadow: 0 0 0 8px rgba(246, 175, 145, 0.35);
+  }
+  18% {
+    background-color: #d03f01;
+    color: #fff;
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(246, 175, 145, 0);
+  }
+  30%,
+  100% {
+    background-color: rgba(255, 255, 255, 0.8);
+    color: var(--color-ink-mid);
+    transform: scale(1);
+  }
+}
+
+@media (min-width: 640px) {
+  .journey {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .rail {
+    top: 1.4375rem;
+    bottom: auto;
+    left: 1.5rem;
+    right: calc(25% - 2.25rem);
+    width: auto;
+    height: 2px;
+    background: repeating-linear-gradient(to right, rgba(36, 76, 86, 0.25) 0 6px, transparent 6px 12px);
+  }
+
+  .spark {
+    top: 50%;
+    left: 0;
+    animation-name: run-across;
+  }
+
+  .step {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.875rem;
+  }
+}
+
+@keyframes run-across {
+  0% {
+    left: 0;
+    opacity: 0;
+  }
+  5% {
+    opacity: 1;
+  }
+  80% {
+    left: 100%;
+    opacity: 1;
+  }
+  90%,
+  100% {
+    left: 100%;
+    opacity: 0;
+  }
+}

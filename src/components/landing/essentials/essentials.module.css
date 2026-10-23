@@ -1,0 +1,331 @@
+/* ---- The cards ---------------------------------------------------------------------------- */
+
+/*
+ * Leans toward the pointer (Spotlight sets --rx and --ry) and lights from where it is. Doubled
+ * class so it outranks the page's reveal transition, whose timings it carries on.
+ */
+.card.card {
+  transform: perspective(1000px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition-property: transform, opacity, translate, scale, filter;
+  transition-duration: 0.35s, 0.8s, 0.8s, 0.8s, 0.8s;
+  transition-timing-function: ease-out, cubic-bezier(0.2, 0.8, 0.2, 1), cubic-bezier(0.2, 0.8, 0.2, 1), cubic-bezier(0.2, 0.8, 0.2, 1), ease;
+  transition-delay: 0s, var(--reveal-delay, 0ms), var(--reveal-delay, 0ms), var(--reveal-delay, 0ms), var(--reveal-delay, 0ms);
+}
+
+.card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 0%), rgba(255, 214, 190, 0.45), transparent 45%);
+  opacity: 0;
+  transition: opacity 0.4s;
+  pointer-events: none;
+}
+
+.card:hover::after {
+  opacity: 1;
+}
+
+/* Content above the light. */
+.card > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---- Notifications ------------------------------------------------------------------------ */
+
+.ticker {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  -webkit-mask: linear-gradient(transparent, #000 18%, #000 82%, transparent);
+  mask: linear-gradient(transparent, #000 18%, #000 82%, transparent);
+}
+
+.tickerTrack {
+  display: grid;
+  gap: 0.625rem;
+  animation: ticker 22s linear infinite;
+}
+
+.card:hover .tickerTrack {
+  animation-play-state: paused;
+}
+
+@keyframes ticker {
+  to {
+    /* One copy of the five, gaps included. */
+    transform: translateY(calc(-50% - 0.3125rem));
+  }
+}
+
+/* ---- Always current ----------------------------------------------------------------------- */
+
+.turn {
+  animation: turn 2.4s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+@keyframes turn {
+  0%,
+  30% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.halo {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: radial-gradient(closest-side, rgba(246, 175, 145, 0.5), transparent);
+  animation: halo 2.4s ease-out infinite;
+}
+
+@keyframes halo {
+  from {
+    transform: scale(0.6);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
+/* ---- Access log --------------------------------------------------------------------------- */
+
+.log {
+  align-content: center;
+}
+
+/* A soft band reading down the log. */
+.scan {
+  position: absolute;
+  inset-inline: -0.5rem;
+  top: 0;
+  z-index: 1;
+  height: 2.25rem;
+  border-radius: 0.875rem;
+  background: linear-gradient(90deg, transparent, rgba(11, 110, 153, 0.12), transparent);
+  pointer-events: none;
+  animation: scan 3.6s ease-in-out infinite;
+}
+
+@keyframes scan {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 calc(200% + 0.75rem);
+  }
+}
+
+/* ---- Bookings ----------------------------------------------------------------------------- */
+
+/* The switch flipping off and on, in step with the line under it. */
+.toggle {
+  position: relative;
+  flex-shrink: 0;
+  width: 2.5rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  animation: toggle-track 6s ease-in-out infinite;
+}
+
+.toggle i {
+  position: absolute;
+  top: 0.125rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 9999px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  animation: toggle-knob 6s ease-in-out infinite;
+}
+
+@keyframes toggle-track {
+  0%,
+  45%,
+  100% {
+    background-color: var(--color-success);
+  }
+  50%,
+  95% {
+    background-color: var(--color-line-strong);
+  }
+}
+
+@keyframes toggle-knob {
+  0%,
+  45%,
+  100% {
+    left: 1.125rem;
+  }
+  50%,
+  95% {
+    left: 0.125rem;
+  }
+}
+
+.swapText {
+  display: grid;
+}
+
+.swapText span {
+  grid-area: 1 / 1;
+  animation: swap-a 6s ease-in-out infinite;
+}
+
+.swapText span:last-child {
+  animation-name: swap-b;
+}
+
+@keyframes swap-a {
+  0%,
+  45%,
+  100% {
+    opacity: 1;
+  }
+  50%,
+  95% {
+    opacity: 0;
+  }
+}
+
+@keyframes swap-b {
+  0%,
+  45%,
+  100% {
+    opacity: 0;
+  }
+  50%,
+  95% {
+    opacity: 1;
+  }
+}
+
+.chip {
+  animation: chip 4.8s ease-in-out infinite;
+}
+
+@keyframes chip {
+  0%,
+  20%,
+  100% {
+    transform: translateY(0);
+    color: var(--color-ink-mid);
+  }
+  10% {
+    transform: translateY(-4px);
+    color: var(--color-brand-deep);
+  }
+}
+
+/* ---- Phone -------------------------------------------------------------------------------- */
+
+.phoneScroll {
+  animation: phone 9s ease-in-out infinite;
+}
+
+@keyframes phone {
+  0%,
+  12% {
+    transform: translateY(0);
+  }
+  45%,
+  60% {
+    transform: translateY(-25%);
+  }
+  100% {
+    transform: translateY(-50%);
+  }
+}
+
+/* ---- Profile ------------------------------------------------------------------------------ */
+
+.chipPop {
+  animation: chip-pop 4s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+}
+
+@keyframes chip-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  12%,
+  85% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+/* ---- Tests -------------------------------------------------------------------------------- */
+
+.tilt {
+  animation: tilt 3s ease-in-out infinite;
+}
+
+@keyframes tilt {
+  0%,
+  100% {
+    transform: rotate(-8deg);
+  }
+  50% {
+    transform: rotate(8deg);
+  }
+}
+
+.bubbles i {
+  position: absolute;
+  bottom: 30%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 35% 30%, #fff, #f6af91);
+  animation: bubble 3.2s ease-in infinite;
+}
+
+.bubbles i:nth-child(2) {
+  margin-left: -18px;
+  width: 7px;
+  height: 7px;
+  animation-delay: 0.8s;
+}
+
+.bubbles i:nth-child(3) {
+  margin-left: 14px;
+  width: 8px;
+  height: 8px;
+  animation-delay: 1.6s;
+  background: radial-gradient(circle at 35% 30%, #fff, #9fcbe0);
+}
+
+.bubbles i:nth-child(4) {
+  margin-left: -4px;
+  width: 6px;
+  height: 6px;
+  animation-delay: 2.4s;
+}
+
+@keyframes bubble {
+  from {
+    opacity: 0;
+    transform: translateY(0) scale(0.6);
+  }
+  20% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-90px) scale(1.1);
+  }
+}

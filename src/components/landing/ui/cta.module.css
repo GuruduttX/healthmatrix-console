@@ -1,0 +1,30 @@
+.join {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.join:hover {
+  transform: translateY(-2px);
+}
+
+/* A soft band of light that crosses the button every few seconds. */
+.join::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.38) 48%, transparent 66%);
+  translate: -120% 0;
+  animation: sweep 4.5s 1.2s ease-in-out infinite;
+}
+
+@keyframes sweep {
+  0%,
+  60% {
+    translate: -120% 0;
+  }
+  100% {
+    translate: 120% 0;
+  }
+}

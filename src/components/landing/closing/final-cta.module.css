@@ -1,0 +1,64 @@
+@property --angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+/* A rim of light running round the panel. */
+.panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 2px;
+  border-radius: inherit;
+  background: conic-gradient(from var(--angle), transparent 0deg, rgba(221, 67, 1, 0.65) 40deg, rgba(159, 203, 224, 0.7) 90deg, transparent 140deg, transparent 360deg);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+  animation: rim 7s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes rim {
+  to {
+    --angle: 360deg;
+  }
+}
+
+.glow {
+  position: absolute;
+  inset: -40% -20%;
+  background:
+    radial-gradient(40% 50% at 25% 60%, rgba(207, 230, 242, 0.9), transparent 70%),
+    radial-gradient(40% 50% at 75% 40%, rgba(253, 217, 191, 0.9), transparent 70%);
+  animation: sway 14s ease-in-out infinite alternate;
+}
+
+@keyframes sway {
+  to {
+    transform: translateX(6%) rotate(8deg);
+  }
+}
+
+.accent {
+  background: linear-gradient(100deg, var(--color-brand-deep), var(--color-brand-mid) 45%, var(--color-brand-deep) 70%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shine 5s ease-in-out infinite;
+}
+
+@keyframes shine {
+  0%,
+  100% {
+    background-position: 100% 0;
+  }
+  50% {
+    background-position: 0% 0;
+  }
+}

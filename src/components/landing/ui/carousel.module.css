@@ -1,0 +1,27 @@
+/*
+ * Phones only: a grid of cards becomes one row you swipe through, each card snapping into place,
+ * with the next one peeking in from the right. The row runs to the screen's edges. Wider screens
+ * keep their grid untouched.
+ */
+@media (max-width: 639.98px) {
+  .track {
+    display: flex;
+    gap: 0.875rem;
+    margin-inline: -1rem;
+    padding: 0.5rem 1rem;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 1rem;
+    scrollbar-width: none;
+  }
+
+  .track::-webkit-scrollbar {
+    display: none;
+  }
+
+  .track > * {
+    flex: 0 0 82vw;
+    scroll-snap-align: start;
+  }
+}
