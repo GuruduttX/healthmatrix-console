@@ -52,6 +52,8 @@ prescriptionSchema.index({ member: 1, createdAt: -1 });
 
 export type Prescription = InferSchemaType<typeof prescriptionSchema>;
 
-// Rebuilt on every load so a hot reload never keeps an older schema; see doctor.model.ts.
-if (models.Prescription) deleteModel("Prescription");
-export const PrescriptionModel = model("Prescription", prescriptionSchema);
+// Rebuilt on every load in development so a hot reload never keeps an older schema; reused in
+// production. See doctor.model.ts.
+if (models.Prescription && process.env.NODE_ENV !== "production") deleteModel("Prescription");
+const build = () => model("Prescription", prescriptionSchema);
+export const PrescriptionModel = (models.Prescription as ReturnType<typeof build>) ?? build();

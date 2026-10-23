@@ -42,7 +42,8 @@ consultSchema.index({ doctor: 1, scheduledAt: 1 });
 
 export type Consult = InferSchemaType<typeof consultSchema>;
 
-// Rebuilt on each run, like the doctor model, so a hot reload never keeps an older schema
-// that would drop the newer fields.
-if (models.Consult) deleteModel("Consult");
-export const ConsultModel = model("Consult", consultSchema);
+// Rebuilt on each run in development, like the doctor model, so a hot reload never keeps an older
+// schema that would drop the newer fields. Reused in production; see doctor.model.ts.
+if (models.Consult && process.env.NODE_ENV !== "production") deleteModel("Consult");
+const build = () => model("Consult", consultSchema);
+export const ConsultModel = (models.Consult as ReturnType<typeof build>) ?? build();

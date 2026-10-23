@@ -35,6 +35,8 @@ accessGrantSchema.index({ doctor: 1, status: 1 });
 
 export type AccessGrant = InferSchemaType<typeof accessGrantSchema>;
 
-// Rebuilt on every load so a hot reload never keeps an older schema; see doctor.model.ts.
-if (models.AccessGrant) deleteModel("AccessGrant");
-export const AccessGrantModel = model("AccessGrant", accessGrantSchema);
+// Rebuilt on every load in development so a hot reload never keeps an older schema; reused in
+// production. See doctor.model.ts.
+if (models.AccessGrant && process.env.NODE_ENV !== "production") deleteModel("AccessGrant");
+const build = () => model("AccessGrant", accessGrantSchema);
+export const AccessGrantModel = (models.AccessGrant as ReturnType<typeof build>) ?? build();

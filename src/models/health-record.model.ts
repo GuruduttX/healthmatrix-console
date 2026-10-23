@@ -59,7 +59,8 @@ healthRecordSchema.index({ member: 1, "values.code": 1, recordedAt: 1 });
 
 export type HealthRecord = InferSchemaType<typeof healthRecordSchema>;
 
-// Rebuilt on each run: the console files pod screenings, and a hot reload must not keep an older
-// schema that would drop the newer fields.
-if (models.HealthRecord) deleteModel("HealthRecord");
-export const HealthRecordModel = model("HealthRecord", healthRecordSchema);
+// Rebuilt on each run in development: the console files pod screenings, and a hot reload must not
+// keep an older schema that would drop the newer fields. Reused in production; see doctor.model.ts.
+if (models.HealthRecord && process.env.NODE_ENV !== "production") deleteModel("HealthRecord");
+const build = () => model("HealthRecord", healthRecordSchema);
+export const HealthRecordModel = (models.HealthRecord as ReturnType<typeof build>) ?? build();

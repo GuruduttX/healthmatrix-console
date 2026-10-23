@@ -89,6 +89,10 @@ export type Doctor = InferSchemaType<typeof doctorSchema>;
 
 // Mongoose keeps models across hot reloads, so a model built from an older version of this
 // schema would silently drop new fields (it once dropped `state` and `city`). Rebuild it each
-// time this file runs; in production that is once.
-if (models.Doctor) deleteModel("Doctor");
-export const DoctorModel = model("Doctor", doctorSchema);
+// time this file runs, in development only. A production build bundles this file more than once
+// (pages and server actions get their own copies), and replacing the model there strands the
+// first copy's collection: Mongoose drops it from the connection, so if the swap comes before the
+// database connects, that copy's queries wait for a connection they never hear about and time out.
+if (models.Doctor && process.env.NODE_ENV !== "production") deleteModel("Doctor");
+const build = () => model("Doctor", doctorSchema);
+export const DoctorModel = (models.Doctor as ReturnType<typeof build>) ?? build();

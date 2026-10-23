@@ -47,7 +47,8 @@ bookingSchema.index({ member: 1, createdAt: -1 });
 
 export type Booking = InferSchemaType<typeof bookingSchema>;
 
-// Rebuilt on each run: the console writes bookings, and a hot reload must not keep an older
-// schema that would drop the newer fields.
-if (models.Booking) deleteModel("Booking");
-export const BookingModel = model("Booking", bookingSchema);
+// Rebuilt on each run in development: the console writes bookings, and a hot reload must not keep
+// an older schema that would drop the newer fields. Reused in production; see doctor.model.ts.
+if (models.Booking && process.env.NODE_ENV !== "production") deleteModel("Booking");
+const build = () => model("Booking", bookingSchema);
+export const BookingModel = (models.Booking as ReturnType<typeof build>) ?? build();

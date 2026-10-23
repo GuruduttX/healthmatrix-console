@@ -68,6 +68,8 @@ vaccinationSchema.index({ member: 1, "doses.dueOn": 1 });
 
 export type Vaccination = InferSchemaType<typeof vaccinationSchema>;
 
-// Rebuilt on every load so a hot reload never keeps an older schema; see doctor.model.ts.
-if (models.Vaccination) deleteModel("Vaccination");
-export const VaccinationModel = model("Vaccination", vaccinationSchema);
+// Rebuilt on every load in development so a hot reload never keeps an older schema; reused in
+// production. See doctor.model.ts.
+if (models.Vaccination && process.env.NODE_ENV !== "production") deleteModel("Vaccination");
+const build = () => model("Vaccination", vaccinationSchema);
+export const VaccinationModel = (models.Vaccination as ReturnType<typeof build>) ?? build();

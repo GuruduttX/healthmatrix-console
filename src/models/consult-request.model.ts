@@ -38,6 +38,8 @@ consultRequestSchema.index({ doctor: 1, status: 1, requestedAt: 1 });
 
 export type ConsultRequest = InferSchemaType<typeof consultRequestSchema>;
 
-// Rebuilt on each run, like the other models, so a hot reload never keeps an older schema.
-if (models.ConsultRequest) deleteModel("ConsultRequest");
-export const ConsultRequestModel = model("ConsultRequest", consultRequestSchema);
+// Rebuilt on each run in development, like the other models, so a hot reload never keeps an older
+// schema. Reused in production; see doctor.model.ts.
+if (models.ConsultRequest && process.env.NODE_ENV !== "production") deleteModel("ConsultRequest");
+const build = () => model("ConsultRequest", consultRequestSchema);
+export const ConsultRequestModel = (models.ConsultRequest as ReturnType<typeof build>) ?? build();
