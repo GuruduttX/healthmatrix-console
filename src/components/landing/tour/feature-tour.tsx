@@ -3,15 +3,30 @@
 import { useEffect, useRef, useState } from "react";
 import { Check } from "lucide-react";
 
-import { chapters } from "../content";
+import { chapters, type ChapterId } from "../content";
 import { useInView } from "../hooks/use-in-view";
 import { ConsoleFrame } from "./console-frame";
 import styles from "./tour.module.css";
 
 /**
+ * A chapter's own window, under its copy on phones and tablets. It plays while nearly all of it
+ * is in sight below the header, and comes to rest on its finished state just under the header
+ * as it scrolls up, so the ending is seen, not cut off. Hidden (so idle) on wide screens.
+ */
+function InlineFrame({ chapter }: { chapter: ChapterId }) {
+  const frame = useRef<HTMLDivElement>(null);
+  const play = useInView(frame, { rootMargin: "-100px 0px 0px 0px", amount: 0.98 });
+  return (
+    <div ref={frame} className="mt-8 w-full text-left lg:hidden">
+      <ConsoleFrame chapter={chapter} play={play} />
+    </div>
+  );
+}
+
+/**
  * Six chapters of a consulting day. On wide screens the copy scrolls past a console window that
  * stays put and switches to whichever chapter crosses the middle of the screen; on phones each
- * chapter carries its own window. Only the chapter in the middle plays its preview.
+ * chapter carries its own window (InlineFrame). On wide screens only the chapter in the middle plays.
  */
 export default function FeatureTour() {
   const [active, setActive] = useState(0);
@@ -64,9 +79,7 @@ export default function FeatureTour() {
                 </li>
               ))}
             </ul>
-            <div className="mt-8 w-full text-left lg:hidden">
-              <ConsoleFrame chapter={chapter.id} play={inView && index === active} />
-            </div>
+            <InlineFrame chapter={chapter.id} />
           </li>
         ))}
       </ol>

@@ -1,9 +1,17 @@
 /* ---- Copy ---------------------------------------------------------------------------------- */
 
+/*
+ * Each word rises in on its own beat. Its box reaches down over the descenders (the padding,
+ * cancelled by the margin, so nothing moves): Safari clips a composited word to its box, and
+ * the "y"s hanging below it flickered while "hello." shone beside them. `backwards`, not
+ * `both`, so a word lets go of its animation, and its layer, once it has landed.
+ */
 .word {
   display: inline-block;
   margin-right: 0.22em;
-  animation: word-in 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  padding-bottom: 0.2em;
+  margin-bottom: -0.2em;
+  animation: word-in 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
   animation-delay: calc(var(--i) * 70ms + 120ms);
 }
 
@@ -27,7 +35,7 @@
   background-clip: text;
   color: transparent;
   animation:
-    word-in 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both,
+    word-in 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) backwards,
     shine 5s 1.6s ease-in-out infinite;
   animation-delay: calc(var(--i) * 70ms + 120ms), 1.6s;
 }
@@ -43,7 +51,7 @@
 }
 
 .fadeIn {
-  animation: fade-up 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: fade-up 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
 }
 
 @keyframes fade-up {
@@ -55,6 +63,13 @@
 
 .rotator {
   white-space: nowrap;
+}
+
+/* Phones: the changing word always takes its own line, so the line never jumps as words change. */
+@media (max-width: 639.98px) {
+  .rotator {
+    display: block;
+  }
 }
 
 .rotatorWord {
