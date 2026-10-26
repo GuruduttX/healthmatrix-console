@@ -5,10 +5,8 @@ import { GlassOrbs } from "@/components/glass";
 import { RelativeTime } from "@/components/relative-time";
 import { Avatar } from "@/components/ui";
 import { ageAndSex } from "@/lib/patient-text";
+import { isMissed, startClosesAt } from "@/lib/schedule";
 import type { Consult } from "@/lib/types";
-
-/** The app lets a member join until 30 minutes after their slot ends. */
-const JOIN_AFTER_END_MS = 30 * 60 * 1000;
 
 type State = "live" | "waiting" | "next";
 
@@ -17,7 +15,10 @@ type State = "live" | "waiting" | "next";
  * `then`: the booking after a call or a waiting patient, so it isn't forgotten meanwhile.
  */
 function pick(consults: Consult[], now = Date.now()) {
-  const joinable = consults.filter((c) => c.status === "scheduled" && Date.parse(c.endsAt) + JOIN_AFTER_END_MS > now);
+  // Joinable until missed: `LATE_START_MINUTES` after the start, not the slot's end.
+  const joinable = consults.filter(
+    (c) => c.status === "scheduled" && !isMissed({ status: c.status, scheduledAt: new Date(c.startsAt) }, new Date(now)),
+  );
   const live = consults.find((c) => c.status === "in_progress");
   const waiting = joinable.find((c) => c.patientWaiting);
   const consult = live ?? waiting ?? joinable[0];
@@ -27,6 +28,8 @@ function pick(consults: Consult[], now = Date.now()) {
     consult,
     state,
     overdue: state === "next" && Date.parse(consult.startsAt) < now,
+    /** Whole minutes until a booked consult nobody has started becomes missed. */
+    minutesLeft: Math.max(1, Math.ceil((startClosesAt({ scheduledAt: new Date(consult.startsAt) }) - now) / 60_000)),
     then: state === "next" ? undefined : joinable.find((c) => c !== consult && Date.parse(c.startsAt) > now),
   };
 }
@@ -56,7 +59,7 @@ export function UpNext({ consults, soon }: { consults: Consult[]; soon: string[]
   const picked = pick(consults);
   if (!picked) return null;
 
-  const { consult, state, overdue, then } = picked;
+  const { consult, state, overdue, minutesLeft, then } = picked;
   const { patient } = consult;
   const about = ageAndSex(patient);
   const firstName = patient.firstName;
@@ -76,7 +79,7 @@ export function UpNext({ consults, soon }: { consults: Consult[]; soon: string[]
       : state === "waiting"
         ? { label: `Booked for ${consult.time}`, value: "Waiting for you" }
         : overdue
-          ? { label: `Due at ${consult.time}. ${firstName} hasn’t joined yet`, value: <RelativeTime at={consult.startsAt} /> }
+          ? { label: `${firstName} can join for ${minutesLeft} more min`, value: <RelativeTime at={consult.startsAt} /> }
           : { label: "Starts", value: <RelativeTime at={consult.startsAt} /> };
 
   const action = {

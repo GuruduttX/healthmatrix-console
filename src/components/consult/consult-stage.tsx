@@ -409,8 +409,9 @@ export function ConsultStage({
     previewTrack.current = null;
 
     let started: string | undefined;
+    let refused: string | undefined;
     try {
-      started = (await admitPatient(consultId)).status;
+      ({ status: started, error: refused } = await admitPatient(consultId));
     } catch {
       started = undefined;
     }
@@ -421,7 +422,7 @@ export function ConsultStage({
       showSelf(video, selfBox.current);
       setAdmitting(false);
       if (started === "completed") setPhase("ended");
-      else setMediaProblem(started ? "This consult can’t be started any more." : "Couldn’t admit just now. Try again.");
+      else setMediaProblem(refused ?? (started ? "This consult can’t be started any more." : "Couldn’t admit just now. Try again."));
       return;
     }
 

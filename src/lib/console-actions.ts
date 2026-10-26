@@ -39,8 +39,10 @@ import { allergyClash, allergyTerms } from "./patient-text";
 import {
   consultBusy,
   consultFits,
+  isMissed,
   istDateKey,
   istInstant,
+  LATE_START_MINUTES,
   LIMITS,
   resolveSchedule,
   scheduleInput,
@@ -440,16 +442,20 @@ async function closeRoom(consultId: string) {
  */
 export type ConsultRoom =
   | { roomName: string; token: string; status: "scheduled" | "in_progress" }
-  | { error: string; ended?: boolean };
+  | { error: string; ended?: boolean; missed?: boolean };
+
+/** Why a booked consult that nobody started in time can't be opened or started. */
+const MISSED_MESSAGE = `This consult wasn’t started within ${LATE_START_MINUTES} minutes of its time, so it has moved to past consults.`;
 
 /** A token for the signed-in doctor to join their own consult's room, before or during the call. */
 export async function getConsultRoom(consultId: string): Promise<ConsultRoom> {
   const doctor = await signedInDoctor();
   const id = objectId(consultId);
-  const consult = id ? await ConsultModel.findOne({ _id: id, doctor: doctor._id }, { status: 1 }).lean() : null;
+  const consult = id ? await ConsultModel.findOne({ _id: id, doctor: doctor._id }, { status: 1, scheduledAt: 1 }).lean() : null;
   if (!consult) return { error: "This consult no longer exists." };
   if (consult.status === "completed") return { error: "This consult has ended.", ended: true };
   if (consult.status !== "scheduled" && consult.status !== "in_progress") return { error: "This consult was cancelled." };
+  if (isMissed(consult)) return { error: MISSED_MESSAGE, missed: true };
   if (!videoReady()) return { error: VIDEO_NOT_SET_UP };
 
   try {
@@ -466,20 +472,27 @@ export async function getConsultRoom(consultId: string): Promise<ConsultRoom> {
  * Starts the consult when the doctor admits the member. Saved before the doctor's camera and mic
  * go to the room, so a member who rejoins from now on goes straight into the call. Returns the
  * consult's status: `in_progress` means share camera and mic, even if it was already started.
+ * `missed`: it wasn't started within `LATE_START_MINUTES` of its time, so it can't be any more.
  */
-export async function admitPatient(consultId: string): Promise<{ status?: string }> {
+export async function admitPatient(consultId: string): Promise<{ status?: string; error?: string }> {
   const doctor = await signedInDoctor();
   const id = objectId(consultId);
   if (!id) return {};
   const started = await ConsultModel.updateOne(
-    { _id: id, doctor: doctor._id, status: "scheduled" },
+    {
+      _id: id,
+      doctor: doctor._id,
+      status: "scheduled",
+      scheduledAt: { $gt: new Date(Date.now() - LATE_START_MINUTES * 60_000) },
+    },
     { $set: { status: "in_progress", startedAt: new Date() } },
   );
   if (started.modifiedCount) {
     refresh();
     return { status: "in_progress" };
   }
-  const consult = await ConsultModel.findOne({ _id: id, doctor: doctor._id }, { status: 1 }).lean();
+  const consult = await ConsultModel.findOne({ _id: id, doctor: doctor._id }, { status: 1, scheduledAt: 1 }).lean();
+  if (consult && isMissed(consult)) return { status: "missed", error: MISSED_MESSAGE };
   return { status: consult?.status };
 }
 
@@ -507,11 +520,17 @@ export async function cancelConsult(consultId: string, reason?: string): Promise
   const text = typeof reason === "string" ? reason.trim().replace(/\s+/g, " ") : "";
   if (text.length > 200) return { error: "Keep the reason under 200 characters." };
 
+  // Not a missed one: the member would be told to book again for a time that has already passed.
   const result = await ConsultModel.updateOne(
-    { _id: id, doctor: doctor._id, status: "scheduled" },
+    {
+      _id: id,
+      doctor: doctor._id,
+      status: "scheduled",
+      scheduledAt: { $gt: new Date(Date.now() - LATE_START_MINUTES * 60_000) },
+    },
     { $set: { status: "cancelled", cancelledAt: new Date(), cancelledBy: "doctor", cancelReason: text || DOCTOR_CANCEL_REASON } },
   );
-  if (!result.modifiedCount) return { error: "Only a consult that hasn’t started can be cancelled." };
+  if (!result.modifiedCount) return { error: "Only a consult that hasn’t started or been missed can be cancelled." };
   // A member in the waiting room is told at once.
   await closeRoom(consultId);
   refresh();

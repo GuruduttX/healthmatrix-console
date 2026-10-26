@@ -1,4 +1,5 @@
-import { ChevronDown, TriangleAlert } from "lucide-react";
+import { CalendarX2, ChevronDown, TriangleAlert } from "lucide-react";
+import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -11,10 +12,37 @@ import { Card, Chip, PageHeader, PanelLink, Section } from "@/components/ui";
 import { getConsult, getVaccineSchedule } from "@/lib/console-data";
 import { getCurrentDoctor } from "@/lib/doctor-view";
 import { ekaayReady } from "@/lib/ekaay";
+import { LATE_START_MINUTES } from "@/lib/schedule";
 import { ageAndSex } from "@/lib/patient-text";
 import { videoReady } from "@/lib/video";
 
 export const metadata: Metadata = { title: "Consult" };
+
+/**
+ * In place of the video stage for a booked consult nobody started in time. The page reads itself
+ * again every half minute, so an open waiting room turns into this at the mark.
+ */
+function MissedConsult({ firstName, time }: { firstName: string; time: string }) {
+  return (
+    <section className="glass-panel rounded-3xl px-6 py-8 text-center sm:py-10">
+      <span aria-hidden className="mx-auto inline-flex size-19 items-center justify-center rounded-full bg-white/60">
+        <span className="glass-small inline-flex size-13.5 items-center justify-center rounded-full text-muted">
+          <CalendarX2 className="size-6" />
+        </span>
+      </span>
+      <h2 className="mt-4 font-display text-[1.375rem] font-semibold tracking-[-0.01em] text-ink">Missed</h2>
+      <p className="mx-auto mt-1.5 max-w-md text-sm leading-relaxed text-body">
+        This consult, booked for {time}, wasn’t started within {LATE_START_MINUTES} minutes of its time, so it has moved to
+        past consults. It can’t be joined or started now. {firstName} can book another time in the app.
+      </p>
+      <div className="mt-6 flex flex-wrap justify-center gap-2">
+        <Link href="/" className="btn btn-secondary">
+          Back to Today
+        </Link>
+      </div>
+    </section>
+  );
+}
 
 export default async function ConsultPage(props: PageProps<"/consults/[id]">) {
   const doctor = await getCurrentDoctor();
@@ -40,17 +68,21 @@ export default async function ConsultPage(props: PageProps<"/consults/[id]">) {
 
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] xl:gap-6">
         <div className="flex min-w-0 flex-col gap-5">
-          <ConsultStage
-            consultId={consult.id}
-            startedAt={consult.startedAt}
-            patientName={patient.name}
-            patientInitials={patient.initials}
-            status={consult.status}
-            recordShared={patient.access.status === "active"}
-            time={consult.time}
-            videoReady={videoReady()}
-            admitOnOpen={admit === "1" && consult.status === "scheduled"}
-          />
+          {consult.missed ? (
+            <MissedConsult firstName={patient.firstName} time={consult.time} />
+          ) : (
+            <ConsultStage
+              consultId={consult.id}
+              startedAt={consult.startedAt}
+              patientName={patient.name}
+              patientInitials={patient.initials}
+              status={consult.status}
+              recordShared={patient.access.status === "active"}
+              time={consult.time}
+              videoReady={videoReady()}
+              admitOnOpen={admit === "1" && consult.status === "scheduled"}
+            />
+          )}
           <Card>
             <h2 className="text-xs font-bold text-muted">Reason for the consult</h2>
             <p className="mt-1 text-[15px] leading-relaxed text-ink">{consult.reason}</p>

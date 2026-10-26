@@ -27,7 +27,7 @@ export function PatientHeader({
 }: {
   patient: Patient;
   /** Today's consult with this patient, if there is one. */
-  consult?: Pick<Consult, "id" | "time" | "status">;
+  consult?: Pick<Consult, "id" | "time" | "status" | "missed">;
   back: { href: string; label: string };
   compact?: boolean;
 }) {
@@ -88,14 +88,14 @@ export function PatientHeader({
                 ))}
                 {consult ? (
                   <span className={pills.glass}>
-                    {consult.status === "completed" ? "Seen" : "Consult"} today, {consult.time}
+                    {consult.status === "completed" ? "Seen" : consult.missed ? "Missed" : "Consult"} today, {consult.time}
                   </span>
                 ) : null}
               </div>
             ) : null}
           </div>
 
-          {consult && consult.status !== "completed" ? (
+          {consult && consult.status !== "completed" && !consult.missed ? (
             <Link
               href={`/consults/${consult.id}`}
               className={`btn btn-primary shrink-0 ${compact ? "btn-sm max-lg:hidden" : "mt-2 w-full lg:mt-0 lg:w-auto"}`}

@@ -83,7 +83,9 @@ export default async function TodayPage() {
     getStartingSoon(),
     getConsultRequests(),
   ]);
-  const remaining = today.filter((c) => c.status !== "completed").length;
+  // A missed consult is past: it isn't still to go, and it isn't done either.
+  const remaining = today.filter((c) => c.status !== "completed" && !c.missed).length;
+  const missed = today.filter((c) => c.missed).length;
   const summary =
     today.length === 0
       ? "No consults booked for today"
@@ -115,7 +117,7 @@ export default async function TodayPage() {
       glyph: ResultGlyph,
     },
   ];
-  const hasNext = today.some((c) => c.status !== "completed");
+  const hasNext = remaining > 0;
 
   return (
     <>
@@ -152,7 +154,7 @@ export default async function TodayPage() {
             </span>
           </div>
         </div>
-        {today.length ? <DayProgress done={today.length - remaining} total={today.length} /> : null}
+        {today.length > missed ? <DayProgress done={today.length - missed - remaining} total={today.length - missed} /> : null}
       </header>
 
       {/*

@@ -28,12 +28,18 @@ export function ConsultRow({ consult }: { consult: Consult }) {
   const about = ageAndSex(patient);
   const live = consult.status === "in_progress";
   const waiting = consult.status === "scheduled" && !!consult.patientWaiting;
-  const done = consult.status === "completed";
-  const status = waiting ? { label: "In waiting room", tone: "brand" as Tone } : consultStatus[consult.status];
+  // Missed: booked but not started in time. It stays in the list so the doctor sees it happened.
+  const missed = consult.status === "scheduled" && !!consult.missed;
+  const done = consult.status === "completed" || missed;
+  const status = waiting
+    ? { label: "In waiting room", tone: "brand" as Tone }
+    : missed
+      ? { label: "Missed", tone: "neutral" as Tone }
+      : consultStatus[consult.status];
   const urgent = live || waiting;
   const ModeIcon = consult.mode === "Video" ? Video : MonitorSmartphone;
   const [clock, half] = splitTime(consult.time);
-  const action = waiting ? "Admit" : consultStatus[consult.status].action;
+  const action = waiting ? "Admit" : missed ? "View" : consultStatus[consult.status].action;
   // Admit here lets the patient in: the consult page admits on arrival, no second click.
   const href = `/consults/${consult.id}${waiting ? "?admit=1" : ""}`;
 
@@ -72,7 +78,7 @@ export function ConsultRow({ consult }: { consult: Consult }) {
             <ModeIcon aria-hidden className="size-3.5" />
             {consult.mode}
           </span>
-          {consult.status === "scheduled" ? (
+          {consult.status === "scheduled" && !missed ? (
             <CancelConsultButton consultId={consult.id} patientName={patient.name} when={`${consult.day}, ${consult.time}`} />
           ) : null}
           {/* Phones: a quiet way in for rows that aren't waiting on the doctor. */}

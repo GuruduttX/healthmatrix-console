@@ -50,9 +50,11 @@ import { stageOf, syncMemberBookings } from "./pod-bookings";
 import {
   consultBusy,
   consultFits,
+  isMissed,
   istDateKey,
   istInstant,
   resolveSchedule,
+  startClosesAt,
   slotDays,
   type SavedSchedule,
   type Schedule,
@@ -270,7 +272,7 @@ async function linkedMemberIds(doctorId: Id) {
   return lists.flat() as Id[];
 }
 
-type TodayConsult = { id: string; time: string; status: Consult["status"] };
+type TodayConsult = { id: string; time: string; status: Consult["status"]; missed?: boolean };
 
 async function todaysConsultsByMember(doctorId: Id) {
   const consults = await ConsultModel.find({
@@ -280,13 +282,14 @@ async function todaysConsultsByMember(doctorId: Id) {
   })
     .sort({ scheduledAt: 1 })
     .lean();
+  const now = new Date();
   const byMember = new Map<string, TodayConsult>();
   for (const c of consults) {
     const key = String(c.member);
-    // Prefer the consult still to come over one already done.
+    // Prefer the consult still to come over one already done or missed.
     const existing = byMember.get(key);
-    if (!existing || existing.status === "completed") {
-      byMember.set(key, { id: String(c._id), time: formatTime(c.scheduledAt), status: c.status as Consult["status"] });
+    if (!existing || existing.status === "completed" || existing.missed) {
+      byMember.set(key, { id: String(c._id), time: formatTime(c.scheduledAt), status: c.status as Consult["status"], missed: isMissed(c, now) });
     }
   }
   return byMember;
@@ -857,7 +860,7 @@ async function recordContext(found: FoundPatient, memberId: string, { focusId, w
       ? `YOUR CONSULTS WITH THIS PATIENT\n${consults
           .map((c) =>
             [
-              `- ${formatDate(c.scheduledAt)}, ${c.status.replace("_", " ")}.`,
+              `- ${formatDate(c.scheduledAt)}, ${isMissed(c) ? "missed (never started)" : c.status.replace("_", " ")}.`,
               c.reason ? `Reason: ${c.reason}.` : "",
               c.ekaaySummary?.trim() ? `Ekaay's summary: ${c.ekaaySummary.trim().replace(/\s*\n+\s*/g, " ")}` : "",
             ]
@@ -954,11 +957,9 @@ function findConsults(filter: Record<string, unknown>) {
 
 const MINUTE_MS = 60 * 1000;
 
-/** The app lets the member join from 5 minutes before the slot to 30 minutes after it ends. */
+/** The app lets the member join a booked consult from 5 minutes before its time until it is missed. */
 function inJoinWindow(c: ConsultDoc, now: Date) {
-  const start = c.scheduledAt.getTime();
-  const end = start + (c.durationMinutes ?? 30) * MINUTE_MS;
-  return now.getTime() >= start - 5 * MINUTE_MS && now.getTime() <= end + 30 * MINUTE_MS;
+  return now.getTime() >= c.scheduledAt.getTime() - 5 * MINUTE_MS && now.getTime() < startClosesAt(c);
 }
 
 /** Ids of the consults whose member is in the app's waiting room, asked of Twilio in parallel. */
@@ -991,6 +992,7 @@ async function toConsults(doctorId: Id, docs: ConsultDoc[], { withWaiting = fals
         reason: c.reason?.trim() || "No reason given",
         status: c.status as Consult["status"],
         startedAt: c.status === "in_progress" && c.startedAt ? c.startedAt.toISOString() : undefined,
+        missed: isMissed(c, now),
         patientWaiting: waiting.has(String(c._id)),
       },
     ];

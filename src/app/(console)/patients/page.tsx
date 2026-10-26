@@ -91,8 +91,10 @@ export default async function PatientsPage(props: PageProps<"/patients">) {
                 <span className="flex items-center justify-between gap-2">
                   <span className="truncate text-[15px] font-bold text-ink">{patient.name}</span>
                   {consult ? (
-                    <span className="shrink-0 rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-bold tabular-nums text-brand-deep">
-                      Today {consult.time}
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${consult.missed ? "bg-white/70 text-muted" : "bg-brand-soft text-brand-deep"}`}
+                    >
+                      {consult.missed ? "Missed" : "Today"} {consult.time}
                     </span>
                   ) : null}
                 </span>
@@ -164,7 +166,15 @@ export default async function PatientsPage(props: PageProps<"/patients">) {
                       )}
                     </td>
                     <td className="whitespace-nowrap px-3 py-3.5 tabular-nums text-body">
-                      {consult ? <span className="font-semibold text-ink">{consult.time}</span> : <span className="text-muted">–</span>}
+                      {consult ? (
+                        consult.missed ? (
+                          <span className="text-muted">{consult.time}, missed</span>
+                        ) : (
+                          <span className="font-semibold text-ink">{consult.time}</span>
+                        )
+                      ) : (
+                        <span className="text-muted">–</span>
+                      )}
                     </td>
                     <td className="px-3 py-3.5">
                       <AccessChip status={patient.access.status} />

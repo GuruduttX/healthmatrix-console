@@ -86,6 +86,11 @@ export type Consult = {
   status: ConsultStatus;
   /** ISO time the call started, while it is in progress. */
   startedAt?: string;
+  /**
+   * Booked but not started within `LATE_START_MINUTES` of its time, so it can't be joined or
+   * started. Its status stays `scheduled`; this is worked out from the time on every read.
+   */
+  missed?: boolean;
   /** The patient is in the consult's video room, waiting to be admitted. Today and Schedule only. */
   patientWaiting?: boolean;
 };
